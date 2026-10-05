@@ -106,7 +106,11 @@ try {
   await page.getByLabel("选择作品").selectOption(`${project.ref.sourceId}:gym-card`);
   await page.getByRole("button", { name: "制作", exact: true }).click();
   assert.equal(new URL(page.url()).searchParams.get("source"), project.ref.sourceId);
+  assert.equal(await page.getByLabel("输出目标").inputValue(), "vertical");
   await page.getByLabel("输出目标").selectOption("vertical");
+  await page.getByRole("button", { name: "提交审阅", exact: true }).click();
+  assert.equal(await page.getByLabel("审阅目标").inputValue(), "vertical");
+  await page.getByRole("dialog").getByRole("button", { name: "取消", exact: true }).click();
   await page.getByRole("button", { name: /产物与任务/ }).click();
   await page.getByRole("button", { name: "diagnostics.json", exact: true }).click();
   await page
@@ -260,7 +264,9 @@ try {
     .waitFor({ timeout: 60000 });
   await page.setViewportSize({ width: 1440, height: 1000 });
   assert.equal(errors.length, 0, errors.join("\n"));
-  console.log("PASS: Runner connection, preview, parameters, versions, artifacts and responsive layout");
+  console.log(
+    "PASS: Runner connection, preview, parameters, versions, artifacts and responsive layout",
+  );
 } catch (error) {
   if (browser) {
     const page = browser.contexts()[0]?.pages()[0];

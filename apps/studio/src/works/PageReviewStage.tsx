@@ -9,6 +9,7 @@ import {
 import { Button, Select } from "@bcr/react";
 import { Camera, LoaderCircle, MousePointer2 } from "lucide-react";
 import type { PageState, ReviewAnchor, ReviewView } from "@bcr/work-core";
+import { isPageAnchor } from "@bcr/work-core";
 import { RunnerPreview } from "./runner-preview";
 import type { StageProps } from "./ReviewStage";
 
@@ -70,10 +71,10 @@ export function PageReviewStage({
     setError("");
   };
   useEffect(() => {
-    if (focus?.viewId) {
+    if (isPageAnchor(focus) && focus.viewId) {
       const v = views.find((v) => v.id === focus.viewId);
       if (v) openView(v);
-    } else if (focus?.page) {
+    } else if (isPageAnchor(focus)) {
       restoring.current = focus.page;
       setPath(focus.page.path);
       setViewport(focus.page.viewport);
@@ -107,7 +108,10 @@ export function PageReviewStage({
         }
         service.assertSource(workRef.sourceId);
         if (!submission.previewJobId) throw new Error("此稿没有固定页面预览");
-        const resource = await service.runner.previewResource(submission.previewJobId, abort.signal);
+        const resource = await service.runner.previewResource(
+          submission.previewJobId,
+          abort.signal,
+        );
         const url = new URL(resource.url);
         url.pathname = `/${resource.jobId}/${path.split("/").map(encodeURIComponent).join("/")}`;
         await preview.start({ ...resource, url: url.href }, abort.signal);
@@ -142,13 +146,13 @@ export function PageReviewStage({
   ]);
   const position = async (): Promise<ReviewAnchor> => {
     const saved = currentView.current;
-    if (saved) return { viewId: saved.id, page: saved.page, viewport: saved.page.viewport };
+    if (saved) return { kind: "page", viewId: saved.id, page: saved.page };
     if (loading) throw new Error("页面尚未就绪");
     const page = (await preview.page("page-state")) as PageState;
     const actualPath = page.path;
     if (!pages.some((p) => p.path === actualPath))
       throw new Error("当前页面未包含在审阅清单，请从页面选择器打开已提交页面");
-    return { page: { ...page, path: actualPath, viewport: requested }, viewport: requested };
+    return { kind: "page", page: { ...page, path: actualPath, viewport: requested } };
   };
   const capture = (): Promise<ReviewAnchor> => {
     if (currentView.current) return position();
@@ -160,10 +164,11 @@ export function PageReviewStage({
       try {
         if (!pageReview) throw new Error("审阅视图存储未就绪");
         const anchor = await position();
+        if (!isPageAnchor(anchor)) throw new Error("页面定位信息无效");
         const saved = await service.capturePage(
           workRef,
           submission.id,
-          anchor.page!,
+          anchor.page,
           crypto.randomUUID(),
           alive.current.signal,
         );
@@ -172,7 +177,7 @@ export function PageReviewStage({
         alive.current.signal.throwIfAborted();
         currentView.current = saved;
         openView(saved);
-        return { viewId: saved.id, page: saved.page, viewport: saved.page.viewport };
+        return { kind: "page" as const, viewId: saved.id, page: saved.page };
       } catch (e) {
         if (!alive.current.signal.aborted) setError(String(e));
         throw e;

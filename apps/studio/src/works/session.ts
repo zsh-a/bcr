@@ -34,7 +34,7 @@ export class WorkSession {
   ) {
     this.state = {
       work,
-      targetId: work.targets[0]!.id,
+      targetId: work.definition.defaultTarget ?? work.targets[0]!.id,
       jobs: [],
       params: {},
       base: "",
@@ -118,7 +118,10 @@ export class WorkSession {
     )
       throw new Error("不能在同一会话中替换作品来源");
     if (work.revision === this.state.work.revision) return;
-    this.patch({ work });
+    const targetId = work.targets.some((target) => target.id === this.state.targetId)
+      ? this.state.targetId
+      : (work.definition.defaultTarget ?? work.targets[0]!.id);
+    this.patch({ work, targetId });
     if (!this.state.dirty) this.loadParams();
   }
   selectTarget(id: string) {

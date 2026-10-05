@@ -94,7 +94,8 @@ try {
   await page.getByRole("button", { name: "连接", exact: true }).click();
   await page.getByRole("button", { name: "Runner 已连接", exact: true }).waitFor();
   await page.getByLabel("选择作品").selectOption(`${first.ref.sourceId}:review-film`);
-  await page.getByRole("button", { name: "提交第一个版本", exact: true }).click();
+  await page.getByRole("button", { name: "开始制作", exact: true }).click();
+  await page.getByRole("button", { name: "提交审阅", exact: true }).click();
   await page.getByLabel("审阅版本名称").fill("初稿");
   await page.getByLabel("修改说明").fill("先看数字的层级，再看叙事节奏。");
   await page.getByRole("dialog").getByRole("button", { name: "提交审阅", exact: true }).click();
@@ -108,6 +109,7 @@ try {
   await page.getByRole("button", { name: "保存反馈", exact: true }).click();
   await page.getByText("待修改", { exact: true }).waitFor();
   const feedback = runner.service.review.read("review-film").feedback[0];
+  assert.equal(feedback.anchor.kind, "timeline");
   assert.equal(feedback.anchor.frame, 30);
   assert.equal(feedback.anchor.endFrame, 45);
   assert(feedback.anchor.point.x > 0 && feedback.anchor.point.x < 1);

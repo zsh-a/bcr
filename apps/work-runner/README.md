@@ -36,6 +36,7 @@ bcr-runner start --root ~/bcr-projects --origin https://bcr.example.com
   "format": "bcr-project-1",
   "id": "gym-card",
   "title": "健身房年卡，去多少次才划算？",
+  "defaultTarget": "vertical",
   "targets": [
     {
       "id": "vertical",

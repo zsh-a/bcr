@@ -10,6 +10,7 @@ import type {
   PageViewport,
   PageElement,
 } from "@bcr/work-core";
+import { isTimelineAnchor, targetSurface } from "@bcr/work-core";
 import { PageReviewStage } from "./PageReviewStage";
 import { RunnerPreview } from "./runner-preview";
 import type { WorkService } from "./service";
@@ -48,7 +49,7 @@ export function ReviewStage(props: StageProps) {
   useEffect(() => {
     if (props.focus) setOutput(props.focus.output ?? "");
   }, [props.focus]);
-  const html = props.submission.target.runtime === "html";
+  const html = targetSurface(props.submission.target) === "page";
   const media = props.submission.outputs.some(
     (o) => o.key === output && /^(image|video)\//u.test(o.mime),
   );
@@ -78,9 +79,9 @@ function MediaReviewStage({
   const [outputKey, setOutputKey] = useState(
     () =>
       initialOutput ??
-      (submission.outputs.find((o) => o.mime.startsWith("video/"))?.key ??
-        submission.outputs.find((o) => o.mime.startsWith("image/"))?.key ??
-        "preview"),
+      submission.outputs.find((o) => o.mime.startsWith("video/"))?.key ??
+      submission.outputs.find((o) => o.mime.startsWith("image/"))?.key ??
+      "preview",
   );
   const [blob, setBlob] = useState<Blob>(),
     [url, setUrl] = useState(""),
@@ -145,12 +146,20 @@ function MediaReviewStage({
         if (result.frame !== null) frame = result.frame;
         if (result.text) context = result.text.slice(0, 8000);
       }
-      return {
-        ...(frame !== undefined ? { frame } : {}),
+      const common = {
         ...(context ? { context } : {}),
         ...(size ? { viewport: { width: size.width, height: size.height } } : {}),
         ...(media ? { output: media.key } : {}),
       };
+      const duration =
+        submission.target.runtime === "remotion" ? submission.target.durationInFrames : 1;
+      return targetSurface(submission.target) === "timeline"
+        ? {
+            kind: "timeline" as const,
+            frame: Math.max(0, Math.min(duration - 1, frame ?? 0)),
+            ...common,
+          }
+        : { kind: "artifact" as const, ...common };
     },
     seek,
   }));
@@ -170,7 +179,7 @@ function MediaReviewStage({
             await service.runner.previewResource(submission.previewJobId, abort.signal),
             abort.signal,
           );
-          if (focusRef.current?.frame !== undefined)
+          if (isTimelineAnchor(focusRef.current))
             await preview.inspect("seek", focusRef.current.frame);
         } else if (media) {
           const loaded = await service.reviewOutput(workRef, media, abort.signal);
@@ -190,25 +199,17 @@ function MediaReviewStage({
       preview.stop();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [
-    service,
-    workRef.sourceId,
-    workRef.id,
-    submission.id,
-    media?.key,
-    interactive,
-    preview,
-  ]);
+  }, [service, workRef.sourceId, workRef.id, submission.id, media?.key, interactive, preview]);
   useEffect(() => {
-    if (!loading && focus?.frame !== undefined)
-      void seek(focus.frame).catch((e) => setError(String(e)));
+    const frame = isTimelineAnchor(focus) ? focus.frame : undefined;
+    if (!loading && frame !== undefined) void seek(frame).catch((e) => setError(String(e)));
   }, [focus, loading]);
   return (
     <section className="review-stage" aria-label={`${submission.title} 画面`}>
       <header className="review-stage-header">
         <div>
           <span className="review-eyebrow">
-            {submission.target.runtime === "remotion" ? "MOTION" : "PAGE"}
+            {targetSurface(submission.target) === "timeline" ? "MOTION" : "PAGE"}
           </span>
           <strong>{submission.title}</strong>
         </div>
@@ -221,10 +222,9 @@ function MediaReviewStage({
           }
         >
           {onOutput && <option value="page-view">返回页面</option>}
-          {submission.target.runtime !== "html" &&
-            submission.previewJobId && (
-              <option value="preview">交互预览</option>
-            )}
+          {targetSurface(submission.target) === "timeline" && submission.previewJobId && (
+            <option value="preview">交互预览</option>
+          )}
           {submission.outputs
             .filter((o) => /^(image|video)\//u.test(o.mime))
             .map((o) => (
@@ -248,10 +248,7 @@ function MediaReviewStage({
           }
         >
           {interactive ? (
-            <div
-              className="review-frame"
-              ref={preview.mount}
-            />
+            <div className="review-frame" ref={preview.mount} />
           ) : media?.mime.startsWith("image/") && url ? (
             <img
               src={url}
@@ -270,7 +267,7 @@ function MediaReviewStage({
               aria-label={`${submission.title} 视频`}
               onLoadedMetadata={() => {
                 if (video.current) setAspect(video.current.videoWidth / video.current.videoHeight);
-                if (focusRef.current?.frame !== undefined)
+                if (isTimelineAnchor(focusRef.current))
                   void seek(focusRef.current.frame).catch((e) => setError(String(e)));
               }}
             />

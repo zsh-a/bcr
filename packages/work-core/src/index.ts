@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { targetCapabilities } from "./target";
 
 export const RUNNER_PROTOCOL = "bcr-runner-1";
 export type RunnerCatalog = {
@@ -59,6 +60,7 @@ export const DefinitionSchema = Schema.Struct({
   id: Id,
   title: text(200).pipe(Schema.minLength(1)),
   targets: Schema.Array(TargetSchema).pipe(Schema.minItems(1), Schema.maxItems(20)),
+  defaultTarget: Schema.optional(Id),
 });
 export type Definition = typeof DefinitionSchema.Type;
 export type Target = typeof TargetSchema.Type;
@@ -67,8 +69,9 @@ export const decode = <A, I>(schema: Schema.Schema<A, I>, value: unknown): A =>
   Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })(value);
 export function definition(value: unknown): Definition {
   const work = decode(DefinitionSchema, value);
-  if (new Set(work.targets.map((t) => t.id)).size !== work.targets.length)
-    throw new Error("目标 ID 重复");
+  const targetIds = new Set(work.targets.map((t) => t.id));
+  if (targetIds.size !== work.targets.length) throw new Error("目标 ID 重复");
+  if (work.defaultTarget && !targetIds.has(work.defaultTarget)) throw new Error("默认目标不存在");
   for (const target of work.targets) {
     if (target.runtime !== "remotion") continue;
     const keys = (target.parameters ?? []).map((p) => p.key);
@@ -165,6 +168,8 @@ export const ParamsSchema = Schema.Struct({
   }),
 });
 export function capabilities(targets: readonly Target[]): string[] {
+  const hasTimeline = targets.some((target) => targetCapabilities(target).surface === "timeline");
+  const hasParameters = targets.some((target) => targetCapabilities(target).parameters);
   return [
     "read",
     "snapshot",
@@ -172,9 +177,8 @@ export function capabilities(targets: readonly Target[]): string[] {
     "review",
     "preview",
     "archive",
-    ...(targets.some((t) => t.runtime === "remotion")
-      ? ["parameters", "capture", "video", "seek"]
-      : []),
+    ...(hasParameters ? ["parameters"] : []),
+    ...(hasTimeline ? ["capture", "video", "seek"] : []),
   ];
 }
 export function parameterValues(
@@ -210,3 +214,4 @@ export * from "./review";
 export * from "./versions";
 export * from "./page";
 export * from "./page-runtime";
+export * from "./target";

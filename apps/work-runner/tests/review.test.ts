@@ -84,7 +84,7 @@ test("submissions, feedback and delivery stay atomic, versioned and independent 
         feedbackId: "bad-frame",
         submissionId: "v1",
         comment: "Bad",
-        anchor: { frame: 10 },
+        anchor: { kind: "timeline", frame: 10 },
       }),
     ).toThrow("时间范围");
     edit({
@@ -93,8 +93,9 @@ test("submissions, feedback and delivery stay atomic, versioned and independent 
       submissionId: "v1",
       comment: "Improve title",
       anchor: {
+        kind: "page",
+        page: { path: "index.html", viewport: { width: 800, height: 600 } },
         point: { x: 0.3, y: 0.4 },
-        viewport: { width: 800, height: 600 },
         context: "First",
       },
     });
@@ -174,18 +175,28 @@ test("temporal and spatial anchors preserve exact meaning and reject invalid ran
     createdAt: 0,
   };
   const book = { ...emptyReviewBook(), submissions: [submission] };
-  const action = {
+  const action: Extract<ReviewAction, { kind: "comment" }> = {
     kind: "comment" as const,
     submissionId: "v1",
     feedbackId: "f1",
     comment: "Delay reveal",
-    anchor: { frame: 30, endFrame: 60, point: { x: 0.4, y: 0.2 } },
+    anchor: { kind: "timeline", frame: 30, endFrame: 60, point: { x: 0.4, y: 0.2 } },
   };
   expect(editReviewBook(book, action, "rev-1", 0).feedback[0]!.anchor).toEqual(action.anchor);
   expect(() =>
-    editReviewBook(book, { ...action, anchor: { frame: 60, endFrame: 30 } }, "rev-1", 0),
+    editReviewBook(
+      book,
+      { ...action, anchor: { kind: "timeline", frame: 60, endFrame: 30 } },
+      "rev-1",
+      0,
+    ),
   ).toThrow("时间范围");
   expect(() =>
-    editReviewBook(book, { ...action, anchor: { frame: 30, endFrame: 120 } }, "rev-1", 0),
+    editReviewBook(
+      book,
+      { ...action, anchor: { kind: "timeline", frame: 30, endFrame: 120 } },
+      "rev-1",
+      0,
+    ),
   ).toThrow("时间范围");
 });

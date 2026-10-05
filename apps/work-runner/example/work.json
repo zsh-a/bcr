@@ -2,6 +2,7 @@
   "format": "bcr-project-1",
   "id": "gym-card",
   "title": "年卡，去多少次才划算？",
+  "defaultTarget": "vertical",
   "targets": [
     {
       "id": "page",

@@ -46,6 +46,7 @@ Works 的浏览器页面可以关闭，Runner 任务仍然继续。Works 不执�
   "format": "bcr-project-1",
   "id": "gym-card",
   "title": "健身房年卡，去多少次才划算？",
+  "defaultTarget": "vertical",
   "targets": [
     {
       "id": "vertical",
@@ -60,6 +61,8 @@ Works 的浏览器页面可以关闭，Runner 任务仍然继续。Works 不执�
   ]
 }
 ```
+
+`defaultTarget` 只决定制作工作台首次打开的目标；同一工程仍可在目标选择器中切换页面、视频或其他适配器。
 
 建议同时提供：
 
@@ -84,7 +87,15 @@ Works 只有两种主要状态：
 
 制作页面只显示源码快照、目标元数据和参数面板。源码编辑由 Agent 或用户的代码编辑器完成；参数保存仍然通过 Runner 的 revision CAS 写入工程的 `propsFile`。
 
-页面、图表和视频都通过同一套审阅流程处理。视频审阅以 `frame`、`endFrame`、`point`、`output` 和 `sceneId` 作为定位信息；HTML 目标可以额外保存固定视口截图。
+页面、图表和视频都通过同一套审阅流程处理。目标先声明自己的审阅表面：HTML 是 `page`，Remotion 是 `timeline`。反馈定位使用带 `kind` 的联合结构：
+
+```json
+{ "kind": "page", "page": { "path": "index.html", "viewport": { "width": 1280, "height": 800 } } }
+{ "kind": "timeline", "frame": 360, "endFrame": 420, "point": { "x": 0.5, "y": 0.4 } }
+{ "kind": "artifact", "output": "job/video.mp4" }
+```
+
+这样页面状态不会误读成视频帧，视频也不需要伪造页面字段；固定视口截图仍然通过页面定位中的 `viewId` 关联。Runner 负责目标适配器，Works 只依赖目标表面和统一的审阅定位。
 
 ## Runner 操作
 

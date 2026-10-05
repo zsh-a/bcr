@@ -69,6 +69,12 @@
   background: transparent;
   font-weight: 500;
 }
+.review-versionbar .review-target-select {
+  max-width: 170px;
+  border-color: var(--review-line);
+  background: var(--color-surface);
+  font-weight: 400;
+}
 .review-version-date {
   flex: 1;
   color: var(--color-muted);
@@ -537,17 +543,6 @@
   font: 22px var(--font-mono, monospace);
   color: var(--color-accent);
   transform: rotate(11deg);
-}
-.review-text-link {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: transparent;
-  border: 0;
-  color: var(--color-muted);
-  font-size: 11px;
-  cursor: pointer;
-  margin-top: 16px;
 }
 .review-dialog {
   width: min(620px, calc(100vw - 32px));

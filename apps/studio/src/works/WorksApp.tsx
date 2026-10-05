@@ -8,7 +8,7 @@ import {
   useOpenAssistant,
   useRuntime,
 } from "@bcr/react";
-import { Code2, Link2, Sparkles } from "lucide-react";
+import { Code2, Eye, Link2, SlidersHorizontal, Sparkles } from "lucide-react";
 import type { Project } from "@bcr/work-core";
 import { workspaceServices } from "../workspace";
 import { ReviewDesk } from "./ReviewDesk";
@@ -28,6 +28,7 @@ export function WorksApp() {
   const search = useLocationSearch();
   const openAssistant = useOpenAssistant();
   const route = new URLSearchParams(search);
+  const mode = route.get("mode") === "build" ? "build" : "review";
   const sourceId = route.get("source") ?? connection.sourceId;
   const id = route.get("work");
   const selected = items.find(
@@ -39,6 +40,13 @@ export function WorksApp() {
   const [connecting, setConnecting] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [error, setError] = useState("");
+  const navigatePhase = (next: "build" | "review", force = false) => {
+    if (!selected || (blocked && !force)) return;
+    runner.preview.stop();
+    navigation.navigate(
+      next === "build" ? `${workRoute(selected.ref)}&mode=build` : workRoute(selected.ref),
+    );
+  };
 
   useEffect(() => {
     let disposed = false;
@@ -85,6 +93,30 @@ export function WorksApp() {
             </option>
           ))}
         </Select>
+        {selected && (
+          <nav className="works-phase-nav" aria-label="作品阶段">
+            <button
+              type="button"
+              aria-current={mode === "build" ? "page" : undefined}
+              className={mode === "build" ? "is-active" : ""}
+              disabled={blocked}
+              onClick={() => navigatePhase("build")}
+            >
+              <SlidersHorizontal size={14} />
+              制作
+            </button>
+            <button
+              type="button"
+              aria-current={mode === "review" ? "page" : undefined}
+              className={mode === "review" ? "is-active" : ""}
+              disabled={blocked}
+              onClick={() => navigatePhase("review")}
+            >
+              <Eye size={14} />
+              审阅
+            </button>
+          </nav>
+        )}
         <Button variant="ghost" disabled={blocked} onClick={() => setConnecting((value) => !value)}>
           <Link2 size={15} />
           {connection.status === "connected" ? "Runner 已连接" : "连接 Runner"}
@@ -111,9 +143,8 @@ export function WorksApp() {
           key={workKey(selected.ref)}
           service={service}
           work={selected}
-          initialSubmit={route.get("intent") === "submit"}
           onBlocked={setBlocked}
-          onBuild={() => navigation.navigate(`${workRoute(selected.ref)}&mode=build`)}
+          onBuild={() => navigatePhase("build")}
         />
       ) : selected && project ? (
         <WorkBuild
@@ -121,8 +152,7 @@ export function WorksApp() {
           service={service}
           work={project}
           onBlocked={setBlocked}
-          onReview={() => navigation.navigate(workRoute(selected.ref))}
-          onSubmit={() => navigation.navigate(`${workRoute(selected.ref)}&intent=submit`)}
+          onReview={() => navigatePhase("review", true)}
         />
       ) : (
         <section className="works-empty">

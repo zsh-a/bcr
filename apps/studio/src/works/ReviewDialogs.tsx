@@ -7,16 +7,22 @@ import { ReviewSession } from "./review-session";
 export function SubmitReviewDialog({
   session,
   work,
+  initialTargetId,
   close,
   submitted,
 }: {
   session: ReviewSession;
   work: WorkSummary;
+  initialTargetId?: string | undefined;
   close: () => void;
   submitted: (id: string) => void;
 }) {
   const { book, jobs, busy } = useSyncExternalStore(session.subscribe, session.getSnapshot);
-  const [target, setTarget] = useState(work.targets[0]?.id ?? "");
+  const defaultTarget =
+    initialTargetId && work.targets.some((item) => item.id === initialTargetId)
+      ? initialTargetId
+      : (work.targets[0]?.id ?? "");
+  const [target, setTarget] = useState(defaultTarget);
   const [title, setTitle] = useState(`第 ${book.submissions.length + 1} 稿`),
     [summary, setSummary] = useState("");
   const [checked, setChecked] = useState<string[] | null>(null),
@@ -170,9 +176,7 @@ export function SubmitReviewDialog({
           {!eligible.length && (
             <div className="review-inline-empty">
               <Film size={22} />
-              <p>
-                {preparing ? "预览正在生成，完成后即可提交。" : "当前源码还没有可审阅的画面。"}
-              </p>
+              <p>{preparing ? "预览正在生成，完成后即可提交。" : "当前源码还没有可审阅的画面。"}</p>
               <Button
                 type="button"
                 variant="ghost"

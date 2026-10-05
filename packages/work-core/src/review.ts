@@ -6,23 +6,49 @@ const id = Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9_-]{1,100}$/u));
 const text = (max: number) => Schema.String.pipe(Schema.minLength(1), Schema.maxLength(max));
 const frame = Schema.Number.pipe(Schema.int(), Schema.between(0, 216000));
 const coordinate = Schema.Number.pipe(Schema.between(0, 1));
-export const AnchorSchema = Schema.Struct({
-  frame: Schema.optional(frame),
-  endFrame: Schema.optional(frame),
-  point: Schema.optional(Schema.Struct({ x: coordinate, y: coordinate })),
-  viewport: Schema.optional(
-    Schema.Struct({
-      width: Schema.Number.pipe(Schema.between(1, 20000)),
-      height: Schema.Number.pipe(Schema.between(1, 20000)),
-    }),
-  ),
+const point = Schema.Struct({ x: coordinate, y: coordinate });
+const viewport = Schema.Struct({
+  width: Schema.Number.pipe(Schema.between(1, 20000)),
+  height: Schema.Number.pipe(Schema.between(1, 20000)),
+});
+const commonAnchorFields = {
+  point: Schema.optional(point),
   context: Schema.optional(text(8000)),
   output: Schema.optional(text(300)),
-  page: Schema.optional(PageStateSchema),
-  element: Schema.optional(PageElementSchema),
-  viewId: Schema.optional(id),
-});
+} as const;
+
+/** A locator is deliberately discriminated so page state and timeline state cannot be mixed. */
+export const AnchorSchema = Schema.Union(
+  Schema.Struct({
+    kind: Schema.Literal("timeline"),
+    frame,
+    endFrame: Schema.optional(frame),
+    viewport: Schema.optional(viewport),
+    ...commonAnchorFields,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("page"),
+    page: PageStateSchema,
+    element: Schema.optional(PageElementSchema),
+    viewId: Schema.optional(id),
+    ...commonAnchorFields,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("artifact"),
+    viewport: Schema.optional(viewport),
+    ...commonAnchorFields,
+  }),
+);
 export type ReviewAnchor = typeof AnchorSchema.Type;
+export type TimelineAnchor = Extract<ReviewAnchor, { kind: "timeline" }>;
+export type PageAnchor = Extract<ReviewAnchor, { kind: "page" }>;
+export type ArtifactAnchor = Extract<ReviewAnchor, { kind: "artifact" }>;
+export const isTimelineAnchor = (anchor: ReviewAnchor | undefined): anchor is TimelineAnchor =>
+  anchor?.kind === "timeline";
+export const isPageAnchor = (anchor: ReviewAnchor | undefined): anchor is PageAnchor =>
+  anchor?.kind === "page";
+export const isArtifactAnchor = (anchor: ReviewAnchor | undefined): anchor is ArtifactAnchor =>
+  anchor?.kind === "artifact";
 export const ReviewActionSchema = Schema.Union(
   Schema.Struct({ kind: Schema.Literal("view"), view: ReviewViewSchema }),
   Schema.Struct({
@@ -183,30 +209,31 @@ export function editReviewBook(
     if (next.feedback.some((f) => f.id === action.feedbackId)) throw new Error("反馈 ID 已存在");
     const a = action.anchor,
       target = submission.target;
-    const view = a.viewId
-      ? next.views?.find((v) => v.id === a.viewId && v.submissionId === submission.id)
-      : undefined;
-    if (a.viewId && !view) throw new Error("反馈视图不属于此审阅稿");
-    if (view && a.page && JSON.stringify(a.page) !== JSON.stringify(view.page))
+    const view =
+      a.kind === "page" && a.viewId
+        ? next.views?.find((v) => v.id === a.viewId && v.submissionId === submission.id)
+        : undefined;
+    if (a.kind === "page" && a.viewId && !view) throw new Error("反馈视图不属于此审阅稿");
+    if (view && a.kind === "page" && JSON.stringify(a.page) !== JSON.stringify(view.page))
       throw new Error("反馈页面状态与固定截图不一致");
     if (
       view &&
+      a.kind === "page" &&
       a.element &&
       !view.elements.some((e) => JSON.stringify(e) === JSON.stringify(a.element))
     )
       throw new Error("反馈元素不在固定截图内");
     if (
-      a.page &&
+      a.kind === "page" &&
       (target.runtime !== "html" ||
-        !(submission.pages ?? [{ path: target.entry }]).some((p) => p.path === a.page!.path))
+        !(submission.pages ?? [{ path: target.entry }]).some((p) => p.path === a.page.path))
     )
       throw new Error("反馈页面不属于此审阅稿");
     if (a.output && !submission.outputs.some((o) => o.key === a.output))
       throw new Error("反馈产物不属于此版本");
     if (
-      (a.frame !== undefined || a.endFrame !== undefined) &&
+      a.kind === "timeline" &&
       (target.runtime !== "remotion" ||
-        a.frame === undefined ||
         a.frame >= target.durationInFrames ||
         (a.endFrame !== undefined &&
           (a.endFrame < a.frame || a.endFrame >= target.durationInFrames)))
@@ -216,7 +243,7 @@ export function editReviewBook(
       id: action.feedbackId,
       submissionId: submission.id,
       comment: action.comment,
-      anchor: view ? { ...a, page: view.page, viewport: view.page.viewport } : a,
+      anchor: view && a.kind === "page" ? { ...a, page: view.page } : a,
       createdAt: now,
       status: "open",
     });

@@ -1,13 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Button } from "@bcr/react";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  History,
-  SlidersHorizontal,
-  FolderOpen,
-  Download,
-} from "lucide-react";
+import { ArrowUpRight, History, SlidersHorizontal, FolderOpen, Download } from "lucide-react";
 import type { WorkSummary } from "@bcr/work-core";
 import type { WorkService } from "./service";
 import { VersionHistory } from "./VersionHistory";
@@ -19,7 +12,6 @@ export function BuildShell({
   dirty,
   busy,
   status,
-  onReview,
   onSubmit,
   controls,
   tools,
@@ -36,7 +28,6 @@ export function BuildShell({
   dirty: boolean;
   busy: boolean;
   status: string;
-  onReview: () => void;
   onSubmit: () => void;
   controls: ReactNode;
   tools?: ReactNode;
@@ -53,14 +44,6 @@ export function BuildShell({
     <section className="build-desk" aria-label="作品制作工作台">
       <header className="build-toolbar">
         <div className="build-title">
-          <Button
-            variant="ghost"
-            aria-label="← 返回审阅"
-            disabled={dirty || busy}
-            onClick={onReview}
-          >
-            <ArrowLeft size={16} />
-          </Button>
           <div>
             <span className="build-eyebrow">CREATE & EXPLORE</span>
             <h1>{work.title}</h1>

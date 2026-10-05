@@ -10,8 +10,10 @@ import {
   Save,
   Square,
 } from "lucide-react";
-import type { Project, Job } from "@bcr/work-core";
+import { targetSurface, type Project, type Job } from "@bcr/work-core";
 import type { WorkService } from "./service";
+import { ReviewSession } from "./review-session";
+import { SubmitReviewDialog } from "./ReviewDialogs";
 import { WorkSession } from "./session";
 import { BuildShell } from "./BuildShell";
 import { ExportDialog, JobDrawer } from "./BuildTools";
@@ -22,16 +24,18 @@ export function WorkBuild({
   work,
   onBlocked,
   onReview,
-  onSubmit,
 }: {
   service: WorkService;
   work: Project;
   onBlocked: (dirty: boolean) => void;
   onReview: () => void;
-  onSubmit: () => void;
 }) {
   const session = useMemo(
     () => new WorkSession(service, work),
+    [service, work.ref.sourceId, work.ref.id],
+  );
+  const reviewSession = useMemo(
+    () => new ReviewSession(service, work.ref),
     [service, work.ref.sourceId, work.ref.id],
   );
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
@@ -41,6 +45,7 @@ export function WorkBuild({
   const preview = useSyncExternalStore(runner.preview.subscribe, runner.preview.getSnapshot);
   const [inspector, setInspector] = useState(true),
     [dialog, setDialog] = useState<"export" | "jobs" | null>(null);
+  const [submitOpen, setSubmitOpen] = useState(false);
   const [artifact, setArtifact] = useState<{ job: Job; name: string }>();
   const run = (action: () => Promise<unknown>) => session.run(action);
   const activePreview = session.activePreview,
@@ -50,9 +55,13 @@ export function WorkBuild({
   useEffect(() => session.start(), [session]);
   useEffect(() => session.update(work), [session, work]);
   useEffect(() => {
-    onBlocked(dirty || busy);
+    if (!submitOpen) return;
+    return reviewSession.start();
+  }, [reviewSession, submitOpen]);
+  useEffect(() => {
+    onBlocked(dirty || busy || submitOpen);
     return () => onBlocked(false);
-  }, [dirty, busy, onBlocked]);
+  }, [dirty, busy, onBlocked, submitOpen]);
   useEffect(() => {
     const prevent = (e: BeforeUnloadEvent) => {
       if (session.getSnapshot().dirty) e.preventDefault();
@@ -173,8 +182,7 @@ export function WorkBuild({
         dirty={dirty}
         busy={busy}
         status={dirty ? "参数草稿 · 尚未保存" : stale ? "源码已更新 · 画面来自较早版本" : "已保存"}
-        onReview={onReview}
-        onSubmit={onSubmit}
+        onSubmit={() => setSubmitOpen(true)}
         onExport={() => setDialog("export")}
         inspector={panel}
         inspectorOpen={inspector}
@@ -189,7 +197,7 @@ export function WorkBuild({
             >
               {work.targets.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.id} · {t.runtime === "remotion" ? "动画" : "页面"}
+                  {t.id} · {targetSurface(t) === "timeline" ? "动画" : "页面"}
                 </option>
               ))}
             </Select>
@@ -336,6 +344,18 @@ export function WorkBuild({
           job={artifact.job}
           name={artifact.name}
           close={() => setArtifact(undefined)}
+        />
+      )}
+      {submitOpen && (
+        <SubmitReviewDialog
+          session={reviewSession}
+          work={work}
+          initialTargetId={target.id}
+          close={() => setSubmitOpen(false)}
+          submitted={() => {
+            setSubmitOpen(false);
+            onReview();
+          }}
         />
       )}
     </>

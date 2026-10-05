@@ -53,6 +53,43 @@
 .works-app .ui-app-toolbar select {
   max-width: 240px;
 }
+.works-phase-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+}
+.works-phase-nav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-muted);
+  font: 11px var(--font-sans);
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    background 140ms ease;
+}
+.works-phase-nav button:hover:not(:disabled) {
+  color: var(--color-text);
+}
+.works-phase-nav button.is-active {
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+.works-phase-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .works-spacer {
   flex: 1;
 }
@@ -100,6 +137,14 @@
   }
   .works-app .ui-app-toolbar select {
     max-width: 150px;
+  }
+  .works-phase-nav {
+    order: 3;
+    width: 100%;
+  }
+  .works-phase-nav button {
+    flex: 1;
+    justify-content: center;
   }
 }
 

@@ -11,11 +11,17 @@ import {
   MousePointer2,
   PackageCheck,
   Plus,
-  SlidersHorizontal,
   Sparkles,
   X,
 } from "lucide-react";
-import type { Feedback, ReviewAnchor, WorkSummary } from "@bcr/work-core";
+import {
+  isPageAnchor,
+  isTimelineAnchor,
+  targetSurface,
+  type Feedback,
+  type ReviewAnchor,
+  type WorkSummary,
+} from "@bcr/work-core";
 import type { WorkService } from "./service";
 import { workKey } from "./service";
 import { downloadBlob, ReviewSession } from "./review-session";
@@ -29,13 +35,11 @@ export function ReviewDesk({
   work,
   onBuild,
   onBlocked,
-  initialSubmit = false,
 }: {
   service: WorkService;
   work: WorkSummary;
   onBuild: () => void;
   onBlocked: (blocked: boolean) => void;
-  initialSubmit?: boolean;
 }) {
   const session = useMemo(
     () => new ReviewSession(service, work.ref),
@@ -45,7 +49,8 @@ export function ReviewDesk({
     session.subscribe,
     session.getSnapshot,
   );
-  const [selectedId, setSelectedId] = useState(""),
+  const [targetId, setTargetId] = useState(""),
+    [selectedId, setSelectedId] = useState(""),
     [compareId, setCompareId] = useState("");
   const [dialog, setDialog] = useState<"submit" | "deliver" | "request" | null>(null);
   const [comment, setComment] = useState(""),
@@ -59,27 +64,29 @@ export function ReviewDesk({
   const [sidebar, setSidebar] = useState<"feedback" | "deliveries">("feedback");
   const stage = useRef<StageHandle>(null),
     comparison = useRef<StageHandle>(null);
-  const selected = book.submissions.find((s) => s.id === selectedId) ?? book.submissions.at(-1);
-  const compare = book.submissions.find(
-    (s) => s.id === compareId && s.target.id === selected?.target.id,
+  const targetOptions = useMemo(
+    () => work.targets.filter((target) => book.submissions.some((s) => s.target.id === target.id)),
+    [book.submissions, work.targets],
   );
+  const activeTargetId =
+    targetOptions.find((target) => target.id === targetId)?.id ?? targetOptions[0]?.id ?? "";
+  const targetSubmissions = useMemo(
+    () => book.submissions.filter((s) => s.target.id === activeTargetId),
+    [activeTargetId, book.submissions],
+  );
+  const selected = targetSubmissions.find((s) => s.id === selectedId) ?? targetSubmissions.at(-1);
+  const compare = targetSubmissions.find((s) => s.id === compareId);
   const relevant = book.feedback.filter(
     (f) => book.submissions.find((s) => s.id === f.submissionId)?.target.id === selected?.target.id,
   );
   const unresolved = relevant.filter((f) => f.status !== "accepted");
   const dirty = !!comment.trim() || !!anchor;
-  const submitOnLoad = useRef(initialSubmit);
-  useEffect(() => {
-    if (!loading && !error && submitOnLoad.current) {
-      submitOnLoad.current = false;
-      setDialog("submit");
-    }
-  }, [loading, error]);
   useEffect(() => session.start(), [session]);
   useEffect(() => {
     // A new Agent submission must not move the canvas underneath an in-progress comment.
-    if (!selectedId && book.submissions.length) setSelectedId(book.submissions.at(-1)!.id);
-  }, [selectedId, book.submissions]);
+    if (!selectedId || !targetSubmissions.some((submission) => submission.id === selectedId))
+      setSelectedId(targetSubmissions.at(-1)?.id ?? "");
+  }, [selectedId, targetSubmissions]);
   useEffect(() => {
     onBlocked(dirty || busy || pageBusy);
     return () => onBlocked(false);
@@ -151,21 +158,12 @@ export function ReviewDesk({
           <span className="review-eyebrow">REVIEW & REFINE</span>
           <h1>{work.title}</h1>
           <p>
-            {book.submissions.length
-              ? `${book.submissions.length} 次提交 · ${unresolved.length} 条待确认反馈`
+            {targetSubmissions.length
+              ? `${targetSubmissions.length} 次提交 · ${unresolved.length} 条待确认反馈`
               : "把每次修改，留成看得见的进步。"}
           </p>
         </div>
         <div className="review-toolbar-actions">
-          <Button
-            variant="ghost"
-            aria-label="制作"
-            disabled={dirty || pageBusy || busy}
-            onClick={onBuild}
-          >
-            <SlidersHorizontal size={15} />
-            制作
-          </Button>
           <Button
             variant="ghost"
             disabled={dirty || pageBusy || busy || !selected}
@@ -207,24 +205,39 @@ export function ReviewDesk({
             <span>01</span>
           </div>
           <span className="review-eyebrow">A PLACE TO SEE PROGRESS</span>
-          <h2>{loading ? "正在打开工作台" : "第一稿，从这里开始。"}</h2>
-          <p>
-            准备一份可以观看的结果，留下意见，再把新旧版本放在一起。
-            <br />
-            页面、图表和视频，都可以拥有清楚的修改过程。
-          </p>
-          <Button disabled={loading || busy} onClick={() => setDialog("submit")}>
+          <h2>{loading ? "正在打开工作台" : "先做出一个可观看的版本。"}</h2>
+          <p>在制作中生成预览，提交后就能定位反馈、比较修改并固定交付。</p>
+          <Button disabled={loading || busy} onClick={onBuild}>
             <FilePlus2 size={16} />
-            提交第一个版本
+            开始制作
           </Button>
-          <button className="review-text-link" onClick={onBuild}>
-            继续制作作品 <ArrowUpRight size={13} />
-          </button>
         </div>
       ) : (
         <div className="review-layout">
           <main className="review-main">
             <div className="review-versionbar">
+              {targetOptions.length > 1 && (
+                <Select
+                  aria-label="审阅目标"
+                  className="review-target-select"
+                  value={activeTargetId}
+                  disabled={dirty || pageBusy || busy}
+                  onChange={(e) => {
+                    setTargetId(e.target.value);
+                    setSelectedId("");
+                    setCompareId("");
+                    setFocus(undefined);
+                    setAnchor(undefined);
+                    setAnnotate(false);
+                  }}
+                >
+                  {targetOptions.map((target) => (
+                    <option key={target.id} value={target.id}>
+                      {target.id} · {targetSurface(target) === "page" ? "页面" : "视频"}
+                    </option>
+                  ))}
+                </Select>
+              )}
               <Select
                 aria-label="审阅版本"
                 value={selected.id}
@@ -234,9 +247,9 @@ export function ReviewDesk({
                   setCompareId("");
                 }}
               >
-                {[...book.submissions].reverse().map((s) => (
+                {[...targetSubmissions].reverse().map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.title} · {s.target.id}
+                    {s.title}
                   </option>
                 ))}
               </Select>
@@ -249,7 +262,7 @@ export function ReviewDesk({
                   dirty ||
                   pageBusy ||
                   busy ||
-                  !book.submissions.some(
+                  !targetSubmissions.some(
                     (s) => s.id !== selected.id && s.target.id === selected.target.id,
                   )
                 }
@@ -258,7 +271,7 @@ export function ReviewDesk({
                   setCompareId(
                     compare
                       ? ""
-                      : ([...book.submissions]
+                      : ([...targetSubmissions]
                           .reverse()
                           .find((s) => s.id !== selected.id && s.target.id === selected.target.id)
                           ?.id ?? ""),
@@ -278,15 +291,15 @@ export function ReviewDesk({
                   disabled={pageBusy || busy}
                   onChange={(e) => setCompareId(e.target.value)}
                 >
-                  {book.submissions
-                    .filter((s) => s.id !== selected.id && s.target.id === selected.target.id)
+                  {targetSubmissions
+                    .filter((s) => s.id !== selected.id)
                     .map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.title}
                       </option>
                     ))}
                 </Select>
-                {selected.target.runtime === "html" && (
+                {targetSurface(selected.target) === "page" && (
                   <Button
                     variant="ghost"
                     disabled={busy || pageBusy || dirty}
@@ -295,28 +308,29 @@ export function ReviewDesk({
                     比较截图
                   </Button>
                 )}
-                {selected.target.runtime === "html" && (
+                {targetSurface(selected.target) === "page" && (
                   <Button
                     variant="ghost"
                     disabled={busy || pageBusy || dirty}
                     onClick={() =>
                       void session.run(async () => {
                         const position = await stage.current?.position();
-                        if (position?.page) await comparison.current?.applyPage?.(position.page);
+                        if (isPageAnchor(position))
+                          await comparison.current?.applyPage?.(position.page);
                       })
                     }
                   >
                     对齐页面状态
                   </Button>
                 )}
-                {selected.target.runtime === "remotion" && (
+                {targetSurface(selected.target) === "timeline" && (
                   <Button
                     variant="ghost"
                     disabled={busy || pageBusy}
                     onClick={() =>
                       void session.run(async () => {
                         const position = await stage.current?.position();
-                        if (position?.frame !== undefined)
+                        if (isTimelineAnchor(position))
                           await comparison.current?.seek(position.frame);
                       })
                     }
@@ -353,14 +367,25 @@ export function ReviewDesk({
                 submission={selected}
                 pageReview={pageReview}
                 annotate={annotate}
-                point={anchor ? anchor.point : focus?.point}
-                pointOutput={anchor ? anchor.output : focus?.output}
-                pointView={anchor ? anchor.viewId : focus?.viewId}
+                point={anchor?.point ?? focus?.point}
+                pointOutput={anchor?.output ?? focus?.output}
+                pointView={
+                  isPageAnchor(anchor)
+                    ? anchor.viewId
+                    : isPageAnchor(focus)
+                      ? focus.viewId
+                      : undefined
+                }
                 focus={focus}
                 onPoint={(point, element) => {
                   setAnchor((a) => {
-                    const { element: _old, ...rest } = a ?? {};
-                    return { ...rest, point, ...(element ? { element } : {}) };
+                    if (!a) return a;
+                    if (isPageAnchor(a)) {
+                      const { element: _old, ...rest } = a;
+                      return { ...rest, point, ...(element ? { element } : {}) };
+                    }
+                    const { point: _old, ...rest } = a;
+                    return { ...rest, point };
                   });
                   setAnnotate(false);
                 }}
@@ -417,7 +442,8 @@ export function ReviewDesk({
                   onSubmit={(event) => {
                     event.preventDefault();
                     void session.run(async () => {
-                      const position = anchor ?? (await stage.current?.position()) ?? {};
+                      const position = anchor ?? (await stage.current?.position());
+                      if (!position) throw new Error("当前画面尚未就绪");
                       await session.edit({
                         kind: "comment",
                         feedbackId: crypto.randomUUID(),
@@ -475,10 +501,14 @@ export function ReviewDesk({
                   {anchor && (
                     <div className="review-anchor-details">
                       <span>
-                        {anchor.frame === undefined ? "页面状态" : `第 ${anchor.frame} 帧`}
+                        {isTimelineAnchor(anchor)
+                          ? `第 ${anchor.frame} 帧`
+                          : isPageAnchor(anchor)
+                            ? "页面状态"
+                            : "产物"}
                         {anchor.point ? " · 已标记位置" : ""}
                       </span>
-                      {anchor.frame !== undefined && selected.target.runtime === "remotion" && (
+                      {isTimelineAnchor(anchor) && selected.target.runtime === "remotion" && (
                         <label>
                           结束帧
                           <input
@@ -489,10 +519,13 @@ export function ReviewDesk({
                             value={anchor.endFrame ?? ""}
                             placeholder="可选"
                             onChange={(e) =>
-                              setAnchor(({ endFrame: _old, ...a } = {}) => ({
-                                ...a,
-                                ...(e.target.value ? { endFrame: Number(e.target.value) } : {}),
-                              }))
+                              setAnchor((current) => {
+                                if (!isTimelineAnchor(current)) return current;
+                                if (e.target.value)
+                                  return { ...current, endFrame: Number(e.target.value) };
+                                const { endFrame: _old, ...rest } = current;
+                                return rest;
+                              })
                             }
                           />
                         </label>
@@ -528,9 +561,11 @@ export function ReviewDesk({
                           onClick={() => inspectFeedback(f)}
                         >
                           {book.submissions.find((s) => s.id === f.submissionId)?.title}
-                          {f.anchor.frame !== undefined
+                          {isTimelineAnchor(f.anchor)
                             ? ` · ${f.anchor.frame}${f.anchor.endFrame !== undefined ? `–${f.anchor.endFrame}` : ""} 帧`
-                            : ""}
+                            : isPageAnchor(f.anchor)
+                              ? " · 页面"
+                              : " · 产物"}
                           <ArrowUpRight size={12} />
                         </button>
                       </header>
@@ -670,6 +705,7 @@ export function ReviewDesk({
         <SubmitReviewDialog
           session={session}
           work={work}
+          initialTargetId={selected?.target.id}
           close={() => setDialog(null)}
           submitted={(id) => {
             choose(id);
