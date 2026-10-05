@@ -280,9 +280,16 @@ export async function execute(context: Context): Promise<void> {
     onProgress: (n) => report(0.1 + (n / 100) * 0.25, "构建渲染工程"),
   });
   signal.throwIfAborted();
+  const gpuWebgl = settings.gl === "angle";
   const browser = {
-    browserExecutable: await prepareBrowser(),
-    chromiumOptions: { gl: settings.gl },
+    browserExecutable: await prepareBrowser({ gpuWebgl }),
+    chromiumOptions: {
+      gl: settings.gl,
+      // WSLg exposes the NVIDIA renderer through a windowed Chrome process;
+      // chrome-headless-shell cannot create the WebGL2 context Three.js needs.
+      ...(gpuWebgl && process.env.BCR_RUNNER_GPU_WEBGL_WINDOWED === "1" ? { headless: false } : {}),
+    },
+    ...(gpuWebgl ? { chromeMode: "chrome-for-testing" as const } : {}),
   };
   const composition = await selectComposition({
     serveUrl,
@@ -352,7 +359,10 @@ export async function execute(context: Context): Promise<void> {
         ...videoEncoding,
         pixelFormat: "yuv420p",
         imageFormat: settings.profile === "final" ? "png" : "jpeg",
-        concurrency: 2,
+        // WSLg's windowed Chromium GPU path is stable with one browser
+        // context at a time; two concurrent contexts can trigger WebGL
+        // context loss while Remotion is advancing frames.
+        concurrency: gpuWebgl ? 1 : 2,
         cancelSignal,
         ...browser,
         onProgress: ({ progress }) => report(0.4 + progress * 0.6, "编码视频"),
