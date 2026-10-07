@@ -12,8 +12,8 @@
     "bridge": "bun apps/agent-bridge/src/cli.ts",
     "build:wasm": "wasm-pack build crates/kernels --target web && bun run build:wasm:quant && bun run build:wasm:agent",
     "build:wasm:agent": "wasm-pack build crates/agent-runtime/crates/agent-wasm --target web --out-dir ../../../agent-wasm/pkg",
-    "check": "vp check && bun run typecheck && bun run --cwd packages/work-engine lint && bun run test:work && bun run --cwd packages/work-engine test:audio && bun run test:runner",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/agent-bridge/tsconfig.json --noEmit && tsc -p apps/work-runner/tsconfig.json --noEmit && bun run --cwd packages/work-engine typecheck",
+    "check": "vp check && bun run typecheck && bun run --cwd packages/work-engine lint && bun run test:animation && bun run test:work && bun run --cwd packages/work-engine test:audio && bun run test:runner",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/agent-bridge/tsconfig.json --noEmit && tsc -p apps/work-runner/tsconfig.json --noEmit && bun run --cwd packages/work-engine typecheck && bun run --cwd packages/animation-core typecheck",
     "test": "vp test run",
     "test:ci": "node --test scripts/tests/browser-suites.test.mjs",
     "test:browser": "node scripts/verify-ci.mjs",
@@ -74,7 +74,8 @@
     "check:work": "bun run --cwd packages/work-engine check && bun run test:runner",
     "test:work": "bun run --cwd packages/work-engine test",
     "setup:work": "bun install --frozen-lockfile --ignore-scripts && uv sync --project packages/work-engine/audio --locked",
-    "test:runner:engine": "bun apps/work-runner/tests/engine.mjs"
+    "test:runner:engine": "bun apps/work-runner/tests/engine.mjs",
+    "test:animation": "bun packages/work-engine/node_modules/@biomejs/biome/bin/biome check packages/animation-core --config-path packages/work-engine/biome-project.json && bun run --cwd packages/animation-core check"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "3.53.0-build1"

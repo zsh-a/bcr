@@ -32,12 +32,82 @@ import {
   verifyMap,
 } from '../src/core';
 import { initProject } from '../src/init';
+import { dependencies } from '../src/lib/dependencies';
+import { packageArchives } from '../src/lib/package-archives';
 import { dedupSnapshots, orphanPlan, scratchPlan } from '../src/maintenance';
 import { release } from '../src/release';
 import { av1Level, encodeOptions, render } from '../src/render';
 import { testState } from './setup';
 
 const root = mkdtempSync(join(tmpdir(), 'bcr-manager-test-'));
+test('vendored package archives reject traversal, folders and links', () => {
+  const dir = join(root, 'archive-paths');
+  mkdirSync(join(dir, 'vendor'), { recursive: true });
+  writeFileSync(join(dir, 'vendor/library.tgz'), 'archive');
+  const archives = packageArchives(dir, { '@test/library': 'file:vendor/library.tgz' });
+  expect(archives.length).toBe(1);
+  expect(archives[0].sha256).toBe(sha('archive'));
+  for (const version of [
+    'file:../outside.tgz',
+    'file:vendor/../outside.tgz',
+    'file:vendor/folder',
+    'workspace:*',
+    'link:../outside',
+  ]) {
+    expect(() => packageArchives(dir, { library: version })).toThrow();
+  }
+  symlinkSync(join(dir, 'vendor/library.tgz'), join(dir, 'vendor/link.tgz'));
+  expect(() => packageArchives(dir, { library: 'file:vendor/link.tgz' })).toThrow();
+});
+
+test('dependency caches and render identities include vendored package bytes', async () => {
+  const workspace = workspaceFixture('archive-workspace');
+  const created = await initProject('archive-work', { install: false }, { root: workspace });
+  const current = project('archive-work', workspace);
+  const archive = join(created.path, 'vendor/library-0.1.0.tgz');
+  mkdirSync(join(created.path, 'vendor'));
+  await Bun.write(
+    archive,
+    new Bun.Archive({
+      'package/package.json': JSON.stringify({
+        name: '@bcr/archive-fixture',
+        version: '0.1.0',
+        type: 'module',
+        exports: './index.js',
+      }),
+      'package/index.js': 'export const answer = 42;',
+    }),
+  );
+  writeFileSync(archive, Bun.gzipSync(readFileSync(archive)));
+  atomicJSON(join(created.path, 'package.json'), {
+    name: 'archive-work',
+    private: true,
+    dependencies: { '@bcr/archive-fixture': 'file:vendor/library-0.1.0.tgz' },
+    overrides: { '@bcr/archive-fixture': 'file:vendor/library-0.1.0.tgz' },
+  });
+  const install = Bun.spawn([process.execPath, 'install', '--ignore-scripts'], {
+    cwd: created.path,
+    stdout: 'ignore',
+    stderr: 'pipe',
+  });
+  const status = await install.exited;
+  if (status) {
+    throw new Error(await new Response(install.stderr).text());
+  }
+  const before = targetIdentity(current, current.work.targets[0]);
+  expect(before.files['vendor/library-0.1.0.tgz']).toBe(sha(readFileSync(archive)));
+  const environment = await dependencies(current);
+  expect(
+    readFileSync(join(environment, 'node_modules/@bcr/archive-fixture/index.js'), 'utf8'),
+  ).toBe('export const answer = 42;');
+  expect(await dependencies(current)).toBe(environment);
+  const cachedArchive = join(environment, 'vendor/library-0.1.0.tgz');
+  writeFileSync(cachedArchive, 'corrupt-cache');
+  await dependencies(current);
+  expect(sha(readFileSync(cachedArchive))).toBe(sha(readFileSync(archive)));
+  writeFileSync(archive, 'changed-source');
+  expect(targetIdentity(current, current.work.targets[0]).key).not.toBe(before.key);
+});
 function workspaceFixture(name: string) {
   const dir = join(root, name);
   mkdirSync(dir);

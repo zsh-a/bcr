@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import type { Parameter } from '@bcr/work-core';
 import { fileMap, hashFile, inside, json, sha, sourceGraph, stable, walk } from './lib/files';
+import { packageArchives } from './lib/package-archives';
 import { engineLock, ROOT, TOOLS } from './lib/paths';
 export interface Target {
   id: string;
@@ -50,6 +51,7 @@ export interface Workspace {
 export interface PackageManifest {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  overrides?: Record<string, string>;
   scripts?: Record<string, string>;
 }
 export function validateProjectId(id: string) {
@@ -132,6 +134,17 @@ export function targetIdentity(p: Project, t: Target) {
     if (existsSync(join(p.root, file))) {
       files.push(join(p.root, file));
     }
+  }
+  const manifest = join(p.root, 'package.json');
+  if (existsSync(manifest)) {
+    const pkg = json<PackageManifest>(manifest);
+    files.push(
+      ...packageArchives(p.root, {
+        ...pkg.dependencies,
+        ...pkg.devDependencies,
+        ...pkg.overrides,
+      }).map((archive) => archive.path),
+    );
   }
   files.push(...assets(p, t));
   const map = fileMap(p.root, files);

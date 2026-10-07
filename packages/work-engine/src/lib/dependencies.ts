@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { PackageManifest, Project } from '../project';
 import { cacheGet, cachePut } from '../state/cache';
 import { locked } from '../state/lock';
 import { hashFile, json, sha, stable } from './files';
+import { packageArchives } from './package-archives';
 import { CACHE, TOOLS } from './paths';
 import { command } from './process';
 
@@ -24,15 +25,21 @@ export async function dependencies(p: Project, signal?: AbortSignal) {
     throw new Error('Work 必须有独立的 package.json 与 bun.lock');
   }
   const declared = { ...pkg.dependencies, ...pkg.devDependencies };
+  const archives = packageArchives(p.root, { ...declared, ...pkg.overrides });
   for (const [name, version] of Object.entries(declared)) {
-    if (/^(?:workspace:|file:|link:|\.\.?\/|\/)/u.test(version)) {
-      throw new Error('快照依赖不支持工程外的本地路径');
-    }
     if ((name === 'remotion' || name.startsWith('@remotion/')) && version !== '4.0.532') {
       throw new Error(`${name} 必须固定为 4.0.532`);
     }
   }
-  const key = `deps-${sha(stable({ manifest: hashFile(manifest), lock: hashFile(lock), bun: Bun.version, platform: process.platform, arch: process.arch }))}`;
+  const identity = {
+    manifest: hashFile(manifest),
+    lock: hashFile(lock),
+    archives: archives.map(({ name, relative, sha256 }) => ({ name, relative, sha256 })),
+    bun: Bun.version,
+    platform: process.platform,
+    arch: process.arch,
+  };
+  const key = `deps-${sha(stable(identity))}`;
   return locked(`build:dependencies:${key}`, async () => {
     signal?.throwIfAborted();
     const hit = cacheGet(key);
@@ -45,6 +52,14 @@ export async function dependencies(p: Project, signal?: AbortSignal) {
     try {
       copyFileSync(manifest, join(stage, 'package.json'));
       copyFileSync(lock, join(stage, 'bun.lock'));
+      for (const archive of archives) {
+        const archiveDestination = join(stage, archive.relative);
+        mkdirSync(dirname(archiveDestination), { recursive: true });
+        copyFileSync(archive.path, archiveDestination);
+        if (hashFile(archiveDestination) !== archive.sha256) {
+          throw new Error(`复制包归档时输入变化: ${archive.relative}`);
+        }
+      }
       await command(
         [process.execPath, 'install', '--frozen-lockfile', '--ignore-scripts'],
         stage,
@@ -64,7 +79,11 @@ export async function dependencies(p: Project, signal?: AbortSignal) {
       rmSync(destination, { recursive: true, force: true });
       renameSync(stage, destination);
       // Bun uses package symlinks; the frozen manifests identify this reproducible environment.
-      cachePut(key, 'dependencies', destination, ['package.json', 'bun.lock']);
+      cachePut(key, 'dependencies', destination, [
+        'package.json',
+        'bun.lock',
+        ...archives.map((archive) => archive.relative),
+      ]);
       return destination;
     } finally {
       rmSync(stage, { recursive: true, force: true });

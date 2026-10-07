@@ -180,8 +180,9 @@ export default defineConfig({
   fmt: {
     ignorePatterns: [
       "**/dist/**",
-      // The execution package owns Biome, Bun tests and the uv/Ruff audio toolchain.
+      // Work execution and animation packages own Biome and Bun tests.
       "packages/work-engine/**",
+      "packages/animation-core/**",
       "**/node_modules/**",
       "crates/kernels/pkg/**",
       "crates/quant/pkg/**",
@@ -198,6 +199,7 @@ export default defineConfig({
       "crates/agent-wasm/pkg/**",
       "crates/quant/pkg/**",
       "packages/work-engine/**",
+      "packages/animation-core/**",
     ],
     options: {
       // Type-aware rules only. `typeCheck` is deliberately NOT enabled: the
@@ -225,6 +227,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["{packages,apps}/*/tests/**/*.test.ts"],
-    exclude: ["apps/work-runner/**", "packages/work-engine/**"],
+    exclude: ["apps/work-runner/**", "packages/work-engine/**", "packages/animation-core/**"],
   },
 });

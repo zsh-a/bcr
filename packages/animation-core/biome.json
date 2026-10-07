@@ -1,0 +1,5 @@
+{
+  "root": false,
+  "extends": ["../work-engine/biome-project.json"],
+  "files": { "includes": ["src/**", "tests/**", "package.json", "tsconfig*.json", "biome.json"] }
+}
