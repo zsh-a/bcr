@@ -76,16 +76,14 @@ src/components/ 共用视觉组件
 public/         字体、音频和图片
 ```
 
-新工程可以直接使用 Runner 的通用 starter：
+新工程使用 BCR 共享制作模板：
 
-```bash
-bcr-runner create ~/bcr-projects/my-work --id my-work --title "我的作品"
+```sh
+bcr-work --root ~/bcr-projects init my-work --title '我的作品'
+bcr-runner start --root ~/bcr-projects --origin http://localhost:5199
 ```
 
-它生成一个同时包含 `page` 和 `vertical` 目标的普通代码工程，可以脱离 BCR 仓库
-独立使用。
-
-工程可以包含 HTML 和 Remotion 多个目标。它们都是目标适配器，不要求 BCR 内置页面模板。
+`bcr-runner create DIR` 与 `init` 共用模板。工具实现集中在 `packages/work-engine`，作品源码留在独立工作区。CLI、HTTP/MCP 和 Works 共用依赖、构建、帧缓存、私有素材策略和 AV1 编码；Runner 不再逐任务复制整工程或重复打包。工作区预算默认 8 GiB；预览从固定快照按白名单读取素材，历史产物与审阅记录属于持久数据。详见 [共享引擎](../packages/work-engine/README.md) 与 [Runner](../apps/work-runner/README.md)。
 
 ## Works 页面
 
@@ -134,10 +132,10 @@ runner_review_edit
 
 ```bash
 bcr-runner inspect <work-id> --json
-bcr-runner validate <work-id> --target vertical --json
-bcr-runner capture <work-id> --target vertical --frames 0,30,120 --json
-bcr-runner render <work-id> --target vertical --profile draft --from 0 --to 449 --json
-bcr-runner render <work-id> --target vertical --profile final --json
+bcr-runner validate <work-id> --target main --json
+bcr-runner capture <work-id> --target main --frames 0,30,120 --json
+bcr-runner render <work-id> --target main --profile draft --from 0 --to 449 --json
+bcr-runner render <work-id> --target main --profile final --json
 ```
 
 长任务立即返回任务 ID。Agent 轮询 `runner_job`，用 `runner_output` 读取 diagnostics 或图片；Works 只展示这些不可变产物。

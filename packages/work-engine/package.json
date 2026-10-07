@@ -1,0 +1,38 @@
+{
+  "name": "@bcr/work-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "scripts": {
+    "format": "biome check --write . && uv run --project audio --locked ruff check --fix audio/scripts audio/tests && uv run --project audio --locked ruff format audio/scripts audio/tests",
+    "lint": "biome check . && uv run --project audio --locked ruff check audio/scripts audio/tests && uv run --project audio --locked ruff format --check audio/scripts audio/tests",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test --preload ./tests/setup.ts ./tests/manager.test.ts",
+    "test:audio": "PYTHONPATH= PYTHONNOUSERSITE=1 uv run --project audio --locked python -m unittest discover -s audio/tests -v",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run test:audio"
+  },
+  "dependencies": {
+    "@gradio/client": "2.7.1",
+    "@remotion/bundler": "4.0.532",
+    "@remotion/player": "4.0.532",
+    "@remotion/renderer": "4.0.532",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "remotion": "4.0.532",
+    "@bcr/work-core": "workspace:*",
+    "typescript": "5.9.3",
+    "@biomejs/biome": "2.5.15"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.14",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "playwright-core": "1.61.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts",
+    "./browser": "./src/video/browser.ts"
+  }
+}

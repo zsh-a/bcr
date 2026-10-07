@@ -67,20 +67,30 @@ export class Jobs {
       throw new Error("HTML 目标不支持视频或关键帧导出");
     if (
       (target.runtime !== "remotion" || ["preview", "archive"].includes(request.kind)) &&
-      [request.profile, request.crf, request.gl, request.hardwareAcceleration].some(
-        (value) => value !== undefined,
-      )
+      [
+        request.profile,
+        request.cq,
+        request.gl,
+        request.encoder,
+        request.cpuReason,
+        request.scale,
+      ].some((value) => value !== undefined)
     )
       throw new Error("渲染质量选项仅用于动画验证、关键帧或视频导出");
-    if (request.crf !== undefined && request.kind !== "video")
-      throw new Error("crf 仅用于视频编码");
     if (
-      request.hardwareAcceleration !== undefined &&
-      request.hardwareAcceleration !== "disable" &&
-      request.crf !== undefined
-    )
-      throw new Error("硬件编码不支持 CRF，请移除 crf，让 Runner 按目标分辨率使用 bitrate");
+      [request.cq, request.encoder, request.cpuReason].some((value) => value !== undefined) &&
+      request.kind !== "video"
+    ) {
+      throw new Error("AV1 编码选项仅用于视频编码");
+    }
     const settings = renderSettings(request);
+    if (
+      request.kind === "video" &&
+      settings.encoder === "libaom-av1" &&
+      !settings.cpuReason?.trim()
+    ) {
+      throw new Error("CPU 回退需要 cpuReason");
+    }
     if (
       target.runtime === "remotion" &&
       request.kind === "video" &&
@@ -127,6 +137,7 @@ export class Jobs {
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
       cwd: this.directory(job.id),
+      env: { ...process.env, BCR_WORK_ROOT: this.projects.root },
     });
     this.active = { job, child };
     let buffer = "",
@@ -176,10 +187,16 @@ export class Jobs {
           job.stage = "完成";
           const outputs = join(this.directory(job.id), "outputs");
           try {
-            job.outputs = readdirSync(outputs).map((name) => {
-              const bytes = readFileSync(join(outputs, name));
-              return { name, size: bytes.length, hash: hash(bytes) };
-            });
+            job.outputs = readdirSync(outputs)
+              .sort((left, right) => {
+                // Put the visual artifact before its JSON report in Works' default selection.
+                const report = (name: string) => Number(name.endsWith(".json"));
+                return report(left) - report(right) || left.localeCompare(right);
+              })
+              .map((name) => {
+                const bytes = readFileSync(join(outputs, name));
+                return { name, size: bytes.length, hash: hash(bytes) };
+              });
           } catch (cause) {
             job.status = "failed";
             job.outputs = [];

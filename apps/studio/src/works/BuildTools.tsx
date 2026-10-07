@@ -88,7 +88,7 @@ export function ExportDialog({
           >
             {target.runtime === "remotion" && (
               <>
-                <option value="video">视频 · MP4</option>
+                <option value="video">视频 · AV1 MP4</option>
                 <option value="capture">关键帧 · PNG</option>
                 <option value="validate">素材检查</option>
               </>

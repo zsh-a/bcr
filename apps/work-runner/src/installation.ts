@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { hash, json } from "./projects";
+import { TOOLS, engineLock, hashFile, walk } from "@bcr/work-engine";
 
 export const installation = resolve(import.meta.dir, "..");
 export const workerEntry = join(
@@ -56,6 +57,11 @@ export function release(): Release {
           .sort()
           .map((f) => hash(readFileSync(join(dirname(require.resolve("@bcr/work-core")), f)))),
         dependencies,
+        workEngine: walk(join(TOOLS, "src")).map((file) => [
+          file.slice(TOOLS.length),
+          hashFile(file),
+        ]),
+        engineLock: hashFile(engineLock()),
       }),
     ),
   };

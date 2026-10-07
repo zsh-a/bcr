@@ -1,0 +1,4 @@
+node_modules/
+.bcr/
+public/audio/reference.wav
+voice.local.json

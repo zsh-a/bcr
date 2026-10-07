@@ -126,27 +126,28 @@ export const RenderSchema = Schema.Struct({
   to: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 216000))),
   scale: Schema.optional(Schema.Number.pipe(Schema.between(0.1, 1))),
   profile: Schema.optional(Schema.Literal("draft", "final")),
-  crf: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 51))),
+  cq: Schema.optional(Schema.Number.pipe(Schema.int(), Schema.between(0, 63))),
+  encoder: Schema.optional(Schema.Literal("av1_nvenc", "libaom-av1")),
+  cpuReason: Schema.optional(Schema.String.pipe(Schema.minLength(1), Schema.maxLength(500))),
   gl: Schema.optional(Schema.Literal("angle", "swangle")),
-  hardwareAcceleration: Schema.optional(Schema.Literal("disable", "if-possible", "required")),
 });
 export type RenderRequest = typeof RenderSchema.Type;
 export const RENDER_PROFILES = {
-  draft: { scale: 0.5, crf: 26 },
-  final: { scale: 1, crf: 18 },
+  draft: { scale: 0.5, cq: 26 },
+  final: { scale: 1, cq: 20 },
 } as const;
 export type RenderProfile = keyof typeof RENDER_PROFILES;
 export function renderSettings(request: RenderRequest) {
   const profile = request.profile ?? "final";
-  const hardwareAcceleration = request.hardwareAcceleration ?? "disable";
   return {
     profile,
     scale: request.scale ?? RENDER_PROFILES[profile].scale,
-    crf: request.crf ?? RENDER_PROFILES[profile].crf,
+    cq: request.cq ?? RENDER_PROFILES[profile].cq,
+    encoder: request.encoder ?? "av1_nvenc",
+    cpuReason: request.cpuReason ?? null,
     // Video hardware acceleration and Chromium WebGL are independent. Keep
     // the existing WebGL default unless the caller explicitly selects a GL backend.
     gl: request.gl ?? null,
-    hardwareAcceleration,
   };
 }
 export type Job = {

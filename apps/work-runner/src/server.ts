@@ -4,6 +4,7 @@ import { join, relative, sep } from "node:path";
 import { decode, Id, Path } from "@bcr/work-core";
 import { hash } from "./projects";
 import { RunnerService } from "./service";
+import { assets, loadProject } from "@bcr/work-engine";
 
 export type RunnerConfig = {
   root: string;
@@ -55,12 +56,35 @@ export function startRunner(config: RunnerConfig) {
         if (job.status !== "succeeded" || job.request.kind !== "preview")
           throw new Error("预览未就绪");
         const path = decode(Path, decodeURIComponent(segments.join("/"))),
-          root = join(jobs.directory(job.id), "site"),
-          file = join(root, path);
+          root = join(jobs.directory(job.id), "site");
+        if (path.startsWith("public/")) {
+          const source = projects.source(job.request.revision);
+          const current = loadProject(source);
+          const target = current.work.targets.find((item) => item.id === job.request.target);
+          if (!target || !assets(current, target).includes(join(source, path))) {
+            return new Response("Not found", { status: 404 });
+          }
+        }
+        let file = join(root, path);
+        let authority = root;
+        if (!existsSync(file)) {
+          const manifestPath = join(root, "assets.json");
+          const assets = existsSync(manifestPath)
+            ? (JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, string>)
+            : {};
+          if (!Object.hasOwn(assets, path)) {
+            return new Response("Not found", { status: 404 });
+          }
+          authority = projects.source(job.request.revision);
+          file = join(authority, path);
+          if (!existsSync(file) || hash(readFileSync(file)) !== assets[path]) {
+            return new Response("Not found", { status: 404 });
+          }
+        }
         if (
           !existsSync(file) ||
           !lstatSync(file).isFile() ||
-          relative(realpathSync(root), realpathSync(file)).startsWith(`..${sep}`)
+          relative(realpathSync(authority), realpathSync(file)).startsWith(`..${sep}`)
         )
           return new Response("Not found", { status: 404 });
         return new Response(Bun.file(file), {

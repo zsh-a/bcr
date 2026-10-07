@@ -220,12 +220,7 @@ export class Projects {
       decode(Path, path);
       if (
         path.split("/").some((s) => ignored.has(s) || privateFile(s) || s.endsWith(".tmp")) ||
-        [
-          "bcr-snapshot.json",
-          ".bcr-player.tsx",
-          ".bcr-render.tsx",
-          "bcr-preview.js",
-        ].includes(path)
+        ["bcr-snapshot.json", ".bcr-player.tsx", ".bcr-render.tsx", "bcr-preview.js"].includes(path)
       )
         throw new Error(`恢复路径受到保护：${path}`);
       const parts = path.split("/");

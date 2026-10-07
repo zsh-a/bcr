@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { Project, RenderRequest } from "@bcr/work-core";
 import { json } from "./projects";
-import { execute } from "./runtime";
+import { execute } from "@bcr/work-engine";
 
 const directory = process.argv[2]!;
 const input = json(join(directory, "input.json")) as {

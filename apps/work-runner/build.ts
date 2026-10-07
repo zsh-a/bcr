@@ -12,6 +12,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
+import { createRequire } from "node:module";
 
 const { values } = parseArgs({
   options: { out: { type: "string" }, portable: { type: "boolean" } },
@@ -20,12 +21,22 @@ const app = import.meta.dir;
 const out = resolve(values.out ?? join(app, "../../dist/work-runner"));
 const temporary = mkdtempSync(join(tmpdir(), "bcr-runner-release-"));
 const source = JSON.parse(readFileSync(join(app, "package.json"), "utf8"));
+const engine = resolve(app, "../../packages/work-engine");
+const engineManifest = JSON.parse(readFileSync(join(engine, "package.json"), "utf8"));
+const requireEngine = createRequire(join(engine, "package.json"));
 const dependencies = Object.fromEntries(
-  Object.keys(source.dependencies)
+  Object.keys({ ...source.dependencies, ...engineManifest.dependencies })
     .filter((name) => !name.startsWith("@bcr/"))
     .map((name) => [
       name,
-      JSON.parse(readFileSync(join(app, "node_modules", name, "package.json"), "utf8")).version,
+      JSON.parse(
+        readFileSync(
+          name in engineManifest.dependencies
+            ? requireEngine.resolve(`${name}/package.json`)
+            : join(app, "node_modules", name, "package.json"),
+          "utf8",
+        ),
+      ).version,
     ]),
 );
 async function run(args: string[]) {
@@ -44,12 +55,12 @@ try {
     version: source.version,
     description: "BCR Works execution service, CLI and MCP adapter",
     type: "module",
-    bin: { "bcr-runner": "dist/cli.js" },
+    bin: { "bcr-runner": "dist/cli.js", "bcr-work": "dist/work.js" },
     engines: { bun: ">=1.3.14" },
     packageManager: "bun@1.3.14",
     files: [
       "dist",
-      "starter",
+      "engine",
       "release.json",
       "bun.lock",
       "README.md",
@@ -64,6 +75,7 @@ try {
       join(app, "src/cli.ts"),
       join(app, "src/worker.ts"),
       join(app, "src/page-worker.ts"),
+      join(app, "src/work.ts"),
     ],
     outdir: join(temporary, "dist"),
     target: "bun",
@@ -72,14 +84,24 @@ try {
   });
   if (!result.success) throw new Error(result.logs.map(String).join("\n"));
   chmodSync(join(temporary, "dist/cli.js"), 0o755);
-  for (const path of ["starter", "README.md", "Dockerfile", "compose.yaml"])
+  for (const path of ["README.md", "Dockerfile", "compose.yaml"])
     cpSync(join(app, path), join(temporary, path), { recursive: true });
+  for (const path of ["src", "templates", "package.json", "biome-project.json"]) {
+    cpSync(join(engine, path), join(temporary, "engine", path), { recursive: true });
+  }
+  for (const path of ["scripts", "pyproject.toml", "uv.lock"]) {
+    cpSync(join(engine, "audio", path), join(temporary, "engine/audio", path), {
+      recursive: true,
+      filter: (source) => !source.endsWith(".pyc") && !source.includes("__pycache__"),
+    });
+  }
   await run([process.execPath, "install", "--lockfile-only", "--ignore-scripts"]);
   const digest = createHash("sha256");
   for (const path of [
     "dist/cli.js",
     "dist/worker.js",
     "dist/page-worker.js",
+    "dist/work.js",
     "package.json",
     "bun.lock",
   ])
@@ -106,6 +128,11 @@ try {
     writeFileSync(
       join(temporary, "bin/bcr-runner"),
       '#!/bin/sh\nset -eu\nrunner_install=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\nexec "$runner_install/runtime/bun" "$runner_install/dist/cli.js" "$@"\n',
+      { mode: 0o755 },
+    );
+    writeFileSync(
+      join(temporary, "bin/bcr-work"),
+      '#!/bin/sh\nset -eu\nwork_install=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\nexec "$work_install/runtime/bun" "$work_install/dist/work.js" "$@"\n',
       { mode: 0o755 },
     );
     await run([

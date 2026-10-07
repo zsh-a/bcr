@@ -66,7 +66,10 @@ export class PageCaptures {
     }
     if (this.running.size >= 2) throw new Error("已有两项页面截图正在生成，请稍后重试");
     const execute = async () => {
-      let source: PageCapture["source"], document: string | undefined, site: string | undefined;
+      let source: PageCapture["source"],
+        document: string | undefined,
+        site: string | undefined,
+        assetRoot: string | undefined;
       let manifest: Record<string, string> | undefined;
       if (input.source.kind === "document") {
         if (Buffer.byteLength(input.source.html) > 14 * 1024 * 1024)
@@ -87,6 +90,7 @@ export class PageCaptures {
         const job = this.jobs.get(submission.previewJobId);
         if (job.status !== "succeeded") throw new Error("预览未就绪");
         site = join(this.jobs.directory(job.id), "site");
+        assetRoot = this.projects.source(job.request.revision);
         const output = job.outputs.find((o) => o.name === "page-manifest.json");
         if (!output) throw new Error("此旧预览没有页面构建清单，请重新生成预览并提交新稿");
         const bytes = readFileSync(join(this.jobs.directory(job.id), "outputs", output.name));
@@ -105,7 +109,7 @@ export class PageCaptures {
       try {
         atomic(
           join(temporary, "input.json"),
-          JSON.stringify({ page: input.page, document, site, manifest }),
+          JSON.stringify({ page: input.page, document, site, manifest, assetRoot }),
         );
         const entry = join(
           import.meta.dir,

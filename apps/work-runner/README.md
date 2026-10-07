@@ -1,158 +1,55 @@
-# BCR Works Runner
+# BCR Work Runner
 
-Runner 是独立的作品执行服务。它拥有一个或多个普通代码工程，负责发现工程、固定源码快照、构建预览、渲染图片/视频、记录任务和保存审阅交付。Works 只是浏览器控制面；Codex、Claude Code 等 Coding Agent 直接通过 Runner MCP 读取和修改工程。
+Runner 提供 HTTP、CLI 与 MCP 的持久任务、不可变源码快照、版本、页面/视频审阅和交付能力。实际制作统一使用 [`@bcr/work-engine`](../../packages/work-engine/README.md)；Works 是浏览器控制面。作品源码保存在独立工作区，例如 `~/bcr-projects`。
 
-Runner 不依赖 BCR 仓库源码，也不提供浏览器内代码编辑器。工程目录是作品源码、数据、素材、依赖和创作规范的唯一来源。
-
-## 安装与启动
-
-仓库开发时：
+## 本机使用
 
 ```sh
-bun run runner create ~/bcr-projects/my-work --id my-work --title "我的作品"
-bun run runner start --root ~/bcr-projects --origin http://localhost:5199
-bun run runner status
-bun run runner token
-```
-
-`create` 从 `starter` 模板生成一个可以直接修改的独立 Work。`--id` 和 `--title`
-只修改作品身份，目录中的源码、数据和素材仍由作者控制。
-
-发布包可以安装到任意独立目录，运行时不读取 BCR 的 workspace 或锁文件：
-
-```sh
-bun run build:runner
-bun install --global ./dist/work-runner/bcr-work-runner-0.2.0.tgz
-bcr-runner start --root ~/bcr-projects --origin https://bcr.example.com
-```
-
-打开 Works，选择「连接 Runner」，填写服务地址和配对密钥。服务地址与 BCR 页面必须是不同来源；`--origin` 必须精确匹配 Works 的浏览器来源。源码、状态和任务产物都在工程目录及 Runner 状态目录中，浏览器关闭不会取消已经入队的任务。
-
-`start` 适合后台服务，`serve` 适合前台调试。每个状态目录只允许一个 Runner 实例。远程部署时为控制 API 和预览分别配置 HTTPS 代理；Runner 读取的是部署机器上的工程目录，工程应先通过 Git 或其他发布流程同步到该机器。
-
-## 工程契约
-
-每个工程根目录必须有 `work.json`：
-
-```json
-{
-  "format": "bcr-project-1",
-  "id": "my-work",
-  "title": "我的作品",
-  "defaultTarget": "vertical",
-  "targets": [
-    {
-      "id": "vertical",
-      "runtime": "remotion",
-      "entry": "Scene.tsx",
-      "width": 1080,
-      "height": 1920,
-      "fps": 30,
-      "durationInFrames": 1800,
-      "propsFile": "data.json",
-      "parameters": [
-        { "key": "annualPrice", "label": "年卡价格", "type": "number", "min": 1, "max": 10000 }
-      ]
-    },
-    { "id": "page", "runtime": "html", "entry": "index.html" }
-  ]
-}
-```
-
-工程结构由作者决定，推荐：
-
-```text
-brief.md                 受众、叙事、风格和验收标准
-AGENTS.md / CLAUDE.md   Coding Agent 的工程规则
-work.json                输出目标和可调参数
-data.json / model.ts     输入快照和纯计算逻辑
-src/scenes/              Remotion 场景
-src/components/          可复用视觉组件
-public/                  字体、图片、音频和许可证
-```
-
-HTML 目标使用已经生成的 HTML/CSS/JS；Remotion 目标使用普通 React 组件。Runner 不要求固定的页面模板或场景 DSL。工程可以声明多个目标，共享模型和素材。通用 starter 已固定 `@remotion/three`、React Three Fiber 和 Three.js，可直接编写按帧驱动的 3D 场景；3D 画布必须放在有明确非零尺寸的容器中。
-
-Remotion 依赖应在工程自己的 `package.json` 与 `bun.lock` 中固定版本。Runner 在隔离任务目录中按锁文件安装依赖，不复用可变的工作区 `node_modules`，也不执行安装脚本。首次渲染需要兼容的 Chromium；可用 `BCR_RUNNER_BROWSER` 指定路径。
-
-3D 导出沿用同一个 `render` 契约。视频硬件编码与 Chromium WebGL 是两条独立链路：有 NVIDIA/VideoToolbox 编码器时使用 `--gpu`（等价于 `--hardware-acceleration required`）；需要 GPU WebGL 时使用 `--gpu-webgl` 或 `--gl angle`，Runner 会切换到 Chrome for Testing，在 WSLg 中使用 NVIDIA D3D12 适配器；没有可用 GPU 的服务器或 CI 使用 `--gl swangle`。若允许编码器不可用时回退，可使用 `--hardware-acceleration if-possible`。硬件编码不使用 CRF，而是按目标分辨率选择 bitrate；软件编码仍可使用 `--crf`。预览、关键帧和视频都由同一个 Remotion 组件生成，因此不需要维护另一套 3D 播放实现。
-
-## CLI 与 MCP
-
-创建 Work 的最短路径：
-
-```sh
-bcr-runner create ./my-work --id my-work --title "My work"
-cd ./my-work
+# 在 BCR 仓库安装 JS 工具；音频环境由 uv 单独锁定
 bun install --frozen-lockfile --ignore-scripts
-bun run typecheck
+bun run work --root ~/bcr-projects doctor
+bun run work --root ~/bcr-projects init my-work --title '我的作品'
+bun run runner start --root ~/bcr-projects --origin http://localhost:5199
+bun run runner list --json
 ```
 
-`create` 使用通用 starter。目录是独立源码，Runner 不会把它复制进 BCR 应用，也不会
-替 Agent 编辑代码。
+安装后的命令分别为 `bcr-work` 和 `bcr-runner`。前者提供同步制作、音频、缓存维护和发布；后者提供服务生命周期、持久任务及审阅接口。两者共用制作代码、依赖缓存、素材策略和 AV1 编码器。`bcr-runner create DIR` 是同一标准 video 模板的兼容创建入口；不再复制经济学演示、Three.js 场景或另一套制作脚本。
 
-常用 CLI：
+`bcr-work --root DIR` 显式选取工作区；默认从当前目录向上找 `workspace.json`，然后读取本机 Runner 配置中的授权目录。`workspace.json` 保存工程角色与缓存预算，作品自己的 `work.json` 保存稳定 ID 和通用目标，`production.json` 保存音频与素材策略。Python 制作环境在 `packages/work-engine/audio`。
+
+## 构建、预览与导出
 
 ```sh
-bcr-runner list --json
-bcr-runner inspect <work-id> --json
-bcr-runner validate <work-id> --target vertical --json
-bcr-runner preview <work-id> --target vertical --json
-bcr-runner capture <work-id> --target vertical --frames 0,30,120 --json
-bcr-runner render <work-id> --target vertical --profile draft --from 0 --to 449 --json
-bcr-runner render <work-id> --target vertical --profile final --json
-bcr-runner render <work-id> --target vertical --profile final --gpu --json
-bcr-runner render <work-id> --target vertical --profile draft --gpu-webgl --json
-bcr-runner jobs <work-id> --json
+bcr-runner preview my-work --target main
+bcr-runner validate my-work --target main
+bcr-runner capture my-work --target main --frames 0,30
+bcr-runner render my-work --target main --from 0 --to 59
 bcr-runner job JOB_ID --json
 bcr-runner download JOB_ID video.mp4 --output ./video.mp4
-bcr-runner archive <work-id> --target vertical --json
 ```
 
-`validate` 会构建并渲染第 0 帧，输出 `diagnostics.json`。`capture` 适合代表帧，`render` 适合短预览或成片。长任务立即返回持久化 job ID，使用 `job` 轮询，失败必须按错误修复后重新提交。
+每个任务固定 `sourceId + workId + sourceRevision + targetId`，以 `requestId` 实现重试。任务读取已校验的源码快照；不会再创建逐任务的 `project` 或 `bundle` 副本。依赖环境按独立 `package.json`、`bun.lock` 复用冻结安装，禁止工程外本地依赖。Rspack 构建和 PNG 帧按输入身份共享，修改编码质量可复用帧。CLI 与 Runner 使用同一个 SQLite 缓存索引和工作区预算，默认 8 GiB。
 
-Coding Agent 使用独立 STDIO MCP：
+视频默认 AV1 NVENC、CQ20、AAC/48kHz。`--profile draft` 使用一半尺寸和 CQ26，`final` 使用原尺寸；`--scale`、`--cq` 可以覆盖。编码器不可用时任务失败，不静默改成另一种格式；明确回退用 `--encoder libaom-av1 --cpu-reason '实际原因'`。Chromium WebGL 与视频编码分别选择；三维目标可使用 `--gl angle`，普通软件图形使用 `--gl swangle`。正式视频拒绝标准音频工程的草稿或过期实测时间轴。
 
-```sh
-bcr-runner mcp --config ~/.config/bcr/work-runner.json
-```
+带连续母带的作品直接混入母带；通用 Remotion 作品仍支持组件中的音轨，由同一引擎拼接音频后编码 AV1。HTML、三维作品、参数面板、MessagePort 定位、审阅和版本功能继续支持，特殊依赖留在作品自己的锁文件中。
 
-工具以 `runner_*` 命名，覆盖：
+预览站点只保存播放器等小文件，通过白名单读取不可变快照的素材；排除 `production.json` 中的私有声音，也不复制整套 `public`。即使构建缓存被回收，已经成功的预览仍可读取固定素材。旧预览仍保持路径，私有素材请求同样按当前快照策略过滤。
 
-- `runner_catalog`、`runner_list`、`runner_read`、`runner_file`、`runner_snapshot`
-- `runner_versions`、`runner_checkpoint`、`runner_diff`、`runner_restore`
-- `runner_parameters`、`runner_render`、`runner_jobs`、`runner_job`、`runner_cancel`
-- `runner_preview`、`runner_output`
-- `runner_review_read`、`runner_review_edit`
-- `runner_page_capture`、`runner_page_capture_read`、`runner_page_image`
+## 历史、交付与维护
 
-典型顺序是：读取 catalog 和工程 → 读取 brief/规则 → 修改源码 → validate/capture → 渲染短预览 → 读取反馈 → 修改并提交新审阅稿。源码修改通过文件系统完成，Runner MCP 负责授权读取、快照、执行和审阅操作。
+源码快照、原始旁白、对齐、任务输出、审阅、版本和成片属于持久数据。缓存回收只处理共享依赖、构建和帧；旧任务的 `project`、`bundle` 可用 `bcr-work gc --legacy-scratch --apply` 清理，保留记录、输出与预览。既有 `sourceId` 与状态目录继续沿用，旧 H.264 文件不转码或覆盖。
 
-## 审阅、版本与交付
+`bcr-work release` 对已验收的全片 AV1 和配套文件逐文件校验，再原子切换发布版本；Works 的定稿交付固定审阅选中的不可变产物。两种交付保留各自所需的制作和审阅证据，共用同一制作引擎，不合并或改写历史记录。
 
-Works 的「制作」页只负责目标选择、参数试调、预览和任务产物；「审阅」页负责提交稿、帧/页面定位反馈、版本比较、确认反馈和固定交付。
-
-审阅记录保存在 Runner 状态目录的 `reviews/<work-id>.json`，与源码 revision 分离。提交稿必须引用同一 source revision、target 和成功任务；新的意见使用 `review_edit` 的 `comment`，Agent 读取 `review_read` 后用 `addresses` 关联已处理反馈。系统不会因为渲染成功而自动接受反馈或定稿。
-
-源码版本由文件字节哈希得到。命名检查点和恢复日志由 Runner 状态目录管理；完整历史仍建议由工程 Git 管理。交付清单保存任务 ID、产物 SHA-256、target 和 source revision，下载交付包后，后续源码变化不会改变已经固定的文件。
-
-HTML 目标可以提交固定页面列表，并通过 `page_capture` 在隔离 Chromium 中生成 PNG、可见元素和警告。页面截图是审阅证据，不是源码编辑器。
-
-## 快照与安全边界
-
-Runner 对工程目录设置明确上限，拒绝符号链接、绝对路径和目录穿越。源码快照排除 `.git`、`node_modules`、`.bcr`、构建输出、环境变量和私钥文件；任务固定的源码 revision 不会被后续编辑改变。
-
-控制 API 使用 Bearer 配对密钥和精确 Origin/Host 校验。预览使用独立来源，不携带控制密钥，并通过 CSP 限制外部连接。Runner 执行的是用户选择的可信代码，不是操作系统级不可信代码沙箱。
-
-## 验证与发布
+## 验证与分发
 
 ```sh
-bun run typecheck
-bun run test:runner
+bun run check:work
+bun run test:runner:engine       # Player、命名导出、音轨、AV1、缓存及归档的实际验收
+bun run test:browser:runner      # 实际引擎验收与浏览器/MCP 审阅闭环
 bun run build:runner
-bun run test:runner:release
-# 已启动 Studio 时执行真实浏览器创作链路
-BCR_BROWSER_URL=http://localhost:5199 bun scripts/verify-work-runner.mjs
+bun run test:runner:release      # 独立安装与统一模板验证
 ```
 
-完整的 Works 控制面、Agent 创作流程与 Bridge 边界见 [docs/WORKS.md](../../docs/WORKS.md)、[视频创作](../../docs/VIDEO-AUTHORING.md) 和 [外部 Agent](../../docs/EXTERNAL-AGENTS.md)。
+没有 NVIDIA 的显式验收环境可设置 `BCR_ENGINE_TEST_CPU=1`；该测试会记录真实 CPU 回退原因。独立包同时包含 `bcr-work`、`bcr-runner`、共享引擎资源及锁；Docker 使用生成包作为构建上下文。真实音频制作还需要 uv、锁定 Python/CUDA 环境及本机 TTS 服务，不在容器镜像中复制参考声音或模型。

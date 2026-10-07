@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync, lstatSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, lstatSync, writeFileSync } from "node:fs";
 import { join, relative, isAbsolute } from "node:path";
 import { chromium } from "playwright-core";
 import {
@@ -8,7 +8,7 @@ import {
   type PageState,
   type PageElement,
 } from "@bcr/work-core";
-import { prepareBrowser } from "./browser";
+import { prepareBrowser } from "@bcr/work-engine/browser";
 import { hash, json } from "./projects";
 
 const directory = process.argv[2]!;
@@ -17,6 +17,7 @@ const input = json(join(directory, "input.json")) as {
   document?: string;
   site?: string;
   manifest?: Record<string, string>;
+  assetRoot?: string;
 };
 const state = decode(PageStateSchema, input.page);
 const origin = "https://bcr-page.invalid";
@@ -50,8 +51,12 @@ try {
       const name = decodeURIComponent(url.pathname.slice(1));
       if (!input.site || !input.manifest || !Object.hasOwn(input.manifest, name))
         return route.abort();
-      const file = join(input.site, name),
-        rel = relative(realpathSync(input.site), realpathSync(file));
+      const root =
+        !existsSync(join(input.site, name)) && name.startsWith("public/") && input.assetRoot
+          ? input.assetRoot
+          : input.site;
+      const file = join(root, name),
+        rel = relative(realpathSync(root), realpathSync(file));
       if (rel.startsWith("..") || isAbsolute(rel) || !lstatSync(file).isFile())
         return route.abort();
       const bytes = readFileSync(file);

@@ -2,7 +2,6 @@ import { afterEach, expect, test } from "bun:test";
 import {
   mkdtempSync,
   mkdirSync,
-  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -192,7 +191,7 @@ test("remote listeners require explicit separate origins and advertise proxy URL
     headers: { Authorization: `Bearer ${base.token}`, Host: "runner.example.com" },
   });
   const catalog = await response.json();
-  expect(catalog.version).toMatch(/^0\.2\.0/);
+  expect(catalog.version).toMatch(/^0\.3\.0/);
   expect(catalog.operations).toContain("render");
   expect(
     (

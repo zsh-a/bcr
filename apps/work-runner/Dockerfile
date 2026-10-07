@@ -2,7 +2,7 @@
 FROM oven/bun:1.3.14-debian
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates libnss3 libdbus-1-3 libatk1.0-0 libgbm1 libasound2 \
+    ca-certificates ffmpeg libnss3 libdbus-1-3 libatk1.0-0 libgbm1 libasound2 \
     libxrandr2 libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 \
     libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2 fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
@@ -11,7 +11,7 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production --ignore-scripts
 COPY dist ./dist
 COPY release.json ./
-COPY starter ./starter
+COPY engine ./engine
 RUN mkdir -p /data/state /data/config /data/cache /works && chown -R bun:bun /data /works
 ENV XDG_CONFIG_HOME=/data/config XDG_DATA_HOME=/data/state XDG_CACHE_HOME=/data/cache BUN_INSTALL_CACHE_DIR=/data/cache/bun
 USER bun

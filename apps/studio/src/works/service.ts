@@ -43,15 +43,15 @@ export class WorkService {
   getSnapshot = () => this.state;
 
   private publish = () => {
-    this.state = this.runner.getSnapshot().items.map(
-      ({ ref, title, revision, targets, capabilities }): WorkSummary => ({
+    this.state = this.runner
+      .getSnapshot()
+      .items.map(({ ref, title, revision, targets, capabilities }): WorkSummary => ({
         ref,
         title,
         revision,
         targets,
         capabilities,
-      }),
-    );
+      }));
     for (const listener of this.listeners) listener();
   };
 

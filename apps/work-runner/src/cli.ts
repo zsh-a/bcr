@@ -38,11 +38,12 @@ const { positionals, values } = parseArgs({
     to: { type: "string" },
     scale: { type: "string" },
     profile: { type: "string" },
-    crf: { type: "string" },
+    cq: { type: "string" },
+    encoder: { type: "string" },
+    "cpu-reason": { type: "string" },
+    "no-install": { type: "boolean" },
     gl: { type: "string" },
     "gpu-webgl": { type: "boolean" },
-    "hardware-acceleration": { type: "string" },
-    gpu: { type: "boolean" },
     input: { type: "string" },
     output: { type: "string" },
     json: { type: "boolean" },
@@ -57,20 +58,23 @@ try {
   if (command === "version" || values.version) print(release());
   else if (command === "create") {
     if (!id) throw new Error("指定新工程目录，例如 bcr-runner create ./my-work");
-    const template = String(values.template ?? "starter");
+    const template = String(values.template ?? "video");
     print(
-      scaffold({
+      await scaffold({
         directory: id,
         template,
         ...(values.id ? { id: String(values.id) } : {}),
         ...(values.title ? { title: String(values.title) } : {}),
+        install: !values["no-install"],
       }),
     );
   } else if (command === "help" || values.help) {
     process.stdout.write(
-  `BCR Works Runner\n\n  bcr-runner create ./my-work --id my-work --title "My work"\n  bcr-runner start --root ./projects --origin https://bcr.example.com\n  bcr-runner status|stop|doctor|version\n  bcr-runner doctor --install-browser\n  bcr-runner mcp [--config /path/to/connection.json]\n  bcr-runner serve --root ./projects --origin http://localhost:5199\n  bcr-runner token\n  bcr-runner list --json\n  bcr-runner inspect <work-id> --json\n  bcr-runner preview|validate|capture|render|archive <work-id> --target <target-id> [--frames 0,30] [--from 0 --to 89] [--profile draft|final] [--scale 0.5] [--crf 18] [--gl angle|swangle]\n  bcr-runner jobs [work-id]\n  bcr-runner job|cancel|preview-url <job-id>\n  bcr-runner rpc <operation> --input ./request.json\n  bcr-runner page-image <capture-id> --output ./page.png\n  bcr-runner download <job-id> <file-name> --output ./video.mp4\n\ncreate 生成通用 starter。长任务返回持久化 job ID，使用 job 轮询；连接默认读取上次本地 Runner。\n`,
+      `BCR Works Runner\n\n  bcr-runner create ./my-work --id my-work --title "My work"\n  bcr-runner start --root ./projects --origin https://bcr.example.com\n  bcr-runner status|stop|doctor|version\n  bcr-runner doctor --install-browser\n  bcr-runner mcp [--config /path/to/connection.json]\n  bcr-runner serve --root ./projects --origin http://localhost:5199\n  bcr-runner token\n  bcr-runner list --json\n  bcr-runner inspect <work-id> --json\n  bcr-runner preview|validate|capture|render|archive <work-id> --target <target-id> [--frames 0,30] [--from 0 --to 89] [--profile draft|final] [--scale 0.5] [--cq 20] [--encoder av1_nvenc|libaom-av1] [--cpu-reason 原因] [--gl angle|swangle]\n  bcr-runner jobs [work-id]\n  bcr-runner job|cancel|preview-url <job-id>\n  bcr-runner rpc <operation> --input ./request.json\n  bcr-runner page-image <capture-id> --output ./page.png\n  bcr-runner download <job-id> <file-name> --output ./video.mp4\n\ncreate 与 bcr-work init 共用标准 video 模板。长任务返回持久化 job ID，使用 job 轮询；连接默认读取上次本地 Runner。\n`,
     );
-    process.stdout.write("  GPU video: add --gpu; GPU WebGL: add --gpu-webgl (or --gl angle)\n");
+    process.stdout.write(
+      "  默认 AV1 NVENC；CPU 回退需 --encoder libaom-av1 --cpu-reason 原因；GPU WebGL 使用 --gl angle\n",
+    );
   } else if (command === "serve" || command === "start") {
     const options = serviceOptions(values, readConnection(configPath));
     print(await (command === "serve" ? serve(configPath, options) : start(configPath, options)));
@@ -95,7 +99,7 @@ try {
       config: configPath,
     };
     if (values["install-browser"])
-      checks.browser = await (await import("./browser")).prepareBrowser();
+      checks.browser = await (await import("@bcr/work-engine/browser")).prepareBrowser();
     const saved = readConnection(configPath);
     if (saved) {
       try {
@@ -160,15 +164,8 @@ try {
           ...(values.revision ? { revision: values.revision } : {}),
         });
         const target = values.target ?? project.targets[0]!.id;
-        if (values.gpu && values["hardware-acceleration"])
-          throw new Error("--gpu 与 --hardware-acceleration 只能选一个");
         if (values["gpu-webgl"] && values.gl && values.gl !== "angle")
           throw new Error("--gpu-webgl 与 --gl 只能同时使用 angle");
-        const hardwareAcceleration = values.gpu
-          ? "required"
-          : values["hardware-acceleration"]
-            ? String(values["hardware-acceleration"])
-            : undefined;
         print(
           await rpc<Job>("render", {
             id,
@@ -181,9 +178,10 @@ try {
             ...(values.to ? { to: Number(values.to) } : {}),
             ...(values.scale ? { scale: Number(values.scale) } : {}),
             ...(values.profile ? { profile: values.profile } : {}),
-            ...(values.crf !== undefined ? { crf: Number(values.crf) } : {}),
+            ...(values.cq !== undefined ? { cq: Number(values.cq) } : {}),
+            ...(values.encoder ? { encoder: values.encoder } : {}),
+            ...(values["cpu-reason"] ? { cpuReason: values["cpu-reason"] } : {}),
             ...(values["gpu-webgl"] ? { gl: "angle" } : values.gl ? { gl: values.gl } : {}),
-            ...(hardwareAcceleration ? { hardwareAcceleration } : {}),
           }),
         );
       } else if (command === "rpc")

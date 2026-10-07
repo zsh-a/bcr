@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { decode, definition, RenderSchema, renderSettings } from "@bcr/work-core";
-import { diagnose } from "../src/diagnostics";
+import { diagnose } from "@bcr/work-engine";
 import { Projects } from "../src/projects";
 import { Jobs } from "../src/jobs";
 import { operationCatalog } from "../src/operations";
@@ -59,45 +59,48 @@ test("one contract supplies CLI/HTTP/MCP render defaults and rejects unsupported
   expect(renderSettings(request)).toEqual({
     profile: "final",
     scale: 1,
-    crf: 18,
+    cq: 20,
+    encoder: "av1_nvenc",
+    cpuReason: null,
     gl: null,
-    hardwareAcceleration: "disable",
   });
   expect(renderSettings({ ...request, profile: "draft" })).toEqual({
     profile: "draft",
     scale: 0.5,
-    crf: 26,
+    cq: 26,
+    encoder: "av1_nvenc",
+    cpuReason: null,
     gl: null,
-    hardwareAcceleration: "disable",
   });
   expect(
-    renderSettings({ ...request, profile: "draft", scale: 0.25, crf: 0, gl: "swangle" }),
+    renderSettings({ ...request, profile: "draft", scale: 0.25, cq: 0, gl: "swangle" }),
   ).toEqual({
     profile: "draft",
     scale: 0.25,
-    crf: 0,
+    cq: 0,
+    encoder: "av1_nvenc",
+    cpuReason: null,
     gl: "swangle",
-    hardwareAcceleration: "disable",
   });
-  expect(renderSettings({ ...request, hardwareAcceleration: "required" })).toEqual({
-    profile: "final",
-    scale: 1,
-    crf: 18,
-    gl: null,
-    hardwareAcceleration: "required",
+  expect(
+    renderSettings({ ...request, encoder: "libaom-av1", cpuReason: "CI without NVIDIA" }),
+  ).toMatchObject({
+    encoder: "libaom-av1",
+    cpuReason: "CI without NVIDIA",
+    cq: 20,
   });
   for (const invalid of [
     { profile: "ultra" },
-    { crf: 52 },
-    { crf: -1 },
-    { crf: 18.5 },
+    { cq: 64 },
+    { cq: -1 },
+    { cq: 18.5 },
     { gl: "shell-command" },
-    { hardwareAcceleration: "cuda" },
+    { encoder: "h264" },
     { scale: 0 },
   ])
     expect(() => decode(RenderSchema, { ...request, ...invalid })).toThrow();
   const schema = JSON.stringify(operationCatalog.find((op) => op.name === "render")!.schema);
-  for (const key of ["profile", "crf", "gl", "hardwareAcceleration"]) expect(schema).toContain(key);
+  for (const key of ["profile", "cq", "gl", "encoder", "cpuReason"]) expect(schema).toContain(key);
 });
 
 test("render identity includes quality and backend; invalid options fail before entering the queue", () => {
@@ -105,17 +108,15 @@ test("render identity includes quality and backend; invalid options fail before 
   const keys = [
     {},
     { profile: "draft" },
-    { crf: 21 },
+    { cq: 21 },
     { gl: "swangle" },
-    { hardwareAcceleration: "required" },
+    { encoder: "libaom-av1", cpuReason: "CI without NVIDIA" },
     { scale: 0.25 },
-  ].map(
-    (options, i) => {
-      const job = jobs.start({ ...request, ...options, requestId: `job-${i}` });
-      jobs.cancel(job.id);
-      return job.renderKey;
-    },
-  );
+  ].map((options, i) => {
+    const job = jobs.start({ ...request, ...options, requestId: `job-${i}` });
+    jobs.cancel(job.id);
+    return job.renderKey;
+  });
   expect(new Set(keys).size).toBe(keys.length);
   const original = jobs.start({ ...request, profile: "draft" });
   expect(jobs.start({ ...request, profile: "draft" }).id).toBe(original.id);
@@ -125,15 +126,15 @@ test("render identity includes quality and backend; invalid options fail before 
   expect(() =>
     jobs.start({ ...request, requestId: "preview", kind: "preview", profile: "draft" }),
   ).toThrow("质量选项");
-  expect(() => jobs.start({ ...request, requestId: "image", kind: "capture", crf: 20 })).toThrow(
+  expect(() => jobs.start({ ...request, requestId: "image", kind: "capture", cq: 20 })).toThrow(
     "视频编码",
   );
   expect(() =>
     jobs.start({ ...request, requestId: "html", kind: "validate", target: "page", gl: "angle" }),
   ).toThrow("质量选项");
-  expect(() =>
-    jobs.start({ ...request, requestId: "gpu-crf", hardwareAcceleration: "required", crf: 18 }),
-  ).toThrow("硬件编码");
+  expect(() => jobs.start({ ...request, requestId: "cpu", encoder: "libaom-av1" })).toThrow(
+    "cpuReason",
+  );
 });
 
 test("asset diagnostics use snapshot hashes and report missing/empty files without assuming font readiness", () => {

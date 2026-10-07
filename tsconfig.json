@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.base.json",
-  "exclude": ["apps/agent-bridge", "apps/work-runner"],
+  "exclude": ["apps/agent-bridge", "apps/work-runner", "packages/work-engine"],
   "include": [
     "packages/*/src",
     "packages/*/tests",

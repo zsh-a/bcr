@@ -30,8 +30,8 @@ const boundaries: { dir: string; allow: string[]; message: string }[] = [
   },
   {
     dir: "apps/work-runner",
-    allow: ["@bcr/work-core"],
-    message: "Local execution depends on shared work contracts, never on browser stores.",
+    allow: ["@bcr/work-core", "@bcr/work-engine", "@bcr/work-engine/*"],
+    message: "Runner adapts shared Work contracts and the execution engine, never browser stores.",
   },
   {
     dir: "apps/agent-bridge",
@@ -180,6 +180,8 @@ export default defineConfig({
   fmt: {
     ignorePatterns: [
       "**/dist/**",
+      // The execution package owns Biome, Bun tests and the uv/Ruff audio toolchain.
+      "packages/work-engine/**",
       "**/node_modules/**",
       "crates/kernels/pkg/**",
       "crates/quant/pkg/**",
@@ -191,7 +193,12 @@ export default defineConfig({
   },
   lint: {
     // agent-runtime is a separate repository with its own linter.
-    ignorePatterns: ["crates/agent-runtime/**", "crates/agent-wasm/pkg/**", "crates/quant/pkg/**"],
+    ignorePatterns: [
+      "crates/agent-runtime/**",
+      "crates/agent-wasm/pkg/**",
+      "crates/quant/pkg/**",
+      "packages/work-engine/**",
+    ],
     options: {
       // Type-aware rules only. `typeCheck` is deliberately NOT enabled: the
       // tsgolint type checker reports false positives on `vite.config.ts`
@@ -218,6 +225,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["{packages,apps}/*/tests/**/*.test.ts"],
-    exclude: ["apps/work-runner/**"],
+    exclude: ["apps/work-runner/**", "packages/work-engine/**"],
   },
 });

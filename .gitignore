@@ -17,3 +17,8 @@ __pycache__/
 *.pyc
 # Exact-byte gzip archive is versioned; keep the expanded research report local.
 /research/trend/search/results.json
+
+# Shared Work audio environment and tool caches.
+.venv/
+.ruff_cache/
+.preview-*.tsx
