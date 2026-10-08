@@ -238,7 +238,7 @@ export async function audio(p: Project, checkOnly = false, force = false) {
       next.close();
       results.push({ stage, cached: false, outputs: Object.keys(out) });
     }
-    if (cfg.driver === 'standard') {
+    if (cfg.driver === 'standard' && !checkOnly) {
       p.config.stage = 'production';
       atomicJSON(join(p.root, 'production.json'), p.config);
     }
