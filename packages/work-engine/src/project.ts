@@ -22,8 +22,23 @@ export interface Config {
   privateAssets: string[];
   webgl?: boolean;
   stage?: 'draft' | 'production';
+  experiments?: string;
+  runtime?: {
+    cues: string;
+    timing: string;
+    events: string;
+  };
+  scenes?: {
+    catalog: string;
+    target?: string;
+    progress?: { color: string; height: number; endChapter: string };
+  };
+  validation?: { target?: string; checks: { id: string; command: string[] }[] };
+  storage?: { sources?: string[]; experiments?: string[]; backupDirectory?: string };
   audio?: {
     driver?: 'standard';
+    directory?: string;
+    subtitlesDirectory?: string;
     content?: string;
     voice?: string;
     timeline: string;
@@ -45,6 +60,7 @@ export interface Work {
 }
 export interface Workspace {
   version: number;
+  storageId?: string;
   cacheBudgetGiB: number;
   projects: { id: string; role: string }[];
 }
@@ -79,21 +95,66 @@ export function project(id: string, workspaceRoot = ROOT) {
   }
   return current;
 }
-export function loadProject(root: string, role = 'unmanaged') {
-  const work = json<Work>(join(root, 'work.json'));
-  const config = existsSync(join(root, 'production.json'))
-    ? json<Config>(join(root, 'production.json'))
-    : { version: 1, privateAssets: ['audio/reference.wav'], targets: {} };
-  const id = work.id;
-  if (config.version !== 1) {
+/** Resolve authored targets from disk or from an already captured source file set. */
+export function readProjectDefinition(
+  root: string,
+  read: (path: string) => unknown = (path) => {
+    const file = inside(root, path);
+    return existsSync(file) ? json(file) : undefined;
+  },
+) {
+  const work = read('work.json') as Work | undefined;
+  const config = (read('production.json') ?? {
+    version: 1,
+    privateAssets: ['audio/reference.wav'],
+    targets: {},
+  }) as Config;
+  if (!work || !Array.isArray(work.targets) || config.version !== 1) {
     throw new Error('工程配置不匹配');
   }
-  for (const target of work.targets) {
+  const experimentIds = new Set<string>();
+  let targets = work.targets;
+  if (config.experiments) {
+    inside(root, config.experiments);
+    const experiments = read(config.experiments) as
+      | { version: number; targets: Target[] }
+      | undefined;
+    if (experiments?.version !== 1 || !Array.isArray(experiments.targets)) {
+      throw new Error('实验清单格式不匹配');
+    }
+    targets = [...targets, ...experiments.targets];
+    for (const target of experiments.targets) {
+      experimentIds.add(target.id);
+    }
+  }
+  if (new Set(targets.map((target) => target.id)).size !== targets.length) {
+    throw new Error('目标 ID 重复');
+  }
+  for (const target of targets) {
     inside(root, target.entry);
   }
-  return { id, root, work, config: config as Config, role };
+  return { work: { ...work, targets }, config, experimentIds };
 }
-export type Project = ReturnType<typeof project>;
+export function loadProject(root: string, role = 'unmanaged'): Project {
+  const { work, config, experimentIds } = readProjectDefinition(root);
+  return {
+    id: work.id,
+    root,
+    work,
+    config,
+    role,
+    experimentIds,
+  };
+}
+export interface Project {
+  id: string;
+  root: string;
+  work: Work;
+  config: Config;
+  role: string;
+  experimentIds?: ReadonlySet<string>;
+  frozen?: boolean;
+}
 export function targetOf(p: Project, name?: string): Target {
   const id =
     name ?? p.work.defaultTarget ?? p.work.targets.find((t) => t.runtime === 'remotion')?.id;
@@ -158,6 +219,8 @@ export function targetIdentity(p: Project, t: Target) {
       policy: p.config.targets[t.id],
       privateAssets: p.config.privateAssets,
       webgl: !!p.config.webgl,
+      scenes: p.config.scenes,
+      runtime: p.config.runtime,
       bun: Bun.version,
       platform: process.platform,
       arch: process.arch,

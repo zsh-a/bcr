@@ -13,7 +13,8 @@ import { type Content, draftTimeline, type VoiceSettings } from './audio/content
 import { atomicJSON, inside, json, walk } from './lib/files';
 import { dependencyPath, ROOT, TOOLS } from './lib/paths';
 import { command } from './lib/process';
-import { type Config, validateProjectId, type Work, workspace } from './project';
+import { prepareRuntime } from './pipeline/runtime';
+import { type Config, loadProject, validateProjectId, type Work, workspace } from './project';
 import { locked } from './state/lock';
 
 export interface InitOptions {
@@ -58,11 +59,15 @@ function templatePackage(id: string) {
       lint: 'biome check .',
       format: 'biome check --write .',
       preview: `${cli} preview ${id}`,
-      'preview:draft': `${cli} draft ${id}`,
+      draft: `${cli} draft ${id}`,
       'audio:build': `${cli} audio ${id}`,
       'audio:check': `${cli} audio ${id} --check`,
-      'production:check': `${cli} check ${id}`,
-      'render:av1': `${cli} render ${id}`,
+      check: `${cli} check ${id}`,
+      render: `${cli} render ${id}`,
+      plan: `${cli} plan ${id}`,
+      prepare: `${cli} prepare ${id}`,
+      qa: `${cli} qa ${id}`,
+      backup: `${cli} backup ${id}`,
     },
     dependencies: select(['@remotion/player', 'react', 'react-dom', 'remotion']),
     devDependencies: select(['@biomejs/biome', '@types/react', '@types/react-dom', 'typescript']),
@@ -77,7 +82,13 @@ function scaffold(root: string, id: string, title: string) {
     mkdirSync(dirname(destination), { recursive: true });
     copyFileSync(file, destination);
   }
-  for (const folder of ['public/audio', 'public/fonts', '.bcr/narration', 'qa']) {
+  for (const folder of [
+    'public/audio',
+    'public/fonts',
+    'media/voice',
+    'media/narration/generated',
+    '.bcr/build/audio',
+  ]) {
     mkdirSync(join(root, folder), { recursive: true });
   }
   const content: Content = {
@@ -142,19 +153,30 @@ function scaffold(root: string, id: string, title: string) {
       driver: 'standard',
       content: 'content.json',
       voice: 'voice.json',
-      timeline: 'audio-timeline.json',
-      plan: '.bcr/narration/plan.json',
-      mastering: 'audio-mastering.json',
-      quality: 'audio-quality.json',
+      directory: 'media/narration/generated',
+      subtitlesDirectory: '.bcr/build/audio',
+      timeline: '.bcr/build/audio/timeline.json',
+      plan: 'media/narration/generated/plan.json',
+      mastering: '.bcr/build/audio/mastering.json',
+      quality: '.bcr/build/audio/quality.json',
       score: 'public/audio/score.flac',
     },
     targets: { main: { audio: 'audio/mix-main.flac' }, cover: {}, 'cover-4x3': {} },
+    runtime: {
+      cues: 'cues.json',
+      timing: '.bcr/build/runtime/timing.json',
+      events: '.bcr/build/runtime/events.json',
+    },
+    storage: { sources: ['media'], experiments: ['experiments'] },
   };
   const voice: VoiceSettings = {
+    backend: 'audio.cpp',
+    referenceFile: 'media/voice/reference.wav',
     referenceTranscript: '',
     language: 'Chinese',
-    endpoint: 'http://localhost:8000',
+    endpoint: 'http://127.0.0.1:8089',
     model: 'Qwen3-TTS-12Hz-1.7B-Base',
+    generation: { options: { seed: 42 } },
     mastering: { loudnessLUFS: -16, truePeakDBTP: -1.5 },
     quality: {
       maxCaptionWidth: 24,
@@ -169,11 +191,13 @@ function scaffold(root: string, id: string, title: string) {
     'production.json': config,
     'content.json': content,
     'voice.json': voice,
-    'audio-timeline.json': timeline,
+    '.bcr/build/audio/timeline.json': timeline,
+    'cues.json': { version: 1, cues: [] },
     'package.json': templatePackage(id),
   })) {
     atomicJSON(join(root, file), value);
   }
+  prepareRuntime(loadProject(root));
   writeFileSync(
     join(root, 'docs/brief.md'),
     `# ${title}\n\n- 观众：待填写\n- 核心问题：待填写\n- 主张与理由：待填写\n- 具体例子：待填写\n- 最强异议与边界：待填写\n\n当前内容和时间轴均为草稿，正式时长由实际旁白决定。\n`,

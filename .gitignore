@@ -20,5 +20,7 @@ __pycache__/
 
 # Shared Work audio environment and tool caches.
 .venv/
+.venv-legacy/
+.venv-models/
 .ruff_cache/
 .preview-*.tsx

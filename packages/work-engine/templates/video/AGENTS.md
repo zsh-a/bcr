@@ -7,7 +7,9 @@
 - 通用制作命令为 `bcr-work`，环境、缓存与交付沿用工作区规范。共有制作实现位于 BCR 仓库 `packages/work-engine`，本期不再复制一套工具脚本。
 - 修改口播后更新草稿或重新执行 audio；实际语音与强制对齐决定正式时序，不把估算时序用于交付。
 - TTS 按完整语义段落生成，字幕仅控制显示；保留自然呼吸，不添加逐字幕停顿或拉伸旁白。
-- 参考声音必须已确认可使用。`public/audio/reference.wav` 与 `.bcr/narration/` 为私有制作源，必须保留并从公开包排除。
+- 参考声音必须已确认可使用。`media/voice/` 与 `media/narration/` 为私有制作源，必须保留并从公开包排除。
 - `bun run format` 统一格式与导入，`bun run lint` 和 `bun run typecheck` 验证代码。业务验证按本期模型和主张补充。
 - 新视频使用 AV1，优先 NVENC；短样片、全片、自动检查与人工听审观看分别记录。
 - 交付使用独立暂存目录与 release，保留已有交付的文件身份。
+
+派生时序统一位于 .bcr/build/runtime，动作声明在 cues.json；音频完成后与预览/导出前由共享引擎检查和编译。通过 plan 查看阶段，配置验收脚本后使用 qa / freeze；私有制作源通过 backup 保存，恢复只写新目录。

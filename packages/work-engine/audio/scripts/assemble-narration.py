@@ -15,9 +15,15 @@ import numpy as np
 import soundfile as sf
 
 ROOT = Path(sys.argv[1]).resolve()
-CACHE = ROOT / '.bcr/narration'
+configuration = (
+    json.loads((ROOT / 'production.json').read_text())
+    if (ROOT / 'production.json').exists()
+    else {}
+)
+audio = configuration.get('audio', {})
+CACHE = ROOT / audio.get('directory', '.bcr/narration')
 RATE = 48000
-plan = json.loads((CACHE / 'plan.json').read_text())
+plan = json.loads((ROOT / audio.get('plan', '.bcr/narration/plan.json')).read_text())
 FPS = plan['fps']
 groups = {}
 
@@ -39,7 +45,7 @@ def stamp(seconds):
 
 for group in plan['groups']:
     alignment = json.loads((CACHE / f'{group["hash"]}.alignment.json').read_text())
-    if hashlib.sha256(Path(group['raw']).read_bytes()).hexdigest() != alignment['audioSha256']:
+    if hashlib.sha256((ROOT / group['raw']).read_bytes()).hexdigest() != alignment['audioSha256']:
         raise ValueError(f'Stale alignment: {group["id"]}')
     # Decode/resample once before sample-index calculations.
     decoded = subprocess.check_output(
@@ -48,7 +54,7 @@ for group in plan['groups']:
             '-v',
             'error',
             '-i',
-            group['raw'],
+            str(ROOT / group['raw']),
             '-ar',
             str(RATE),
             '-ac',
@@ -181,7 +187,7 @@ for variant, ids in plan['programs'].items():
     # Float intermediates preserve resampling overshoot; normalize before PCM16.
     # The narration stays in the cache: the render only needs the mastered mix,
     # and two ~80 MiB WAVs in public/ would exceed the source snapshot budget.
-    sf.write(ROOT / '.bcr/narration' / audio_file, np.concatenate(chunks), RATE, subtype='FLOAT')
+    sf.write(CACHE / audio_file, np.concatenate(chunks), RATE, subtype='FLOAT')
     timeline[variant] = {
         'durationInFrames': duration,
         'audioFile': f'audio/mix-{variant}.flac',
@@ -190,7 +196,7 @@ for variant, ids in plan['programs'].items():
         'groups': edits,
         'segments': segments,
     }
-    (ROOT / f'subtitles-{variant}.srt').write_text(
+    (ROOT / audio.get('subtitlesDirectory', '') / f'subtitles-{variant}.srt').write_text(
         '\n'.join(
             f'{i + 1}\n{stamp(cue["start"] / FPS)} --> {stamp(cue["end"] / FPS)}\n{cue["caption"]}\n'
             for i, cue in enumerate(segments)
@@ -204,5 +210,5 @@ work = json.loads((ROOT / 'work.json').read_text())
 for target in work['targets']:
     if target['id'] in plan['programs']:
         target['durationInFrames'] = timeline[target['id']]['durationInFrames']
-save_json(ROOT / 'audio-timeline.json', timeline)
+save_json(ROOT / audio.get('timeline', 'audio-timeline.json'), timeline)
 save_json(ROOT / 'work.json', work)

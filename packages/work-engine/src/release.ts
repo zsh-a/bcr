@@ -9,6 +9,7 @@ import {
   symlinkSync,
 } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
+import type { VoiceSettings } from './audio/content';
 import {
   atomicJSON,
   database,
@@ -24,15 +25,22 @@ import {
   stable,
   targetIdentity,
   targetOf,
+  verifyExactMap,
   verifyMap,
   walk,
 } from './core';
 import type { Baseline } from './maintenance/history';
+import { assertRuntime } from './pipeline/runtime';
+import { assertValidation } from './pipeline/validation';
 import { probe } from './render';
+import { renderIdentity } from './video/identity';
 import type { ArtifactReport } from './video/reports';
 
 export const RELEASES = resolve(process.env.BCR_WORK_RELEASES ?? join(ROOT, '.releases'));
 export async function release(p: Project, source: string, legacy = false, releaseRoot = RELEASES) {
+  if (!legacy) {
+    assertRuntime(p);
+  }
   if (!legacy && p.config.stage === 'draft') {
     throw new Error('草稿不能正式交付，请先完成音频制作与全片导出');
   }
@@ -49,10 +57,17 @@ export async function release(p: Project, source: string, legacy = false, releas
     if (dir === p.root || dir === join(p.root, 'public') || dir === join(p.root, '.bcr')) {
       throw new Error('请将待交付文件放入独立目录，不能交付整个工程/缓存/私有素材目录');
     }
-    const forbidden = p.config.privateAssets
+    const privateFiles = p.config.privateAssets
       .map((x) => join(p.root, 'public', x))
-      .filter(existsSync)
-      .map(hashFile);
+      .filter(existsSync);
+    if (p.config.audio?.voice && existsSync(join(p.root, p.config.audio.voice))) {
+      const voice = json<VoiceSettings>(join(p.root, p.config.audio.voice));
+      privateFiles.push(join(p.root, voice.referenceFile ?? 'public/audio/reference.wav'));
+      if (voice.generation?.emotionReference) {
+        privateFiles.push(join(p.root, voice.generation.emotionReference));
+      }
+    }
+    const forbidden = privateFiles.filter(existsSync).map(hashFile);
     const hashes = fileMap(dir, files);
     if (Object.values(hashes).some((h) => forbidden.includes(h))) {
       throw new Error('交付目录含参考录音或私有旁白，请排除后重试');
@@ -62,6 +77,7 @@ export async function release(p: Project, source: string, legacy = false, releas
       codec?: string | undefined;
       frames?: string | undefined;
       originalReport: ArtifactReport | null;
+      currentInput?: ReturnType<typeof targetIdentity> | undefined;
     }[] = [];
     for (const file of files.filter((f) => /\.mp4$/i.test(f))) {
       const result = await probe(file);
@@ -69,6 +85,7 @@ export async function release(p: Project, source: string, legacy = false, releas
       const reportFile = `${file}.json`;
       const report = existsSync(reportFile) ? json<ArtifactReport>(reportFile) : null;
       if (!legacy) {
+        assertValidation(p, targetOf(p, report?.target));
         if (
           stream?.codec_name !== 'av1' ||
           report?.status !== 'succeeded' ||
@@ -79,7 +96,10 @@ export async function release(p: Project, source: string, legacy = false, releas
         }
         if (
           report.project !== p.id ||
-          targetIdentity(p, targetOf(p, report.target)).key !== report.input?.key
+          (report.renderInput
+            ? renderIdentity(p, targetOf(p, report.target), false, report.renderer).key !==
+              report.renderInput.key
+            : targetIdentity(p, targetOf(p, report.target)).key !== report.input?.key)
         ) {
           throw new Error(`成片与当前源码身份不一致: ${file}`);
         }
@@ -89,6 +109,7 @@ export async function release(p: Project, source: string, legacy = false, releas
         codec: stream?.codec_name,
         frames: stream?.nb_read_frames,
         originalReport: report,
+        currentInput: !legacy && report ? targetIdentity(p, targetOf(p, report.target)) : undefined,
       });
     }
     if (!legacy && !media.length) {
@@ -107,7 +128,7 @@ export async function release(p: Project, source: string, legacy = false, releas
           mkdirSync(dirname(dest), { recursive: true });
           copyFileSync(file, dest);
         }
-        if (!verifyMap(join(stage, 'files'), hashes) || !verifyMap(dir, hashes)) {
+        if (!verifyExactMap(join(stage, 'files'), hashes) || !verifyExactMap(dir, hashes)) {
           throw new Error('交付复制期间文件变化');
         }
         atomicJSON(join(stage, 'manifest.json'), {
@@ -131,7 +152,7 @@ export async function release(p: Project, source: string, legacy = false, releas
         rmSync(stage, { recursive: true, force: true });
         throw error;
       }
-    } else if (!verifyMap(join(final, 'files'), hashes)) {
+    } else if (!verifyExactMap(join(final, 'files'), hashes)) {
       throw new Error(`已有交付版本损坏: ${final}`);
     }
     const current = join(base, 'current');

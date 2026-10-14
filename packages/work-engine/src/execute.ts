@@ -33,6 +33,7 @@ export async function execute(context: ExecutionContext) {
     }
   }
   const current = loadProject(source);
+  current.frozen = true;
   const target = project.targets.find((item) => item.id === request.target);
   if (!target) {
     throw new Error('目标不存在');

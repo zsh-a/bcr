@@ -65,7 +65,9 @@ export async function doctor(id?: string) {
     if (p.config.audio) {
       try {
         const timeline = json<AudioTimeline>(join(p.root, p.config.audio.timeline));
-        for (const t of p.work.targets.filter((t) => p.config.targets[t.id]?.audio)) {
+        for (const t of p.work.targets.filter(
+          (t) => !p.experimentIds?.has(t.id) && p.config.targets[t.id]?.audio,
+        )) {
           const track = timeline[t.id];
           if (
             !isAudioTrack(track) ||

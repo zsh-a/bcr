@@ -11,12 +11,18 @@ import numpy as np
 import soundfile as sf
 
 ROOT = Path(sys.argv[1]).resolve()
-timeline = json.loads((ROOT / 'audio-timeline.json').read_text())
-plan_path = ROOT / '.bcr/narration/plan.json'
+configuration = (
+    json.loads((ROOT / 'production.json').read_text())
+    if (ROOT / 'production.json').exists()
+    else {}
+)
+audio = configuration.get('audio', {})
+timeline = json.loads((ROOT / audio.get('timeline', 'audio-timeline.json')).read_text())
+plan_path = ROOT / audio.get('plan', '.bcr/narration/plan.json')
 plan = json.loads(plan_path.read_text()) if plan_path.exists() else None
 if '--require-raw' in sys.argv and plan is None:
     raise ValueError('Raw narration plan is required for rebuild verification')
-mastering = json.loads((ROOT / 'audio-mastering.json').read_text())
+mastering = json.loads((ROOT / audio.get('mastering', 'audio-mastering.json')).read_text())
 work = json.loads((ROOT / 'work.json').read_text())
 voice = json.loads((ROOT / 'voice.json').read_text())
 quality = voice['quality']
@@ -52,7 +58,7 @@ for variant in variants:
     mixed, mix_sr = sf.read(ROOT / 'public' / track['audioFile'], dtype='float32')
     # The narration master lives in the cache; a checkout without it still runs
     # every other check, and the report says the sample comparison was skipped.
-    narration_path = ROOT / '.bcr/narration' / track['narrationFile']
+    narration_path = ROOT / audio.get('directory', '.bcr/narration') / track['narrationFile']
     pcm = sf.read(narration_path, dtype='float32')[0] if narration_path.exists() else None
     assert mix_sr == rate
     assert mixed.ndim == 2 and mixed.shape[1] == 2
@@ -139,7 +145,7 @@ for variant in variants:
             if plan
             else None
         )
-        if pcm is None or group is None or not Path(group['raw']).exists():
+        if pcm is None or group is None or not (ROOT / group['raw']).exists():
             if '--require-raw' in sys.argv:
                 raise ValueError(f'Missing raw group: {edit["id"]}')
             continue
@@ -150,7 +156,7 @@ for variant in variants:
                     '-v',
                     'error',
                     '-i',
-                    group['raw'],
+                    str(ROOT / group['raw']),
                     '-ar',
                     str(rate),
                     '-ac',
@@ -243,4 +249,6 @@ for variant, checks in report['checks'].items():
         bridge['longestQuietSeconds'] < quality['maxInternalSilenceSeconds']
         for bridge in checks['subtitleBridges']
     ), f'{variant}: review an excessive within-paragraph pause'
-(ROOT / 'audio-quality.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+(ROOT / audio.get('quality', 'audio-quality.json')).write_text(
+    json.dumps(report, ensure_ascii=False, indent=2) + '\n'
+)

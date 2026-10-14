@@ -7,10 +7,16 @@ import { help } from './cli/help';
 import { printStatus, status } from './cli/status';
 import { initProject } from './init';
 import { cleanScratch, dedupSnapshots, gc, verifyBaseline } from './maintenance';
-import { project, targetOf, workspace } from './project';
+import { productionPlan } from './pipeline/plan';
+import { prepareRuntime } from './pipeline/runtime';
+import { freeze, validate } from './pipeline/validation';
+import { project, targetIdentity, targetOf, workspace } from './project';
 import { registerHistory, release, releases } from './release';
 import { build, capture, preview, render } from './render';
 import { locked } from './state/lock';
+import { backup, restore } from './storage/backup';
+import { checkScenes } from './video/scenes/check';
+import { verifyArtifact } from './video/verify';
 
 const { positionals, values } = parseCli();
 const [action = 'help', id] = positionals;
@@ -82,10 +88,21 @@ async function main() {
     return emit(help);
   }
   switch (action) {
+    case 'restore': {
+      if (!values.snapshot || !values.output) {
+        throw new Error('restore 需要 --snapshot 和全新 --output 目录');
+      }
+      return print(await restore(values.snapshot, values.output));
+    }
     case 'doctor':
       return print(await doctor(id));
     case 'env':
-      return print({ python: await ensureAudio() });
+      if (values.legacy && values.models) {
+        throw new Error('每次选择一种音频环境');
+      }
+      return print({
+        python: await ensureAudio(values.legacy ? 'legacy' : values.models ? 'models' : 'runtime'),
+      });
     case 'verify-history': {
       const report = verifyBaseline();
       print(report);
@@ -142,6 +159,12 @@ async function main() {
     throw new Error('请指定工程 ID');
   }
   const current = project(id);
+  if (action === 'backup') {
+    return print(await backup(current, values.output));
+  }
+  if (action === 'prepare') {
+    return print(prepareRuntime(current));
+  }
   switch (action) {
     case 'draft':
       return print(await locked(`audio:${id}`, async () => writeDraft(current, !!values.force)));
@@ -159,7 +182,30 @@ async function main() {
     }
   }
   const target = targetOf(current, values.target);
+  if (values.plan || action === 'plan') {
+    return print(await productionPlan(current, target));
+  }
   switch (action) {
+    case 'verify': {
+      if (!values.output) {
+        throw new Error('verify 需要 --output 媒体文件路径');
+      }
+      return print(await verifyArtifact(current, values.output));
+    }
+    case 'identity':
+      return print(targetIdentity(current, target));
+    case 'qa':
+      return print(await validate(current, target, !!values.force));
+    case 'freeze':
+      return print(freeze(current, target));
+    case 'scenes-check':
+      return print(
+        await checkScenes(current, target, {
+          logicOnly: values['logic-only'],
+          directory: values.output,
+          baselineDirectory: values['baseline-directory'],
+        }),
+      );
     case 'build': {
       const result = await build(current, target);
       return values.json ? print(result) : emit(result.dir);
@@ -175,6 +221,7 @@ async function main() {
           to: number('to'),
           output: values.output,
           cq: number('cq'),
+          scale: number('scale'),
           concurrency: number('concurrency'),
           encoder: values.encoder,
           cpuReason: values['cpu-reason'],

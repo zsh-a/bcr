@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { readProjectDefinition, snapshotPolicy } from "@bcr/work-engine";
 import {
   capabilities,
   decode,
@@ -78,6 +79,7 @@ export class Projects {
   }
   /** Metadata only: listing never rereads unchanged fonts, audio or source bodies. */
   private entries(dir: string) {
+    const policy = snapshotPolicy(dir);
     const entries: { path: string; stamp: string; size: number }[] = [];
     let total = 0;
     const visit = (folder: string) => {
@@ -85,6 +87,8 @@ export class Projects {
         if (ignored.has(name) || privateFile(name) || name.endsWith(".tmp")) continue;
         const absolute = join(folder, name),
           path = relative(dir, absolute);
+        if (policy.excluded.some((prefix) => path === prefix || path.startsWith(`${prefix}/`)))
+          continue;
         if (path === "bcr-snapshot.json") continue;
         if ([".bcr-player.tsx", ".bcr-render.tsx", "bcr-preview.js"].includes(path))
           throw new Error(`文件名由 Runner 保留：${path}`);
@@ -106,6 +110,24 @@ export class Projects {
       }
     };
     visit(dir);
+    for (const path of policy.generated) {
+      const absolute = join(dir, path);
+      if (!existsSync(absolute)) continue;
+      decode(Path, path);
+      if (!realpathSync(absolute).startsWith(realpathSync(dir) + sep))
+        throw new Error(`派生文件越界：${path}`);
+      const stat = lstatSync(absolute, { bigint: true });
+      if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`派生文件类型无效：${path}`);
+      const size = Number(stat.size);
+      total += size;
+      if (size > 64 * 1024 * 1024 || total > 256 * 1024 * 1024 || entries.length >= 2000)
+        throw new Error("派生输入超出快照上限");
+      entries.push({
+        path,
+        size,
+        stamp: `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`,
+      });
+    }
     return entries;
   }
   private scan(dir: string): Scan {
@@ -118,7 +140,12 @@ export class Projects {
         throw new Error("工程在读取时超过快照上限");
       bytes.set(path, value);
     }
-    const work = definition(JSON.parse(bytes.get("work.json")?.toString() ?? "null"));
+    const work = definition(
+      readProjectDefinition(dir, (path) => {
+        const value = bytes.get(path);
+        return value ? JSON.parse(value.toString()) : undefined;
+      }).work,
+    );
     for (const target of work.targets) {
       if (!bytes.has(target.entry)) throw new Error(`缺少入口：${target.entry}`);
       if (target.runtime === "remotion" && target.propsFile && !bytes.has(target.propsFile))
@@ -187,7 +214,14 @@ export class Projects {
     if (existsSync(cached)) {
       const project = json(cached) as Project;
       if (project.ref.id !== id) throw new Error("快照不属于此作品");
-      return { ...project, ref: { ...project.ref, sourceId: this.sourceId } };
+      const work = definition(readProjectDefinition(this.source(revision)).work);
+      return {
+        ...project,
+        ref: { ...project.ref, sourceId: this.sourceId },
+        definition: work,
+        targets: work.targets,
+        capabilities: capabilities(work.targets),
+      };
     }
     const dir = this.locate(id),
       scan = this.scan(dir);
@@ -216,10 +250,29 @@ export class Projects {
     if (realpathSync(dir) !== dir || (dir !== this.root && dirname(dir) !== this.root))
       throw new Error("恢复目录已变化");
     const files = changedFiles(before.files, after.files);
+    const generated = new Set(snapshotPolicy(dir).generated);
+    for (const version of [before, after]) {
+      const production = version.files.find((file) => file.path === "production.json");
+      if (production) {
+        const config = JSON.parse(
+          this.file(version.ref.id, version.revision, production.path).toString(),
+        ) as { runtime?: { timing?: string; events?: string }; audio?: { timeline?: string } };
+        for (const path of [
+          config.runtime?.timing,
+          config.runtime?.events,
+          config.audio?.timeline,
+          config.runtime ? ".bcr/build/runtime/manifest.json" : undefined,
+        ]) {
+          if (path && /^\.bcr\/build\/(?!.*\.\.)[a-zA-Z0-9_./-]+\.json$/.test(path))
+            generated.add(path);
+        }
+      }
+    }
     const safePath = (path: string) => {
       decode(Path, path);
       if (
-        path.split("/").some((s) => ignored.has(s) || privateFile(s) || s.endsWith(".tmp")) ||
+        (!generated.has(path) &&
+          path.split("/").some((s) => ignored.has(s) || privateFile(s) || s.endsWith(".tmp"))) ||
         ["bcr-snapshot.json", ".bcr-player.tsx", ".bcr-render.tsx", "bcr-preview.js"].includes(path)
       )
         throw new Error(`恢复路径受到保护：${path}`);

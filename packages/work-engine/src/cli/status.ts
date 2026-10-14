@@ -1,6 +1,8 @@
 import { CACHE, STATE } from '../lib/paths';
 import { bytes } from '../maintenance/size';
-import { project, workspace } from '../project';
+import { runtimeStatus } from '../pipeline/runtime';
+import { validationStatus } from '../pipeline/validation';
+import { project, targetOf, workspace } from '../project';
 import { releases } from '../release';
 
 export function status(id?: string) {
@@ -15,8 +17,11 @@ export function status(id?: string) {
         id: name,
         role: current.role,
         stage: current.config.stage ?? (current.config.audio ? 'production' : 'prototype'),
+        runtime: runtimeStatus(current),
+        validation: { ...validationStatus(current, targetOf(current)), report: undefined },
         targets: current.work.targets.map((target) => ({
           id: target.id,
+          role: current.experimentIds?.has(target.id) ? 'experiment' : 'production',
           runtime: target.runtime,
           frames: target.durationInFrames,
         })),

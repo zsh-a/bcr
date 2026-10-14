@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { atomicJSON, inside, json, sha, stable } from '../lib/files';
+import { prepareRuntime } from '../pipeline/runtime';
 import type { Project, Work } from '../project';
 
 export interface NarrationLine {
@@ -23,10 +24,37 @@ export interface Content {
 }
 
 export interface VoiceSettings {
+  referenceFile?: string;
+  backend?: 'audio.cpp';
   referenceTranscript: string;
   language: string;
   endpoint: string;
   model: string;
+  modelRevision?: string;
+  runtimeRevision?: string;
+  generation?: {
+    recordedSource?: {
+      plan: string;
+      sha256: string;
+      tempo: number;
+      onTextChange?: 'generate' | 'error';
+    };
+    options?: Record<string, string | number | boolean | number[]>;
+    emotionReference?: string;
+    paragraphs?: Record<
+      string,
+      {
+        text?: string;
+        emotionReference?: string;
+        options?: Record<string, string | number | boolean | number[]>;
+      }
+    >;
+  };
+  alignment?: {
+    model?: string;
+    modelRevision?: string;
+    options?: Record<string, string | number | boolean | number[]>;
+  };
   mastering: { loudnessLUFS: number; truePeakDBTP: number };
   quality: {
     maxCaptionWidth: number;
@@ -138,5 +166,6 @@ export function writeDraft(p: Project, force = false) {
   atomicJSON(path, timeline);
   atomicJSON(join(p.root, 'work.json'), work);
   atomicJSON(join(p.root, 'production.json'), { ...p.config, stage: 'draft' });
+  prepareRuntime(p);
   return { project: p.id, draft: true, durationInFrames: target.durationInFrames };
 }

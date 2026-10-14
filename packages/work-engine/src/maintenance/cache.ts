@@ -12,7 +12,7 @@ export function orphanPlan(dir: string, registered: string[]) {
   return readdirSync(dir)
     .filter(
       (name) =>
-        /^(?:bundle|frames|deps)-[a-f0-9]{64}(?:\.[a-f0-9-]+\.tmp)?$/.test(name) ||
+        /^(?:bundle|frames|deps|scene)-[a-f0-9]{64}(?:\.[a-f0-9-]+\.tmp)?$/.test(name) ||
         /^[a-f0-9-]{36}-av1-smoke\.mp4$/.test(name),
     )
     .map((name) => inside(dir, name))

@@ -13,6 +13,7 @@ import {
   type Target,
   targetIdentity,
 } from '../core';
+import { assertWritableOutput } from '../lib/output';
 import { browser } from './browser';
 import { build } from './build';
 import { props } from './props';
@@ -39,6 +40,7 @@ export async function capture(
     const dest = output
       ? resolve(output)
       : join(p.root, '.bcr/production/artifacts', `${t.id}-${key.slice(0, 16)}.png`);
+    assertWritableOutput(dest);
     if (existsSync(dest)) {
       const report = existsSync(`${dest}.json`) ? json<ArtifactReport>(`${dest}.json`) : null;
       if (report?.key === key && report.sha256 === hashFile(dest)) {

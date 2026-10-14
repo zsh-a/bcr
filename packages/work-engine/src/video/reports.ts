@@ -6,6 +6,8 @@ export interface ArtifactReport {
   path: string;
   sha256: string;
   input: { key: string };
+  renderInput?: { key: string };
+  renderer?: 'scenes' | 'frames';
   scope?: string;
   cached?: boolean;
   frames?: number;

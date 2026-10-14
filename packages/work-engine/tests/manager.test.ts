@@ -136,7 +136,9 @@ test('init creates registered drafts with separate content, targets and shared p
   expect(current.config.stage).toBe('draft');
   expect(current.config.audio?.driver).toBe('standard');
   expect(json<{ custom: string }>(join(dir, 'workspace.json')).custom).toBe('preserved');
-  expect(json<{ draft: boolean }>(join(result.path, 'audio-timeline.json')).draft).toBe(true);
+  expect(json<{ draft: boolean }>(join(result.path, current.config.audio!.timeline)).draft).toBe(
+    true,
+  );
   expect(existsSync(join(result.path, 'public/audio/reference.wav'))).toBe(false);
   expect(existsSync(join(result.path, '.bcr/audio-env'))).toBe(false);
   expect(existsSync(join(result.path, 'docs/platform-description.md'))).toBe(true);
@@ -254,9 +256,9 @@ test('drafts cannot pass audio acceptance or render and measured timing cannot b
   const before = current.work.targets[0].durationInFrames!;
   expect(writeDraft(current).durationInFrames).toBeGreaterThan(before);
   const timeline = json<{ draft: boolean; contentHash: string }>(
-    join(result.path, 'audio-timeline.json'),
+    join(result.path, current.config.audio!.timeline),
   );
-  atomicJSON(join(result.path, 'audio-timeline.json'), { ...timeline, draft: false });
+  atomicJSON(join(result.path, current.config.audio!.timeline), { ...timeline, draft: false });
   expect(() => writeDraft(current)).toThrow('实测时间轴');
   expect(() => assertMeasured(current)).not.toThrow();
   content.paragraphs[0].lines[0].text += '再次修改口播。';

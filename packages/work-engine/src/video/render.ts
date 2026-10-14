@@ -25,11 +25,14 @@ import {
   type Target,
   targetIdentity,
 } from '../core';
+import { assertWritableOutput } from '../lib/output';
 import { browser } from './browser';
 import { build } from './build';
 import { av1Level, encodeOptions, probe } from './encoding';
+import { renderIdentity } from './identity';
 import { props } from './props';
 import type { ArtifactReport } from './reports';
+import { renderScenes } from './scenes/render';
 export interface RenderOptions {
   from?: number | undefined;
   to?: number | undefined;
@@ -43,6 +46,13 @@ export interface RenderOptions {
   onProgress?: (progress: number, stage: string) => void;
 }
 export async function render(p: Project, t: Target, options: RenderOptions = {}) {
+  if (
+    p.config.scenes &&
+    (p.config.scenes.target ?? 'main') === t.id &&
+    (options.scale ?? 1) === 1
+  ) {
+    return renderScenes(p, t, options);
+  }
   if (p.config.stage === 'draft') {
     throw new Error('工程仍是草稿，请先执行 audio；草稿画面可用 preview/capture');
   }
@@ -83,7 +93,7 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
       const b = await build(p, t, options.signal);
       const br = await browser(p);
       const ffmpegVersion = (await command(['ffmpeg', '-version'], ROOT, {}, true)).split('\n')[0];
-      const frameKey = `frames-${sha(stable({ source: b.identity.key, browser: br.identity, from, to, scale, embeddedAudio: !audio }))}`;
+      const frameKey = `frames-${sha(stable({ source: renderIdentity(p, t, !!audio).key, browser: br.identity, from, to, scale, embeddedAudio: !audio }))}`;
       const key = sha(
         stable({
           frameKey,
@@ -97,6 +107,7 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
       const dest = options.output
         ? resolve(options.output)
         : join(p.root, '.bcr/production/artifacts', `${t.id}-${key.slice(0, 16)}-av1.mp4`);
+      assertWritableOutput(dest);
       if (existsSync(dest)) {
         const report = existsSync(`${dest}.json`) ? json<ArtifactReport>(`${dest}.json`) : null;
         if (report?.key === key && report.sha256 === hashFile(dest)) {
@@ -292,12 +303,14 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
         renameSync(temp, dest);
         const report = {
           status: 'succeeded',
+          renderer: 'frames' as const,
           key,
           project: p.id,
           target: t.id,
           path: dest,
           sha256: hashFile(dest),
           input: b.identity,
+          renderInput: renderIdentity(p, t, false, 'frames'),
           scope: from === 0 && to === t.durationInFrames! - 1 ? 'full' : 'sample',
           range: [from, to],
           frames: count,

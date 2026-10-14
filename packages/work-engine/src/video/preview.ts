@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { assets, hashFile, inside, locked, type Project, type Target, TOOLS } from '../core';
 import { dependencies } from '../lib/dependencies';
+import { prepareRuntime } from '../pipeline/runtime';
+import { targetIdentity } from '../project';
+import { sourceSnapshot } from '../state/snapshots';
 import { props } from './props';
 
 export async function compilePreview(p: Project, t: Target, signal?: AbortSignal) {
   return locked(`build:preview:${p.id}:${t.id}`, async () => {
     const environment = await dependencies(p, signal);
-    const requireEngine = createRequire(join(TOOLS, 'package.json'));
-    const requireProject = createRequire(join(environment, 'package.json'));
     const entry = join(TOOLS, `.preview-${randomUUID()}.tsx`);
     const settings = {
       width: t.width,
@@ -45,16 +45,17 @@ mountPreview(Scene, ${JSON.stringify(settings)});
                     args.path,
                   );
                 if (shared) {
-                  return { path: requireEngine.resolve(args.path) };
+                  return { path: Bun.resolveSync(args.path, TOOLS) };
                 }
                 try {
                   return {
-                    path: createRequire(args.importer || join(environment, 'package.json')).resolve(
+                    path: Bun.resolveSync(
                       args.path,
+                      dirname(args.importer || join(environment, 'package.json')),
                     ),
                   };
                 } catch {
-                  return { path: requireProject.resolve(args.path) };
+                  return { path: Bun.resolveSync(args.path, environment) };
                 }
               });
             },
@@ -93,47 +94,70 @@ export async function writePreview(p: Project, t: Target, site: string, signal?:
   );
 }
 
-export async function preview(p: Project, t: Target, port = 0) {
-  return locked(`preview-source:${p.id}`, async () => {
-    const permitted = new Set(assets(p, t).map((file) => resolve(file)));
-    const scripts = t.runtime === 'remotion' ? await compilePreview(p, t) : [];
-    const outputs = new Map(scripts.map((output) => [basename(output.path), output]));
-    const server = Bun.serve({
-      hostname: '127.0.0.1',
-      port,
-      fetch(req) {
-        try {
-          const path = decodeURIComponent(new URL(req.url).pathname).slice(1);
-          if (t.runtime === 'remotion' && (!path || path === 'index.html')) {
-            return new Response(previewDocument(scripts), {
-              headers: { 'Content-Type': 'text/html; charset=utf-8' },
-            });
-          }
-          const script = outputs.get(path);
-          if (script) {
-            return new Response(script);
-          }
-          const file = inside(p.root, path || t.entry);
-          const pageFile =
-            t.runtime === 'html' &&
-            !path.startsWith('.') &&
-            !path.startsWith('public/') &&
-            !/^(package.json|bun.lock|voice.json|production.json)$/.test(path);
-          if (!permitted.has(file) && !pageFile) {
-            return new Response('Not found', { status: 404 });
-          }
-          return existsSync(file)
-            ? new Response(Bun.file(file))
-            : new Response('Not found', { status: 404 });
-        } catch {
+export async function startPreview(original: Project, t: Target, port = 0) {
+  prepareRuntime(original);
+  const snapshot =
+    t.runtime === 'remotion'
+      ? sourceSnapshot(original, t)
+      : { project: original, input: targetIdentity(original, t) };
+  const p = snapshot.project;
+  const permitted = new Set(assets(p, t).map((file) => resolve(file)));
+  const scripts = t.runtime === 'remotion' ? await compilePreview(p, t) : [];
+  const outputs = new Map(scripts.map((output) => [basename(output.path), output]));
+  const server = Bun.serve({
+    hostname: '127.0.0.1',
+    port,
+    fetch(req) {
+      try {
+        const path = decodeURIComponent(new URL(req.url).pathname).slice(1);
+        if (path === '__bcr/identity') {
+          return Response.json({ project: p.id, target: t.id, input: snapshot.input });
+        }
+        if (t.runtime === 'remotion' && (!path || path === 'index.html')) {
+          return new Response(previewDocument(scripts), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          });
+        }
+        const script = outputs.get(path);
+        if (script) {
+          return new Response(script);
+        }
+        const file = inside(p.root, path || t.entry);
+        const pageFile =
+          t.runtime === 'html' &&
+          !path.startsWith('.') &&
+          !path.startsWith('public/') &&
+          !/^(package.json|bun.lock|voice.json|production.json)$/.test(path);
+        if (!permitted.has(file) && !pageFile) {
           return new Response('Not found', { status: 404 });
         }
-      },
-    });
-    console.log(`preview ${server.url} project=${p.id} target=${t.id}`);
+        return existsSync(file)
+          ? new Response(Bun.file(file))
+          : new Response('Not found', { status: 404 });
+      } catch {
+        return new Response('Not found', { status: 404 });
+      }
+    },
+  });
+  if (targetIdentity(original, t).key !== snapshot.input.key) {
+    server.stop(true);
+    throw new Error('预览编译期间输入变化');
+  }
+  return {
+    server,
+    url: server.url.toString(),
+    input: snapshot.input,
+    stop: () => server.stop(true),
+  };
+}
+
+export async function preview(p: Project, t: Target, port = 0) {
+  return locked(`preview-source:${p.id}`, async () => {
+    const running = await startPreview(p, t, port);
+    console.log(`preview ${running.url} project=${p.id} target=${t.id} input=${running.input.key}`);
     await new Promise<void>((resolveStop) => {
       const stop = () => {
-        server.stop(true);
+        running.stop();
         process.off('SIGINT', stop);
         process.off('SIGTERM', stop);
         resolveStop();

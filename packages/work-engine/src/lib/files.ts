@@ -81,11 +81,29 @@ export function verifyMap(root: string, files: Record<string, string>): boolean 
     return false;
   }
 }
-export function sourceGraph(root: string, entry: string): string[] {
+export function verifyExactMap(root: string, files: Record<string, string>): boolean {
+  try {
+    return (
+      stable(
+        walk(root)
+          .map((file) => relative(root, file))
+          .sort(),
+      ) === stable(Object.keys(files).sort()) && verifyMap(root, files)
+    );
+  } catch {
+    return false;
+  }
+}
+export function sourceGraph(
+  root: string,
+  entry: string,
+  options: { externalEntries?: string[] } = {},
+): string[] {
   const seen = new Set<string>();
+  const external = new Set((options.externalEntries ?? []).map((file) => inside(root, file)));
   function visit(file: string) {
     file = inside(root, file);
-    if (seen.has(file)) {
+    if (seen.has(file) || external.has(file)) {
       return;
     }
     if (!existsSync(file)) {

@@ -42,6 +42,16 @@ export function workspaceRoot() {
 }
 
 export const ROOT = workspaceRoot();
+export function workspaceStorageId(root = ROOT) {
+  const registry = join(root, 'workspace.json');
+  const id = existsSync(registry)
+    ? (JSON.parse(readFileSync(registry, 'utf8')) as { storageId?: string }).storageId
+    : undefined;
+  if (id && !/^[a-z0-9][a-z0-9-]{7,79}$/.test(id)) {
+    throw new Error('工作区 storageId 无效');
+  }
+  return id ?? sha(root).slice(0, 16);
+}
 const sourceRoot = resolve(import.meta.dir, '../..');
 export const TOOLS = resolve(
   process.env.BCR_WORK_ENGINE ??
@@ -67,11 +77,7 @@ export function engineLock() {
 }
 export const CACHE = resolve(
   process.env.BCR_WORK_CACHE ??
-    join(
-      process.env.XDG_CACHE_HOME ?? join(homedir(), '.cache'),
-      'bcr-work',
-      sha(ROOT).slice(0, 16),
-    ),
+    join(process.env.XDG_CACHE_HOME ?? join(homedir(), '.cache'), 'bcr-work', workspaceStorageId()),
 );
 export const STATE = resolve(
   process.env.BCR_WORK_STATE ??
@@ -79,6 +85,6 @@ export const STATE = resolve(
       process.env.XDG_DATA_HOME ?? join(homedir(), '.local/share'),
       'bcr',
       'work-manager',
-      sha(ROOT).slice(0, 16),
+      workspaceStorageId(),
     ),
 );

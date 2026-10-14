@@ -32,7 +32,7 @@ export async function dependencies(p: Project, signal?: AbortSignal) {
     }
   }
   const identity = {
-    manifest: hashFile(manifest),
+    manifest: dependencyIdentity(p),
     lock: hashFile(lock),
     archives: archives.map(({ name, relative, sha256 }) => ({ name, relative, sha256 })),
     bun: Bun.version,
@@ -89,4 +89,24 @@ export async function dependencies(p: Project, signal?: AbortSignal) {
       rmSync(stage, { recursive: true, force: true });
     }
   });
+}
+
+export function dependencyIdentity(p: Project) {
+  const path = join(p.root, 'package.json');
+  if (!existsSync(path)) {
+    return {};
+  }
+  const pkg = json<PackageManifest & { packageManager?: string }>(path);
+  return {
+    dependencies: pkg.dependencies,
+    devDependencies: pkg.devDependencies,
+    overrides: pkg.overrides,
+    packageManager: pkg.packageManager,
+    lock: hashFile(join(p.root, 'bun.lock')),
+    archives: packageArchives(p.root, {
+      ...pkg.dependencies,
+      ...pkg.devDependencies,
+      ...pkg.overrides,
+    }).map(({ name, relative: file, sha256 }) => ({ name, file, sha256 })),
+  };
 }

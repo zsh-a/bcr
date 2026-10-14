@@ -1,5 +1,5 @@
 import { AbsoluteFill, Audio, interpolate, staticFile, useCurrentFrame } from 'remotion';
-import timeline from '../audio-timeline.json';
+import timeline from '../.bcr/build/runtime/timing.json';
 import { content } from './content';
 import { theme } from './theme';
 

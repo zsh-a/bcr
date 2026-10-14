@@ -128,10 +128,18 @@ version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "numpy" },
-    { name = "qwen-asr" },
     { name = "soundfile" },
+]
+
+[package.optional-dependencies]
+legacy = [
+    { name = "qwen-asr" },
     { name = "torch" },
     { name = "transformers" },
+]
+models = [
+    { name = "safetensors" },
+    { name = "torch" },
 ]
 
 [package.dev-dependencies]
@@ -142,11 +150,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = "==2.4.2" },
-    { name = "qwen-asr", specifier = "==0.0.6" },
+    { name = "qwen-asr", marker = "extra == 'legacy'", specifier = "==0.0.6" },
+    { name = "safetensors", marker = "extra == 'models'", specifier = "==0.8.0" },
     { name = "soundfile", specifier = "==0.13.1" },
-    { name = "torch", specifier = "==2.10.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "transformers", specifier = "==4.57.6" },
+    { name = "torch", marker = "extra == 'legacy'", specifier = "==2.10.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "torch", marker = "extra == 'models'", specifier = "==2.10.0+cu128", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "transformers", marker = "extra == 'legacy'", specifier = "==4.57.6" },
 ]
+provides-extras = ["legacy", "models"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = "==0.16.10" }]
