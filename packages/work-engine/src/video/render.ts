@@ -30,6 +30,7 @@ import { browser } from './browser';
 import { build } from './build';
 import { av1Level, encodeOptions, probe } from './encoding';
 import { renderIdentity } from './identity';
+import { renderPlayerFrames } from './player-frames';
 import { props } from './props';
 import type { ArtifactReport } from './reports';
 import { renderScenes } from './scenes/render';
@@ -76,6 +77,11 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
     throw new Error('渲染区间越界');
   }
   const encoder = options.encoder ?? 'av1_nvenc';
+  const player = p.config.targets[t.id]?.renderer === 'player';
+  const renderer = player ? ('player' as const) : ('frames' as const);
+  if (player && !audio) {
+    throw new Error('Player 捕获需要配置独立母带');
+  }
   const cq = options.cq ?? 20;
   const enc = [
     ...encodeOptions(encoder, cq, options.cpuReason),
@@ -90,10 +96,12 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
   options.signal?.throwIfAborted();
   return locked(`render:${p.id}`, () =>
     locked('shared-gpu', async () => {
-      const b = await build(p, t, options.signal);
+      const b = player
+        ? { identity: targetIdentity(p, t), dir: p.root }
+        : await build(p, t, options.signal);
       const br = await browser(p);
       const ffmpegVersion = (await command(['ffmpeg', '-version'], ROOT, {}, true)).split('\n')[0];
-      const frameKey = `frames-${sha(stable({ source: renderIdentity(p, t, !!audio).key, browser: br.identity, from, to, scale, embeddedAudio: !audio }))}`;
+      const frameKey = `frames-${sha(stable({ source: renderIdentity(p, t, !!audio, renderer).key, browser: br.identity, from, to, scale, renderer, embeddedAudio: !audio }))}`;
       const key = sha(
         stable({
           frameKey,
@@ -154,56 +162,79 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
         const stage = join(CACHE, `${frameKey}.${randomUUID()}.tmp`);
         mkdirSync(stage, { recursive: true });
         try {
-          const composition = await selectComposition({
-            serveUrl: b.dir,
-            id: 'Managed',
-            inputProps: props(p, t),
-            ...br.options,
-            logLevel: 'error',
-          });
-          let last = 0;
-          const result = await renderFrames({
-            composition,
-            serveUrl: b.dir,
-            outputDir: join(stage, 'frames'),
-            imageFormat: 'png',
-            frameRange: [from, to],
-            concurrency,
-            muted: !!audio,
-            scale,
-            cancelSignal,
-            inputProps: props(p, t),
-            ...br.options,
-            logLevel: 'error',
-            onStart: () => console.log(`${p.id}/${t.id} ${to - from + 1} frames`),
-            onFrameUpdate: (n) => {
-              options.onProgress?.(0.2 + (0.6 * n) / (to - from + 1), '渲染画面');
-              if (Date.now() - last > 10000) {
-                console.log(`frames ${n}/${to - from + 1}`);
-                last = Date.now();
-              }
-            },
-          });
-          if (!audio) {
-            await stitchFramesToVideo({
-              fps: t.fps!,
-              width,
-              height,
-              assetsInfo: result.assetsInfo,
-              outputLocation: join(stage, 'audio.wav'),
-              codec: 'wav',
-              sampleRate: 48000,
-              enforceAudioTrack: true,
+          if (player) {
+            await renderPlayerFrames(p, t, {
+              directory: stage,
+              from,
+              to,
+              concurrency,
+              scale,
+              inputKey: b.identity.key,
+              browser: br,
+              signal: options.signal,
+              onProgress: options.onProgress,
+            });
+            atomicJSON(join(stage, 'frames.json'), {
+              pattern: 'element-%05d.png',
+              firstFrame: from,
+              frameCount: to - from + 1,
+              source: b.identity.key,
+            });
+          } else {
+            const composition = await selectComposition({
+              serveUrl: b.dir,
+              id: 'Managed',
+              inputProps: props(p, t),
+              ...br.options,
+              logLevel: 'error',
+            });
+            let last = 0;
+            const result = await renderFrames({
+              composition,
+              serveUrl: b.dir,
+              outputDir: join(stage, 'frames'),
+              imageFormat: 'png',
+              frameRange: [from, to],
+              concurrency,
+              muted: !!audio,
+              scale,
               cancelSignal,
+              inputProps: props(p, t),
+              ...br.options,
+              logLevel: 'error',
+              onStart: () => console.log(`${p.id}/${t.id} ${to - from + 1} frames`),
+              onFrameUpdate: (n) => {
+                options.onProgress?.(0.2 + (0.6 * n) / (to - from + 1), '渲染画面');
+                if (Date.now() - last > 10000) {
+                  console.log(`frames ${n}/${to - from + 1}`);
+                  last = Date.now();
+                }
+              },
+            });
+            if (!audio) {
+              await stitchFramesToVideo({
+                fps: t.fps!,
+                width,
+                height,
+                assetsInfo: result.assetsInfo,
+                outputLocation: join(stage, 'audio.wav'),
+                codec: 'wav',
+                sampleRate: 48000,
+                enforceAudioTrack: true,
+                cancelSignal,
+              });
+            }
+            const pattern = relative(stage, result.assetsInfo.imageSequenceName);
+            atomicJSON(join(stage, 'frames.json'), {
+              pattern,
+              firstFrame: result.assetsInfo.firstFrameIndex,
+              frameCount: result.frameCount,
+              source: b.identity.key,
             });
           }
-          const pattern = relative(stage, result.assetsInfo.imageSequenceName);
-          atomicJSON(join(stage, 'frames.json'), {
-            pattern,
-            firstFrame: result.assetsInfo.firstFrameIndex,
-            frameCount: result.frameCount,
-            source: b.identity.key,
-          });
+          if (targetIdentity(p, t).key !== b.identity.key) {
+            throw new Error('捕获期间源码/素材变化');
+          }
           const final = join(CACHE, frameKey);
           if (existsSync(final)) {
             rmSync(final, { recursive: true });
@@ -267,6 +298,8 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
         '192k',
         '-ar',
         '48000',
+        '-bsf:v',
+        'av1_metadata=color_primaries=1:transfer_characteristics=1:matrix_coefficients=1:color_range=0',
         '-movflags',
         '+faststart',
         temp,
@@ -303,14 +336,14 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
         renameSync(temp, dest);
         const report = {
           status: 'succeeded',
-          renderer: 'frames' as const,
+          renderer,
           key,
           project: p.id,
           target: t.id,
           path: dest,
           sha256: hashFile(dest),
           input: b.identity,
-          renderInput: renderIdentity(p, t, false, 'frames'),
+          renderInput: renderIdentity(p, t, false, renderer),
           scope: from === 0 && to === t.durationInFrames! - 1 ? 'full' : 'sample',
           range: [from, to],
           frames: count,

@@ -11,11 +11,12 @@ export function renderIdentity(
   p: Project,
   t: Target,
   pixelsOnly = false,
-  mode?: 'scenes' | 'frames',
+  mode?: 'scenes' | 'frames' | 'player',
 ) {
   if (
     !pixelsOnly &&
     mode !== 'frames' &&
+    mode !== 'player' &&
     p.config.scenes &&
     (p.config.scenes.target ?? 'main') === t.id
   ) {
@@ -54,6 +55,15 @@ export function renderIdentity(
       'src/video/scenes/frames.ts',
       'src/video/scenes/compose.ts',
       'src/video/props.ts',
+      ...(p.config.targets[t.id]?.renderer === 'player'
+        ? [
+            'src/video/player-frames.ts',
+            'src/video/preview.ts',
+            'src/video/player.tsx',
+            'src/video/bridge.ts',
+            'src/video/review.ts',
+          ]
+        : []),
       'src/lib/dependencies.ts',
     ].map((path) => join(TOOLS, path)),
   );

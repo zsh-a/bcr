@@ -78,7 +78,7 @@ export function previewDocument(outputs: readonly { path: string }[]) {
     .filter((file) => file.path.endsWith('.css'))
     .map((file) => `<link rel="stylesheet" href="./${encodeURIComponent(basename(file.path))}">`)
     .join('');
-  return `<!doctype html><html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;width:100%;height:100%;background:#111}</style>${styles}<div id="root"></div><script>window.remotion_staticBase=new URL('./public',location.href).pathname;</script><script type="module" src="./player.js"></script></html>`;
+  return `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;width:100%;height:100%;background:#111}</style>${styles}<div id="root"></div><script>window.remotion_staticBase=new URL('./public',location.href).pathname;</script><script type="module" src="./player.js"></script></html>`;
 }
 
 /** A preview keeps small JS artifacts; large assets remain in its immutable source snapshot. */

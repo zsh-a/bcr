@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { audio, ensureAudio } from './audio';
 import { writeDraft } from './audio/content';
+import { transcript } from './audio/transcript';
 import { parseCli } from './cli/args';
 import { check, doctor } from './cli/diagnostics';
 import { help } from './cli/help';
@@ -166,6 +167,8 @@ async function main() {
     return print(prepareRuntime(current));
   }
   switch (action) {
+    case 'transcript':
+      return print(transcript(current, values.output));
     case 'draft':
       return print(await locked(`audio:${id}`, async () => writeDraft(current, !!values.force)));
     case 'check':

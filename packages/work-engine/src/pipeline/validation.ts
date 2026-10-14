@@ -13,6 +13,7 @@ import {
   verifyExactMap,
   walk,
 } from '../lib/files';
+import { TOOLS } from '../lib/paths';
 import { command } from '../lib/process';
 import { type Project, type Target, targetIdentity } from '../project';
 import { locked } from '../state/lock';
@@ -37,7 +38,9 @@ export function validationIdentity(p: Project, t: Target) {
     if (!script || !existsSync(join(p.root, script))) {
       throw new Error(`验收命令需声明本期脚本: ${check.id}`);
     }
-    return /\.[jt]sx?$/.test(script) ? sourceGraph(p.root, script) : [inside(p.root, script)];
+    return /\.[jt]sx?$/.test(script)
+      ? sourceGraph(p.root, script, { externalEntries: [join(p.root, '../.tools'), TOOLS] })
+      : [inside(p.root, script)];
   });
   return sha(
     stable({

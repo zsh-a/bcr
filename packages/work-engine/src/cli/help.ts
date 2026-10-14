@@ -10,6 +10,7 @@ export const help = `bcr-work — BCR 仓库中的共享制作引擎
   env [--legacy | --models]         同步日常音频、旧对齐或模型转换的独立环境
   check PROJECT|all                 类型/内容回归与音频验收
   audio PROJECT [--check] [--force]  按依赖执行旁白→对齐→混音→验收
+  transcript PROJECT [--output REL] 从正式 content.json 生成阅读稿
   prepare PROJECT                  从真实声音与 cues.json 编译画面时序
   plan PROJECT                     列出时序、验收状态与逐镜头依赖/缓存
   identity PROJECT [--target ID]    当前目标的完整输入身份
@@ -23,6 +24,7 @@ export const help = `bcr-work — BCR 仓库中的共享制作引擎
          [--output PATH] [--concurrency N]
          [--encoder libaom-av1 --cpu-reason 原因]
          [--plan]                  配置 scenes 时自动使用镜头无损缓存
+                                    targets.ID.renderer=player 使用同一预览捕获
   verify PROJECT --output FILE     检查实际编码文件、完整解码与响度
   release PROJECT --from-dir DIR [--legacy]
                                     完整复制、校验、原子切换 current

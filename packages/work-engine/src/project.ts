@@ -49,7 +49,7 @@ export interface Config {
     env?: Record<string, string>;
     prepare?: string[];
   };
-  targets: Record<string, { audio?: string; assets?: string[] }>;
+  targets: Record<string, { audio?: string; assets?: string[]; renderer?: 'player' }>;
 }
 export interface Work {
   format?: string;

@@ -100,7 +100,7 @@ export function sourceGraph(
   options: { externalEntries?: string[] } = {},
 ): string[] {
   const seen = new Set<string>();
-  const external = new Set((options.externalEntries ?? []).map((file) => inside(root, file)));
+  const external = new Set((options.externalEntries ?? []).map((file) => resolve(root, file)));
   function visit(file: string) {
     file = inside(root, file);
     if (seen.has(file) || external.has(file)) {
@@ -121,6 +121,9 @@ export function sourceGraph(
         continue;
       }
       const base = resolve(dirname(file), spec);
+      if (external.has(base)) {
+        continue;
+      }
       const choices = [
         base,
         ...['.ts', '.tsx', '.js', '.jsx', '.json'].map((ext) => base + ext),

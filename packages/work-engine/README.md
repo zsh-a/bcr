@@ -95,3 +95,9 @@ Runner 直接执行校验过的源码快照。依赖环境按锁文件复用，R
 - backup 根据 storage 收集制作源、报告、实验和交付，使用内容对象去重并实际恢复验证。与音频、验收和 release 操作串行，restore 只写新目录。
 
 工作区 storageId 可固定原有索引身份，后续目录变化不再改变 CLI 缓存与管理索引。旧历史的源定位保留原记录，Runner 的连接目录仍按其显式绑定规则管理。
+
+## Player 捕获与阅读稿
+
+Work 在 `production.targets.ID.renderer` 配置 `player`，同一 `render` 命令改用不可变 Player 预览逐帧捕获。它继续使用共享输入身份、AV1 编码、媒体验证、租约和预算缓存，不在 Work 内维护逐帧目录。未配置时沿用既有帧或镜头渲染；Player 目标必须提供独立母带。
+
+业务 QA 从包根导入 `connectReviewPage`、`seekReviewFrame`，使用共享 qa 提供的 `BCR_QA_URL`、`BCR_QA_INPUT`、`BCR_QA_OUTPUT`。语言设置会影响 SVG 字形，预览、QA 与捕获保留同一 zh-CN 文档环境。`transcript PROJECT` 从正式 content.json 生成 `.bcr/build/text/narration.md`，避免维护第二份正文。

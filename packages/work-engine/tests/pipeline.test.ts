@@ -3,13 +3,15 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type Content, contentHash } from '../src/audio/content';
+import { transcript } from '../src/audio/transcript';
 import { atomicJSON, fileMap, json, verifyExactMap } from '../src/lib/files';
 import { assertWritableOutput } from '../src/lib/output';
 import { workspaceStorageId } from '../src/lib/paths';
 import { prepareRuntime, readRuntime, runtimeStatus } from '../src/pipeline/runtime';
-import { freeze, validate, validationStatus } from '../src/pipeline/validation';
+import { freeze, validate, validationIdentity, validationStatus } from '../src/pipeline/validation';
 import type { Project, Target } from '../src/project';
 import { sourceSnapshot } from '../src/state/snapshots';
+import { renderIdentity } from '../src/video/identity';
 import { startPreview } from '../src/video/preview';
 import { planScenes } from '../src/video/scenes/plan';
 
@@ -107,6 +109,34 @@ function runtimeFixture(name: string) {
   });
   return value;
 }
+
+test('Player rendering tracks shared preview code and QA accepts only the public workspace SDK', () => {
+  const { p, t, dir } = fixture('player-production');
+  const frames = renderIdentity(p, t, true, 'frames');
+  p.config.targets.main!.renderer = 'player';
+  const player = renderIdentity(p, t, true, 'player');
+  expect(player.key).not.toBe(frames.key);
+  expect(Object.keys(player.producer)).toContain('src/video/review.ts');
+  expect(Object.keys(player.producer)).toContain('src/video/preview.ts');
+  writeFileSync(join(dir, 'check.ts'), 'import {seekReviewFrame} from "../.tools";');
+  p.config.validation = { checks: [{ id: 'browser', command: ['bun', 'check.ts'] }] };
+  const previous = validationIdentity(p, t);
+  writeFileSync(join(dir, 'check.ts'), 'import {connectReviewPage} from "../.tools";');
+  expect(validationIdentity(p, t)).not.toBe(previous);
+  writeFileSync(join(dir, 'check.ts'), 'import "../private-file";');
+  expect(() => validationIdentity(p, t)).toThrow();
+});
+
+test('reading copy derives speech text and cannot overwrite a release or escape Work', () => {
+  const { p, dir } = runtimeFixture('transcript');
+  const output = transcript(p);
+  expect(readFileSync(output.path, 'utf8')).toContain('这里是解释。');
+  expect(output.paragraphs).toBe(1);
+  expect(() => transcript(p, '../outside.md')).toThrow();
+  mkdirSync(join(dir, 'immutable/files'), { recursive: true });
+  writeFileSync(join(dir, 'immutable/manifest.json'), '{}');
+  expect(() => transcript(p, 'immutable/files/narration.md')).toThrow('不可变');
+});
 
 test('runtime derives actual alignment, reuses intact outputs and detects stale inputs or outputs', () => {
   const { p, dir } = runtimeFixture('runtime');
@@ -262,6 +292,7 @@ test('snapshot preview resolves import-only ESM packages without special CLI con
   try {
     const page = await fetch(preview.url);
     expect(page.status).toBe(200);
+    expect(await (await fetch(preview.url)).text()).toContain('lang="zh-CN"');
     const identity = (await (await fetch(new URL('/__bcr/identity', preview.url))).json()) as {
       input: { key: string };
     };
