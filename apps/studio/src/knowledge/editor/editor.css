@@ -1,9 +1,9 @@
 /* ---------- 编辑区 ---------- */
 
 .knowledge-editor {
-  /* 文档列吃宽度：至少内容列宽（--content-max），随 kb-doc 容器向 60% 生长；
-     正文行长（--prose-measure）不动，闲置宽度归标题/工具行与破格的表格/代码。 */
-  max-width: min(100%, max(var(--content-max), 60cqi));
+  /* One column aligns the title, metadata and body in every view. */
+  width: 100%;
+  max-width: var(--prose-width);
   margin: 0 auto;
   padding: var(--space-7) var(--space-8) 0;
   /* 纵列：正文/阅读面 flex:1 吃掉剩余高度，页脚贴底，底部不再留死白。 */
@@ -287,10 +287,10 @@
    承担键盘导航，文本输入聚焦本身不加框），编辑区与页面底色融为一体。 */
 .knowledge-body .cm-editor {
   height: 100%;
-  /* 与阅读态同一条行长不变量：写作面居中锁 --prose-measure，表格等宽内容
-     在编辑态是文本行、不破格；列变宽只让两侧余白变多，打字手感不变。 */
-  max-width: var(--prose-measure);
-  margin-inline: auto;
+  /* The shared article column owns line length in both editing and reading. */
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
   border: 0;
   background: transparent;
 }
@@ -431,17 +431,6 @@
   overflow-wrap: anywhere;
 }
 
-/* 行长不变量：正文块居中锁在 --prose-measure（约 37 汉字），
-   宽内容破格吃满文档列——宽度利用率交给真正需要它的元素，段落可读性不动。 */
-.knowledge-prose > * {
-  max-width: var(--prose-measure);
-  margin-inline: auto;
-}
-
-.knowledge-prose > :is(table, pre, hr) {
-  max-width: none;
-}
-
 .knowledge-prose p {
   text-wrap: pretty;
 }
@@ -519,4 +508,13 @@
   margin: var(--space-4) 0;
   border-left: 2px solid var(--color-accent);
   padding-left: var(--space-5);
+}
+
+/* Wide media may use the outer gutter while ordinary paragraphs stay aligned. */
+@container kb-doc (width >= 850px) {
+  .knowledge-prose > :is(table, pre, p:has(> .knowledge-image-block:only-child)) {
+    width: calc(100% + 2 * var(--space-8));
+    max-width: none;
+    margin-inline: calc(-1 * var(--space-8));
+  }
 }

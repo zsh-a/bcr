@@ -10,6 +10,7 @@ import {
   Clock,
   FileText,
   Files,
+  FolderPlus,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -141,6 +142,18 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
         }
         actions={
           <>
+            <IconButton
+              label="新建目录"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setQuery("");
+                setView("all");
+                setTreeEdit({ kind: "create", parent: "", path: "" });
+              }}
+            >
+              <FolderPlus size={16} />
+            </IconButton>
             <Button
               className="knowledge-create"
               aria-label="新建笔记"
@@ -233,7 +246,12 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
             onEditCancel={() => setTreeEdit(null)}
             onMenu={(event, target) => {
               event.preventDefault();
-              setTreeMenu({ x: event.clientX, y: event.clientY, target });
+              const bounds = event.currentTarget.getBoundingClientRect();
+              setTreeMenu({
+                x: event.type === "click" ? bounds.right : event.clientX,
+                y: event.type === "click" ? bounds.bottom : event.clientY,
+                target,
+              });
             }}
             onDropMove={(payload, destination) => void dropMove(payload, destination)}
           />
@@ -250,17 +268,19 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
                     ? "还没有最近记录"
                     : collection
                       ? "这个集合还没有笔记"
-                      : "从一篇笔记开始"}
+                      : "笔记会显示在这里"}
             </strong>
-            <p>
-              {query.trim()
-                ? "试试其他关键词，或调整搜索范围。"
-                : view === "favorites"
-                  ? "收藏常用笔记，之后可以在这里快速找到。"
-                  : view === "recent"
-                    ? "打开过的笔记会出现在这里。"
-                    : "写下想法，也可以导入已有的 Markdown。"}
-            </p>
+            {(query.trim() || view !== "all" || collection) && (
+              <p>
+                {query.trim()
+                  ? "试试其他关键词，或调整搜索范围。"
+                  : view === "favorites"
+                    ? "收藏常用笔记，之后可以在这里快速找到。"
+                    : view === "recent"
+                      ? "打开过的笔记会出现在这里。"
+                      : "写下想法，也可以导入已有的 Markdown。"}
+              </p>
+            )}
             <div className="knowledge-list-empty-actions">
               {query && (
                 <Button
@@ -279,10 +299,10 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
                   重置全部筛选
                 </Button>
               )}
-              {(query.trim() || view === "all") && (
+              {query.trim() && (
                 <Button
                   size="sm"
-                  variant={query.trim() ? "ghost" : "default"}
+                  variant="ghost"
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
@@ -292,7 +312,7 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
                     })
                   }
                 >
-                  {query.trim() ? `以「${query.trim().slice(0, 10)}」新建` : "开始写作"}
+                  {`以「${query.trim().slice(0, 10)}」新建`}
                 </Button>
               )}
             </div>

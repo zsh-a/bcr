@@ -295,8 +295,9 @@ try {
     .hover();
   await page
     .getByRole("navigation", { name: "笔记列表" })
-    .getByRole("button", { name: "移动文件夹 new", exact: true })
+    .getByRole("button", { name: "目录操作：new", exact: true })
     .click();
+  await page.getByRole("menuitem", { name: "移动到…", exact: true }).click();
   const fdlg = page.getByRole("dialog", { name: "移动文件夹", exact: true });
   await fdlg.waitFor();
   assert.equal(await fdlg.getByRole("button", { name: "关闭移动文件夹", exact: true }).count(), 1);

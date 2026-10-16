@@ -41,16 +41,22 @@ try {
   assert.equal(await page.getByRole("button", { name: "打开全局搜索", exact: true }).count(), 0);
   await page.screenshot({ path: `${shots}/workspace-navigation-hidden.png` });
 
-  // Hover reveals without stealing app focus; leaving releases all vertical space.
+  // Hover leaves the app alone; the launcher opens explicitly and stays open until dismissed.
   const run = page.getByRole("button", { name: "运行回测", exact: true });
   await page.waitForFunction(() => !document.querySelector(".research-run-button")?.disabled);
   await run.focus();
   await entrance().hover();
-  await surface().waitFor();
+  await page.waitForTimeout(350);
+  assert.equal(await surface().isVisible(), false);
   assert(await run.evaluate((el) => el === document.activeElement));
+  await entrance().click();
+  await surface().waitFor();
+  await page.getByRole("navigation", { name: "切换应用", exact: true }).waitFor();
   assert.deepEqual(await geometry(), before);
   await page.screenshot({ path: `${shots}/workspace-navigation-open.png` });
-  await page.mouse.move(400, 500);
+  await page.mouse.move(800, 600);
+  assert(await surface().isVisible());
+  await page.mouse.click(800, 600);
   await hidden();
 
   // Keyboard entry, focus recovery and the shortcut have the same behavior.
@@ -107,7 +113,11 @@ try {
   await run.click();
   await page.locator(".research-run-result").waitFor();
   const runId = await page.locator(".research-run-result").getAttribute("data-run-id");
-  await command("Media Studio");
+  await openTopBar(page);
+  await page
+    .getByRole("navigation", { name: "切换应用", exact: true })
+    .getByRole("link", { name: "媒体字幕", exact: true })
+    .click();
   await page.locator(".media-header").waitFor();
   assert.equal((await page.locator(".media-header").boundingBox()).y, 0);
   assert.equal(await surface().isVisible(), false);
@@ -189,7 +199,7 @@ try {
   await touch.close();
   assert.deepEqual(errors, []);
   console.log(
-    "Workspace navigation PASSED: all app viewports, hover, touch, keyboard, nested menus, search, focus recovery, keep-alive, reading geometry, light/dark, mobile and landscape",
+    "Workspace navigation PASSED: all app viewports, explicit app switching, touch, keyboard, nested menus, search, focus recovery, keep-alive, reading geometry, light/dark, mobile and landscape",
   );
 } catch (error) {
   await page

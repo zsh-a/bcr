@@ -61,7 +61,7 @@
   white-space: nowrap;
 }
 
-/* 目录前缀整体移动：hover 或键盘聚焦才出现，行高不塌陷。 */
+/* 目录与笔记使用同样的可见操作入口；移动选择器复用此位置。 */
 .knowledge-folder-move {
   position: absolute;
   top: 0;
@@ -74,8 +74,8 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-muted);
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
   transition: opacity var(--duration-fast) var(--ease-standard);
 }
 

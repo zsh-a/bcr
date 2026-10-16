@@ -15,12 +15,16 @@ export class WorkspaceErrorBoundary extends Component<
   override render() {
     if (!this.state.error) return this.props.children;
     return (
-      <section className="p-6" aria-label={`${this.props.title}加载失败`}>
+      <section className="workspace-load-error" aria-label={`${this.props.title}加载失败`}>
         <WorkspaceTrigger />
         <h1>{this.props.title}暂时无法打开</h1>
-        <p role="alert">{this.state.error.message}</p>
-        <p>请检查网络和应用更新。其他已打开的工作区仍可继续使用。</p>
+        <p role="alert">应用资源暂时无法加载，可能是网络中断或刚刚发布了新版本。</p>
+        <p>联网后检查更新即可重试，也可以从左上角切换到其他应用继续工作。</p>
         <AppUpdateButton />
+        <details>
+          <summary>错误详情</summary>
+          <pre>{this.state.error.message}</pre>
+        </details>
       </section>
     );
   }

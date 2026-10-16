@@ -48,7 +48,15 @@ async function device() {
 const body = (page) => page.getByLabel("笔记正文", { exact: true });
 async function action(page, name) {
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
-  await page.getByRole("menuitem", { name, exact: true }).click();
+  const item = page.getByRole("menuitem", { name, exact: true });
+  if (!(await item.isVisible()))
+    await page
+      .getByRole("menuitem", {
+        name: ["同步设置", "立即同步", "安装与离线"].includes(name) ? "应用设置" : "笔记库管理",
+        exact: true,
+      })
+      .click();
+  await item.click();
 }
 async function attach(page, name, mimeType, buffer) {
   const chooser = page.waitForEvent("filechooser");

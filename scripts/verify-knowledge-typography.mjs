@@ -28,7 +28,7 @@ async function fonts(selector) {
 
 async function tools() {
   const menu = page.locator(".knowledge-tools-menu");
-  const toggle = page.getByRole("button", { name: "更多写作工具", exact: true });
+  const toggle = page.getByRole("button", { name: /^(更多写作工具|阅读设置)$/u });
   if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
   return menu;
 }
@@ -65,6 +65,9 @@ try {
   await page.getByLabel("笔记标题", { exact: true }).fill(titleText);
   await page.getByLabel("笔记正文", { exact: true }).fill(bodyText);
   await page.getByRole("button", { name: "阅读", exact: true }).click();
+  const titleBounds = await page.locator(".knowledge-title").boundingBox();
+  const paragraphBounds = await page.locator(".knowledge-prose > p").first().boundingBox();
+  assert(Math.abs(titleBounds.x - paragraphBounds.x) <= 1, "title and prose share a left edge");
   const titleFonts = await fonts(".knowledge-title");
   const bodyFonts = await fonts(".knowledge-prose p");
   assert.ok(

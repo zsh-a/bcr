@@ -376,7 +376,7 @@ export function useKnowledgeWorkbench() {
       : target.kind === "folder"
         ? [
             {
-              label: "新建笔记",
+              label: "在此目录新建笔记",
               icon: <Plus size={15} />,
               disabled: busy,
               run: () => void run(() => create("", target.path)),

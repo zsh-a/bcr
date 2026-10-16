@@ -53,11 +53,12 @@ try {
     .getByRole("button", { name: "检查更新", exact: true })
     .click();
   await page.getByText("当前已是最新版本", { exact: true }).waitFor();
-  await page
-    .getByLabel("应用更新", { exact: true })
-    .getByRole("button", { name: "关闭", exact: true })
-    .click();
+  assert.equal(await page.getByLabel("应用更新", { exact: true }).getByRole("button").count(), 0);
+  await page.getByLabel("应用更新", { exact: true }).waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "工作区选项", exact: true }).click();
+  const versionInfo = page.getByLabel("应用版本", { exact: true });
+  assert.match(await versionInfo.innerText(), /当前版本 \d{8}\.\d{6}/u);
+  assert.match(await versionInfo.innerText(), /上次检查/u);
   await page
     .getByRole("dialog", { name: "工作区选项", exact: true })
     .getByRole("button", { name: /^安装/u })
@@ -65,10 +66,8 @@ try {
   await page.locator("dialog[open]").getByRole("button", { name: "检查更新", exact: true }).click();
   await page.locator("dialog[open]").waitFor({ state: "hidden" });
   await page.getByText("当前已是最新版本", { exact: true }).waitFor();
-  await page
-    .getByLabel("应用更新", { exact: true })
-    .getByRole("button", { name: "关闭", exact: true })
-    .click();
+  assert.equal(await page.getByLabel("应用更新", { exact: true }).getByRole("button").count(), 0);
+  await page.getByLabel("应用更新", { exact: true }).waitFor({ state: "hidden" });
 
   // New release plus an uncached, removed lazy module. Failed installs must be
   // visible and retryable, without unmounting the existing Knowledge editor.
@@ -76,7 +75,14 @@ try {
   unavailable.add("/build-manifest.json");
   htmlFallback.add(`/${diagram.file}`);
   await page.locator(".home-app-card").filter({ hasText: "绘图" }).click();
-  await page.getByRole("region", { name: "绘图加载失败", exact: true }).waitFor();
+  const failure = page.getByRole("region", { name: "绘图加载失败", exact: true });
+  await failure.waitFor();
+  assert.equal(await failure.locator("pre").isVisible(), false);
+  await failure.getByText("错误详情", { exact: true }).click();
+  assert.match(
+    await failure.locator("pre").innerText(),
+    /Failed to fetch dynamically imported module/u,
+  );
   await page.getByText("更新未完成", { exact: true }).waitFor();
   assert.equal(await page.getByLabel("笔记标题", { exact: true }).count(), 1);
   assert.equal(

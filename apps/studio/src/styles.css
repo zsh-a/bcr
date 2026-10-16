@@ -18,7 +18,13 @@
 
 .studio-navigation[data-floating="true"] .studio-navigation-surface {
   position: fixed;
-  inset: 0 0 auto;
+  inset: var(--space-2) auto auto var(--space-2);
+  width: min(640px, calc(100vw - 2 * var(--space-2)));
+  max-height: calc(100dvh - 2 * var(--space-2));
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
   box-shadow: var(--shadow-menu);
   animation: studio-navigation-in var(--duration-base) var(--ease-standard);
 }
@@ -479,4 +485,111 @@
   .studio-search-filter-count {
     display: none;
   }
+}
+
+/* A compact launcher keeps switching close to the current task. */
+.studio-navigation[data-floating="true"] .studio-topbar-button-label,
+.studio-navigation[data-floating="true"] .studio-topbar-search-key {
+  display: none;
+}
+.studio-navigation[data-floating="true"] .studio-topbar-search {
+  width: var(--h-hit-target);
+  padding: 0;
+  justify-content: center;
+}
+.studio-switcher {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+.studio-switcher h2,
+.studio-switcher-more summary {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+.studio-switcher-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.studio-switcher-app {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: var(--h-hit-target);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+.studio-switcher-app > svg {
+  flex: none;
+  color: var(--color-muted);
+}
+.studio-switcher-app > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.studio-switcher-app small {
+  margin-left: auto;
+  font-size: var(--text-xs);
+}
+.studio-switcher-app:hover,
+.studio-switcher-app[aria-current="page"] {
+  color: var(--color-accent);
+  background: var(--color-accent-dim);
+}
+.studio-switcher-more summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--h-hit-target);
+  cursor: pointer;
+}
+@media (width <= 45em) {
+  .studio-switcher-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio-navigation[data-floating="true"] .studio-topbar {
+    padding-inline: var(--space-2);
+    gap: 0;
+  }
+}
+
+.workspace-load-error {
+  max-width: 640px;
+  margin: auto;
+  padding: var(--space-6);
+  color: var(--color-text);
+}
+.workspace-load-error h1 {
+  margin-block: var(--space-6) var(--space-3);
+  font-size: var(--text-xl);
+}
+.workspace-load-error p {
+  margin-block: var(--space-3);
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+.workspace-load-error details {
+  margin-top: var(--space-6);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.workspace-load-error summary {
+  cursor: pointer;
+}
+.workspace-load-error pre {
+  margin-top: var(--space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.studio-switcher-more summary {
+  gap: var(--space-2);
+}
+.studio-switcher-more[open] summary svg {
+  transform: rotate(90deg);
 }

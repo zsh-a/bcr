@@ -1,4 +1,4 @@
-/* Mobile keeps navigation, document actions and content in distinct rows. */
+/* One toolbar row leaves space for writing; secondary tools live in the settings menu. */
 @media (width <= 45em) {
   .knowledge-app {
     --prose-title: 24px;
@@ -89,8 +89,9 @@
   }
 
   .knowledge-document-toolbar {
-    order: 1;
-    flex: 1 0 100%;
+    order: 0;
+    flex: 1;
+    min-width: 0;
   }
 
   .knowledge-document-toolbar:empty {
@@ -101,8 +102,8 @@
     width: 100%;
     justify-content: space-between;
     gap: 4px;
-    padding-top: 4px;
-    border-top: 1px solid var(--color-border);
+    padding-top: 0;
+    border-top: 0;
   }
 
   .knowledge-document-toolbar .knowledge-tools {
@@ -133,11 +134,18 @@
   }
 
   .knowledge-document-toolbar .knowledge-tools-modes {
+    display: block;
+  }
+  .knowledge-tools-menu .knowledge-chip-group button {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .knowledge-document-toolbar .knowledge-segmented [data-mode="source"] {
     display: none;
   }
 
-  /* Reading has one toolbar row. Editing keeps its complete set of controls. */
-  .knowledge-toolbar:has(.knowledge-mode-controls[data-view="read"]) .knowledge-mobile-title {
+  .knowledge-toolbar:has(.knowledge-mode-controls) .knowledge-mobile-title {
     display: none;
   }
 
@@ -190,6 +198,44 @@
 
   .knowledge-editor-meta {
     margin-block: 8px 16px;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .knowledge-editor-meta .knowledge-status-line {
+    display: inline;
+  }
+  .knowledge-editor-meta .knowledge-status {
+    flex: none;
+    max-width: 52%;
+  }
+  .knowledge-editor-meta .knowledge-status-trigger {
+    min-height: 48px;
+    max-width: 100%;
+    padding-inline: 0;
+    font-size: 12px;
+  }
+  .knowledge-editor-meta .knowledge-metadata-summary {
+    min-width: 0;
+    flex: 1;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .knowledge-editor-meta .knowledge-metadata-summary > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .knowledge-editor-meta .knowledge-metadata-summary > span:nth-child(3) {
+    display: none;
+  }
+  .knowledge-editor-meta .knowledge-metadata-summary > svg {
+    flex: none;
+  }
+
+  .knowledge-library-sheet .knowledge-sidebar-heading .ui-icon-btn {
+    min-width: 48px;
+    min-height: 48px;
   }
 
   .knowledge-prose > :first-child {

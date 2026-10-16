@@ -49,6 +49,11 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     setCollapsed(false);
     setError("");
   }, [update]);
+  useEffect(() => {
+    if (update.phase !== "current") return;
+    const timer = setTimeout(() => setAppUpdateState({ phase: "idle" }), 4000);
+    return () => clearTimeout(timer);
+  }, [update]);
   const apply = async () => {
     if (applying) return;
     setApplying(true);
@@ -65,7 +70,12 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       <div className="bcr-update-content" inert={applying}>
         {children}
       </div>
-      {update.phase !== "idle" && update.phase !== "unavailable" && (
+      {update.phase === "current" && (
+        <aside className="bcr-update-notice is-current" aria-label="应用更新" role="status">
+          当前已是最新版本
+        </aside>
+      )}
+      {update.phase !== "idle" && update.phase !== "unavailable" && update.phase !== "current" && (
         <aside
           className={`bcr-update-notice${collapsed ? " is-collapsed" : ""}`}
           aria-label="应用更新"
@@ -86,11 +96,9 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
                     ? "新版本已准备好"
                     : update.phase === "checking"
                       ? "正在检查并准备更新…"
-                      : update.phase === "current"
-                        ? "当前已是最新版本"
-                        : update.phase === "reload"
-                          ? "页面资源需要重新加载"
-                          : "更新未完成"}
+                      : update.phase === "reload"
+                        ? "页面资源需要重新加载"
+                        : "更新未完成"}
                 </strong>
                 <p>
                   {update.message ??
@@ -98,11 +106,15 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
                       ? "保存当前工作后刷新，继续使用。"
                       : update.phase === "checking"
                         ? "下载完成后即可更新，当前工作会保留。"
-                        : update.phase === "current"
-                          ? "已完成在线检查。"
-                          : "请联网后重试。")}
+                        : "请联网后重试。")}
                 </p>
               </div>
+              {update.details && (
+                <details className="bcr-update-details">
+                  <summary>错误详情</summary>
+                  <p>{update.details}</p>
+                </details>
+              )}
               {error && <p role="alert">{error}</p>}
               <div className="bcr-update-actions">
                 <button
@@ -118,8 +130,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
                   type="button"
                   disabled={applying || update.phase === "checking"}
                   onClick={() => {
-                    if (update.phase === "current") setAppUpdateState({ phase: "idle" });
-                    else if (update.phase === "error") checkForAppUpdate();
+                    if (update.phase === "error") checkForAppUpdate();
                     else void apply();
                   }}
                 >
@@ -129,11 +140,9 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
                       ? "立即更新"
                       : update.phase === "reload"
                         ? "保存并重新加载"
-                        : update.phase === "current"
-                          ? "关闭"
-                          : update.phase === "error"
-                            ? "重试检查更新"
-                            : "正在准备…"}
+                        : update.phase === "error"
+                          ? "重试检查更新"
+                          : "正在准备…"}
                 </button>
               </div>
             </>

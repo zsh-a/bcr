@@ -190,7 +190,7 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
         <Sparkles size={17} />
       </IconButton>
       <NoteActionsMenu
-        grouped={mobile}
+        grouped
         actions={[
           {
             label: "安装与离线",

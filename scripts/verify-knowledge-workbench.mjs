@@ -400,8 +400,12 @@ try {
     );
     // 小屏：上下文通过原生模态抽屉展开，不占正文空间。
     const drawer = page.getByRole("dialog", { name: "笔记信息", exact: true });
-    if (!(await drawer.isVisible()))
-      await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
+    if (!(await drawer.isVisible())) {
+      if (viewport.width <= 720) {
+        await page.getByRole("button", { name: "更多写作工具", exact: true }).click();
+        await page.getByRole("button", { name: "大纲、链接与属性", exact: true }).click();
+      } else await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
+    }
     await drawer.waitFor();
     assert(await drawer.evaluate((element) => element.matches(":modal")));
     await drawer.getByRole("button", { name: "关联阅读", exact: true }).waitFor();
@@ -415,13 +419,13 @@ try {
       await mobilePicker.waitFor({ state: "hidden" });
       await page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
       await page.getByRole("button", { name: "收起列表", exact: true }).click();
-      // Mobile exposes view modes directly, with no duplicate menu entry.
+      // Mobile keeps edit/read directly available and puts source mode in writing settings.
       const modes = page.getByRole("group", { name: "视图模式", exact: true });
-      await modes.getByRole("button", { name: "源码", exact: true }).waitFor();
+      assert.equal(await modes.getByRole("button", { name: "源码", exact: true }).count(), 0);
       await modes.getByRole("button", { name: "阅读", exact: true }).waitFor();
       await page.getByRole("button", { name: "更多写作工具" }).click();
       const mobileTools = page.locator(".knowledge-tools-menu");
-      assert.equal(await mobileTools.getByRole("button", { name: "源码", exact: true }).count(), 0);
+      assert.equal(await mobileTools.getByRole("button", { name: "源码", exact: true }).count(), 1);
       await page.keyboard.press("Escape");
       await mobileTools.waitFor({ state: "hidden" });
     }

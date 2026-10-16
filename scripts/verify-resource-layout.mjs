@@ -17,7 +17,10 @@ const scope = () => page.getByRole("group", { name: "笔记范围", exact: true 
 const noteInfo = () => page.getByRole("dialog", { name: "笔记信息", exact: true });
 async function action(name) {
   await page.getByRole("button", { name: "更多操作", exact: true }).click();
-  await page.getByRole("menuitem", { name, exact: true }).click();
+  const item = page.getByRole("menuitem", { name, exact: true });
+  if (!(await item.isVisible()))
+    await page.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
+  await item.click();
 }
 async function create(name, body) {
   const previous = page.url();
@@ -147,7 +150,10 @@ try {
       await search().press("Escape");
       assert.equal(await page.locator(".knowledge-sidebar").evaluate((el) => el.inert), true);
     }
-    await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
+    if (width <= 720) {
+      await page.getByRole("button", { name: "更多写作工具", exact: true }).click();
+      await page.getByRole("button", { name: "大纲、链接与属性", exact: true }).click();
+    } else await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
     await noteInfo().waitFor();
     assert(await noteInfo().evaluate((el) => el.matches(":modal")));
     await noteInfo()

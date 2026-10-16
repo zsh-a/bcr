@@ -1,9 +1,16 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { WorkspaceNavigationProvider } from "@bcr/react";
 import { TopBar } from "./TopBar";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+import type { RecentWorkspace } from "../shell/recent-workspaces";
 
 /** Global navigation overlays app content; opening it never changes the app's viewport. */
-export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0] & { children: ReactNode }) {
+export function WorkspaceNavigation(
+  props: Parameters<typeof TopBar>[0] & {
+    children: ReactNode;
+    recent: readonly RecentWorkspace[];
+  },
+) {
   const floating = props.active !== "home";
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -13,12 +20,10 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0] & { chil
     [...document.querySelectorAll<HTMLButtonElement>("[data-workspace-trigger]")].find(
       (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility === "visible",
     );
-  const revealTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const visible = !floating || open;
 
   const clearTimers = () => {
-    clearTimeout(revealTimer.current);
     clearTimeout(hideTimer.current);
   };
   const protectedSurface = () =>
@@ -49,8 +54,8 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0] & { chil
   const scheduleHide = () => {
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
-      if (!protectedSurface() && !surface.current?.matches(":hover")) close();
-    }, 600);
+      if (!protectedSurface()) close();
+    }, 0);
   };
 
   useLayoutEffect(() => {
@@ -113,11 +118,6 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0] & { chil
         expanded: open,
         controls: id,
         reveal,
-        preview: (source) => {
-          clearTimeout(revealTimer.current);
-          revealTimer.current = setTimeout(() => reveal(source), 220);
-        },
-        cancelPreview: () => clearTimeout(revealTimer.current),
         openAssistant: props.onOpenAgent,
       }}
     >
@@ -128,12 +128,17 @@ export function WorkspaceNavigation(props: Parameters<typeof TopBar>[0] & { chil
             id={id}
             className="studio-navigation-surface"
             hidden={!visible}
-            onPointerEnter={() => clearTimeout(hideTimer.current)}
-            onPointerLeave={scheduleHide}
             onFocusCapture={() => clearTimeout(hideTimer.current)}
             onBlurCapture={scheduleHide}
           >
             <TopBar {...props} onCollapse={floating ? () => close(true) : undefined} />
+            {floating && (
+              <WorkspaceSwitcher
+                active={props.active}
+                recent={props.recent}
+                onSelect={() => close()}
+              />
+            )}
           </div>
         </div>
         <div className="min-h-0 flex-1">{props.children}</div>

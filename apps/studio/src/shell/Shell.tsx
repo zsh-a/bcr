@@ -216,6 +216,7 @@ function ShellContent() {
         <PluginHost plugins={shellPlugins} />
         <WorkspaceNavigation
           active={active}
+          recent={recent}
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenAgent={() => openPanel("assistant")}

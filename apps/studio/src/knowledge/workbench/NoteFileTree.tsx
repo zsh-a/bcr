@@ -208,15 +208,25 @@ export function NoteFileTree({
                   >
                     <Folder size={15} aria-hidden="true" />
                     <span>{folder.name}</span>
+                    <IconButton
+                      label={onMenu ? `目录操作：${folder.path}` : `移动文件夹 ${folder.path}`}
+                      className="knowledge-folder-move"
+                      aria-haspopup={onMenu ? "menu" : undefined}
+                      size="sm"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (onMenu) onMenu(event, { kind: "folder", path: folder.path });
+                        else onMoveFolder(folder.path);
+                      }}
+                    >
+                      {onMenu ? (
+                        <Ellipsis size={18} />
+                      ) : (
+                        <FolderInput size={15} aria-hidden="true" />
+                      )}
+                    </IconButton>
                   </summary>
-                  <IconButton
-                    label={`移动文件夹 ${folder.path}`}
-                    className="knowledge-folder-move"
-                    size="sm"
-                    onClick={() => onMoveFolder(folder.path)}
-                  >
-                    <FolderInput size={15} aria-hidden="true" />
-                  </IconButton>
                   {render(folder)}
                 </details>
               )}

@@ -78,10 +78,8 @@ try {
   await page
     .getByLabel("笔记正文", { exact: true })
     .fill("# 灵感\n\n把阅读变成思考，再把思考留在笔记里。\n\n## 行动\n\n明天继续。");
-  await page
-    .locator(".knowledge-mobile-actions")
-    .getByRole("button", { name: "新建笔记", exact: true })
-    .click({ trial: true });
+  assert.equal(await page.locator(".knowledge-mobile-actions").count(), 0);
+  assert((await page.locator(".knowledge-toolbar").boundingBox()).height <= 64);
   await page.locator(".knowledge-status-line").filter({ hasText: "已保存到本机" }).waitFor();
   const modes = page.getByRole("group", { name: "视图模式", exact: true });
   await modes.getByRole("button", { name: "阅读", exact: true }).click();
@@ -90,7 +88,11 @@ try {
     .getByRole("heading", { name: "灵感", exact: true })
     .waitFor();
   await modes.getByRole("button", { name: "编辑", exact: true }).click();
-  await modes.getByRole("button", { name: "源码", exact: true }).click();
+  await button("更多写作工具").click();
+  await page
+    .locator(".knowledge-tools-menu")
+    .getByRole("button", { name: "源码", exact: true })
+    .click();
   assert.match(await page.getByLabel("笔记正文", { exact: true }).innerText(), /# 灵感/);
 
   await page.locator(".knowledge-status-trigger").click();
@@ -137,7 +139,8 @@ try {
   await library.waitFor({ state: "hidden" });
   assert(await button("切换笔记列表").evaluate((element) => element === document.activeElement));
 
-  await button("展开上下文栏").click();
+  await button("更多写作工具").click();
+  await button("大纲、链接与属性").click();
   const info = page.getByRole("dialog", { name: "笔记信息", exact: true });
   await info.getByRole("button", { name: "行动", exact: true }).click();
   await info.waitFor({ state: "hidden" });
@@ -160,14 +163,8 @@ try {
       title.y >= tools.y + tools.height,
       "document tools overlap the title in the independent entry",
     );
-    await button("展开上下文栏").click({ trial: true });
-    for (const name of [
-      "切换笔记列表",
-      "搜索与切换笔记",
-      "展开上下文栏",
-      "更多操作",
-      "更多写作工具",
-    ])
+    assert(toolbar.height <= 64, "editing keeps one toolbar row");
+    for (const name of ["切换笔记列表", "更多操作", "更多写作工具"])
       await touchTarget(button(name));
     await touchTarget(modes.getByRole("button", { name: "阅读", exact: true }));
     await page.screenshot({ path: new URL(`mobile-knowledge-${width}.png`, shots).pathname });
@@ -207,7 +204,7 @@ try {
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await noOverflow();
-    await button("阅读目录").click({ trial: true });
+    await button("阅读设置").click({ trial: true });
     const toolbar = await page.locator(".knowledge-toolbar").boundingBox();
     assert(toolbar.height <= 64, "reading uses one toolbar row on a phone");
     const title = page.getByLabel("笔记标题", { exact: true });
@@ -233,6 +230,7 @@ try {
   }
   await button("阅读设置").click();
   const readingSettings = page.getByRole("dialog", { name: "写作与阅读设置", exact: true });
+  for (const control of await readingSettings.getByRole("button").all()) await touchTarget(control);
   assert.equal(
     await readingSettings.getByRole("button", { name: "打字机模式", exact: true }).count(),
     0,
@@ -263,6 +261,7 @@ try {
       !document.documentElement.classList.contains("dark"),
   );
   await page.keyboard.press("Escape");
+  await button("阅读设置").click();
   await button("阅读目录").click();
   await info.getByRole("button", { name: "变化与亮点", exact: true }).click();
   await info.waitFor({ state: "hidden" });
@@ -309,10 +308,9 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .locator(".knowledge-mobile-actions")
-    .getByRole("button", { name: "新建笔记", exact: true })
-    .click();
+  await button("更多操作").click();
+  await actions.getByRole("menuitem", { name: "笔记库管理", exact: true }).click();
+  await actions.getByRole("menuitem", { name: "新建笔记", exact: true }).click();
   await page.getByLabel("笔记正文", { exact: true }).waitFor();
   assert.equal(
     await page.getByLabel("笔记标题", { exact: true }).inputValue(),

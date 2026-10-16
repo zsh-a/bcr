@@ -5,8 +5,6 @@ interface WorkspaceNavigation {
   expanded: boolean;
   controls: string;
   reveal: (source?: HTMLButtonElement, focus?: boolean) => void;
-  preview: (source: HTMLButtonElement) => void;
-  cancelPreview: () => void;
   openAssistant?: () => void;
 }
 
@@ -41,21 +39,13 @@ export function WorkspaceTrigger({ className = "" }: { className?: string }) {
   return (
     <IconButton
       label="展开工作区导航"
-      title="工作区导航 · Alt+`"
+      title="切换应用 · Alt+`"
       className={`ui-workspace-trigger ${className}`}
       data-workspace-trigger=""
       aria-controls={navigation.controls}
       aria-expanded={navigation.expanded}
       aria-keyshortcuts="Alt+`"
       onClick={(event) => navigation.reveal(event.currentTarget, true)}
-      onPointerMove={(event) => {
-        if (
-          event.pointerType === "mouse" &&
-          matchMedia("(hover: hover) and (pointer: fine)").matches
-        )
-          navigation.preview(event.currentTarget);
-      }}
-      onPointerLeave={navigation.cancelPreview}
     >
       <svg
         width="18"

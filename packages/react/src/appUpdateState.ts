@@ -3,6 +3,9 @@ import { useSyncExternalStore } from "react";
 export type AppUpdateState = {
   phase: "unavailable" | "idle" | "checking" | "current" | "ready" | "reload" | "error";
   message?: string;
+  details?: string;
+  buildId?: string | undefined;
+  checkedAt?: number | undefined;
 };
 
 let state: AppUpdateState = { phase: "unavailable" };
@@ -11,14 +14,18 @@ let check: (() => void) | undefined;
 let apply: (() => void) | undefined;
 
 export function setAppUpdateState(next: AppUpdateState): void {
-  state = next;
+  state = { buildId: state.buildId, checkedAt: state.checkedAt, ...next };
   for (const listener of listeners) listener();
 }
 
-export function configureAppUpdates(actions: { check: () => void; apply: () => void }): void {
+export function configureAppUpdates(actions: {
+  check: () => void;
+  apply: () => void;
+  buildId?: string;
+}): void {
   check = actions.check;
   apply = actions.apply;
-  setAppUpdateState({ phase: "idle" });
+  setAppUpdateState({ phase: "idle", buildId: actions.buildId });
 }
 
 export function checkForAppUpdate(): void {

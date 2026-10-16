@@ -10,10 +10,11 @@ import {
   useSyncExternalStore,
   type CSSProperties,
   type Ref,
+  type ReactNode,
 } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import { createPortal } from "react-dom";
-import { ChevronRight, Info, List, Paperclip, SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, Info, Paperclip, SlidersHorizontal, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "../session/model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -82,6 +83,7 @@ export function NoteEditor({
   onContextWidthChange,
   toolbarSlot,
   onSaveStatusChange,
+  saveStatus,
 }: {
   note: KnowledgeNote;
   store: KnowledgeStore;
@@ -103,6 +105,7 @@ export function NoteEditor({
   /** 编辑/阅读切换与写作设置挂到应用工具栏，正文区不再重复一条工具栏。 */
   toolbarSlot: HTMLElement | null;
   onSaveStatusChange?: (status: LocalSaveStatus) => void;
+  saveStatus?: ReactNode;
 }) {
   const navigation = useNavigation();
   const agentHost = useAgentHost();
@@ -445,31 +448,20 @@ export function NoteEditor({
               </button>
             </div>
             <div className="knowledge-tools">
-              {mobile && (
+              {!mobile && (
                 <IconButton
-                  label={view === "read" ? "阅读目录" : "展开上下文栏"}
-                  title={view === "read" ? "阅读目录" : "大纲、链接与属性"}
-                  aria-expanded={contextOpen && !focusMode}
+                  className="knowledge-editing-tool"
+                  label="插入附件"
+                  size="sm"
+                  disabled={locked || !!initialError}
                   onClick={() => {
-                    if (view === "read") setContextView("outline");
-                    onContextOpenChange(true);
+                    setView("edit");
+                    source.current?.pickAttachment();
                   }}
                 >
-                  {view === "read" ? <List size={18} /> : <Info size={18} />}
+                  <Paperclip size={16} />
                 </IconButton>
               )}
-              <IconButton
-                className="knowledge-editing-tool"
-                label="插入附件"
-                size="sm"
-                disabled={locked || !!initialError}
-                onClick={() => {
-                  setView("edit");
-                  source.current?.pickAttachment();
-                }}
-              >
-                <Paperclip size={16} />
-              </IconButton>
               <button
                 ref={toolsTrigger}
                 type="button"
@@ -494,6 +486,35 @@ export function NoteEditor({
                   if (event.target === event.currentTarget) setMenuOpen(event.newState === "open");
                 }}
               >
+                {mobile && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toolsMenu.current?.hidePopover();
+                        if (view === "read") setContextView("outline");
+                        onContextOpenChange(true);
+                      }}
+                    >
+                      <Info size={16} />
+                      {view === "read" ? "阅读目录" : "大纲、链接与属性"}
+                    </button>
+                    {view !== "read" && (
+                      <button
+                        type="button"
+                        disabled={locked || !!initialError}
+                        onClick={() => {
+                          toolsMenu.current?.hidePopover();
+                          setView("edit");
+                          source.current?.pickAttachment();
+                        }}
+                      >
+                        <Paperclip size={16} />
+                        插入附件
+                      </button>
+                    )}
+                  </>
+                )}
                 <details className="knowledge-tools-section knowledge-editing-tool">
                   <summary>插入模板</summary>
                   <div className="knowledge-tools-list">
@@ -535,7 +556,10 @@ export function NoteEditor({
                       <button
                         type="button"
                         aria-pressed={view === "source"}
-                        onClick={() => selectView("source")}
+                        onClick={() => {
+                          selectView("source");
+                          toolsMenu.current?.hidePopover();
+                        }}
                       >
                         源码
                       </button>
@@ -683,6 +707,7 @@ export function NoteEditor({
             <span>{draft.body.length.toLocaleString()} 字符</span>
             <ChevronRight size={14} aria-hidden="true" />
           </button>
+          {saveStatus}
         </div>
         {error && (
           <div role="alert" className="knowledge-alert">

@@ -15,7 +15,7 @@ export {
 } from "./AppControls";
 export { usePublishRunningCount, useRunningApps } from "./application-status";
 export { AppUpdateProvider, useUpdateParticipant } from "./AppUpdate";
-export { AppUpdateButton } from "./AppUpdateButton";
+export { AppUpdateButton, AppUpdateInfo } from "./AppUpdateButton";
 export { configureAppUpdates, setAppUpdateState, checkForAppUpdate } from "./appUpdateState";
 export {
   captureAppInstallPrompt,

@@ -46,6 +46,9 @@ export default defineConfig({
   plugins: [tailwindcss(), react(), pwaBuildManifest(readerWorkerAssets), diagramAssets()],
   preview: { proxy: gatewayProxy },
   define: {
+    __BCR_APP_VERSION__: JSON.stringify(
+      new Date(Number(buildId)).toISOString().replace(/[-:]/gu, "").replace("T", ".").slice(0, 15),
+    ),
     "globalThis.__BCR_READER_BUILD_ID__": JSON.stringify(buildId),
     "globalThis.__BCR_PWA_APPS__": JSON.stringify(PWA_APPS),
     "globalThis.__BCR_NOTES_BUILD_ID__": JSON.stringify(buildId),

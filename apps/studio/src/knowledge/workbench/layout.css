@@ -14,9 +14,7 @@
   --font-reading: "Noto Serif SC Variable", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
   --prose-title: clamp(28px, 2.2vw, 32px);
   --prose-row: var(--text-base);
-  /* 写作/阅读行长是不变量：正文块度量恒为文档列减内边距（约 37 汉字/行），
-     落在中文 25–40 字的舒适行宽内，不随窗口漂移。文档列本身随容器生长
-     （见 .knowledge-editor），闲置宽度归标题/工具行与破格的宽内容。 */
+  /* 标题、属性与正文共用文档列，宽媒体可使用两侧留白。 */
   --prose-font-size: 18px;
   --prose-width: 720px;
   --prose-measure: calc(var(--prose-width) - 2 * var(--space-8));

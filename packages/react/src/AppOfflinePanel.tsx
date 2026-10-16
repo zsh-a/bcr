@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { protectLocalData, useAppOfflineState } from "./offlineState";
-import { AppUpdateButton } from "./AppUpdateButton";
+import { AppUpdateButton, AppUpdateInfo } from "./AppUpdateButton";
 import "./app-offline.css";
 
 function formatBytes(bytes: number) {
@@ -67,6 +67,7 @@ export function AppOfflinePanel({
       </p>
       <p>本机内容可离线使用；同步和未下载的附件需要联网。</p>
       <AppUpdateButton />
+      <AppUpdateInfo />
       {offline.phase === "error" && (
         <>
           <p role="alert">{offline.message}</p>

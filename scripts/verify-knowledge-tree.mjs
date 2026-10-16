@@ -30,7 +30,7 @@ const folderPaths = () =>
   nav()
     .locator(".knowledge-folder-move")
     .evaluateAll((els) =>
-      els.map((el) => el.getAttribute("aria-label")?.replace("移动文件夹 ", "")),
+      els.map((el) => el.getAttribute("aria-label")?.replace("目录操作：", "")),
     );
 const undo = () =>
   page
@@ -50,8 +50,7 @@ async function create(name, content) {
   return new URL(page.url()).searchParams.get("note");
 }
 async function newRootFolder() {
-  await page.getByRole("button", { name: "更多操作", exact: true }).click();
-  await page.getByRole("menuitem", { name: "新建目录", exact: true }).click();
+  await page.getByRole("button", { name: "新建目录", exact: true }).click();
 }
 async function createFolder(value, viaMenu = false) {
   if (viaMenu) await menu().getByRole("menuitem", { name: "新建子目录", exact: true }).click();
@@ -88,7 +87,7 @@ try {
   await folderRow("工作").click({ button: "right" });
   await menu().waitFor();
   assert.deepEqual(await menu().getByRole("menuitem").allTextContents(), [
-    "新建笔记",
+    "在此目录新建笔记",
     "新建子目录",
     "重命名目录",
     "移动到…",
@@ -189,9 +188,15 @@ try {
     ["目标", "外部/目标"],
   ]) {
     const old = page.url();
-    await folderRow(name).click({ button: "right" });
-    assert.equal(await folderOpen(name), false, "right-click does not expand the folder");
-    await menu().getByRole("menuitem", { name: "新建笔记", exact: true }).click();
+    await nav()
+      .getByRole("button", { name: `目录操作：${path}`, exact: true })
+      .click();
+    assert.equal(
+      await folderOpen(name),
+      false,
+      "opening folder actions does not expand the folder",
+    );
+    await menu().getByRole("menuitem", { name: "在此目录新建笔记", exact: true }).click();
     await page.waitForURL((url) => url.href !== old);
     await page.waitForFunction(
       () => document.activeElement?.getAttribute("aria-label") === "笔记标题",

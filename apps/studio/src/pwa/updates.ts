@@ -53,7 +53,7 @@ export function startPwaUpdates(
     reloadPhase = "ready";
     if (announcedWorker === worker && !foreground) return;
     announcedWorker = worker;
-    setAppUpdateState({ phase: "ready" });
+    setAppUpdateState({ phase: "ready", checkedAt: Date.now() });
   };
   const watch = (worker: ServiceWorker) => {
     if (watched.has(worker)) return;
@@ -112,20 +112,21 @@ export function startPwaUpdates(
       }
       if (registration.waiting && registration.active) ready(registration.waiting);
       else if (reloadPhase) {
-        if (foreground) setAppUpdateState({ phase: reloadPhase });
+        if (foreground) setAppUpdateState({ phase: reloadPhase, checkedAt: Date.now() });
       } else if (recovering) {
         // No newer worker exists (or this is the first installation). A user-approved
         // reload can retry the failed module without losing pending domain saves.
         reloadPhase = "reload";
-        setAppUpdateState({ phase: "reload" });
-      } else if (foreground) setAppUpdateState({ phase: "current" });
+        setAppUpdateState({ phase: "reload", checkedAt: Date.now() });
+      } else setAppUpdateState({ phase: foreground ? "current" : "idle", checkedAt: Date.now() });
     })()
       .catch((reason: unknown) => {
         onError(reason);
         if (foreground || recovering || registration?.active)
           setAppUpdateState({
             phase: "error",
-            message: reason instanceof Error ? reason.message : "检查更新失败，请联网后重试。",
+            message: "暂时无法完成更新检查，请检查网络后重试。",
+            ...(reason instanceof Error ? { details: reason.message } : {}),
           });
       })
       .finally(() => {
@@ -134,6 +135,7 @@ export function startPwaUpdates(
       });
   };
   configureAppUpdates({
+    buildId: __BCR_APP_VERSION__,
     check: () => check(true, true),
     apply: () => {
       const waiting = registration?.waiting;

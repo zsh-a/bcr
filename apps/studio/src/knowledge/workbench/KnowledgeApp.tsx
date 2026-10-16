@@ -437,6 +437,7 @@ export function KnowledgeApp() {
                   }
                   toolbarSlot={toolbarSlot}
                   onSaveStatusChange={controller.setDraftStatus}
+                  saveStatus={mobile ? <KnowledgeSaveStatus controller={controller} /> : undefined}
                 />
                 {note.citations.length > 0 && (
                   <section className="knowledge-citations">
@@ -498,7 +499,7 @@ export function KnowledgeApp() {
           </div>
         </main>
       </div>
-      {mobile && (
+      {mobile && !note && notes.length > 0 && (
         <footer className="knowledge-mobile-actions" aria-label="笔记快捷操作">
           <KnowledgeSaveStatus controller={controller} />
           <Button variant="ghost" disabled={busy} onClick={() => void run(create)}>

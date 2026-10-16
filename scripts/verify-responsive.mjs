@@ -178,7 +178,10 @@ await group("1. 320px reflow（WCAG 1.4.10，禁双向滚动）", async () => {
 
   await page.goto(`${origin}/studio`, { waitUntil: "networkidle" });
   await page.locator(".studio-dock-shell").waitFor({ timeout: 20_000 });
-  await openActionMenu(page, "工作区面板");
+  await page.getByRole("button", { name: "打开工作区面板", exact: true }).click();
+  const panels = page.getByRole("dialog", { name: "工作区面板", exact: true });
+  await panels.waitFor();
+  assert(await panels.evaluate((element) => element.matches(":modal")));
   await settle(300);
   await noHScroll("320×256 studio 面板抽屉打开");
   await page.keyboard.press("Escape");
@@ -257,18 +260,30 @@ async function threeState(width) {
   assert(state.menuDisplay !== "none", `${width}px: 统一侧栏入口应可见`);
   assert.equal(state.railDisplay, "none", `${width}px: 上下文默认按需展开`);
   if (width <= BP_MD) {
-    assert.equal(state.sidebarPosition, "absolute", `${width}px: 侧栏应为抽屉（absolute）`);
-    assert(
-      state.sidebarOpacity < 0.1,
-      `${width}px: 抽屉关闭时应离场（opacity=${state.sidebarOpacity}）`,
+    assert.equal(
+      await page.locator(".knowledge-sidebar").isVisible(),
+      false,
+      `${width}px: 笔记库关闭时不可见`,
     );
+    const library = page.locator(".knowledge-library-sheet");
+    await page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
+    await library.waitFor();
+    assert(
+      await library.evaluate((element) => element.matches(":modal")),
+      `${width}px: 笔记库使用原生模态抽屉`,
+    );
+    await page.keyboard.press("Escape");
+    await library.waitFor({ state: "hidden" });
     assert.equal(state.inert, true, `${width}px: 关闭的抽屉不参与键盘操作`);
   } else {
     assert.notEqual(state.sidebarPosition, "absolute", `${width}px: 侧栏应常驻`);
     assert(state.sidebarOpacity > 0.9, `${width}px: 侧栏应可见（opacity=${state.sidebarOpacity}）`);
     assert.equal(state.inert, false, `${width}px: 桌面侧栏允许键盘操作`);
   }
-  await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
+  if (width <= 720) {
+    await page.getByRole("button", { name: "更多写作工具", exact: true }).click();
+    await page.getByRole("button", { name: "大纲、链接与属性", exact: true }).click();
+  } else await page.getByRole("button", { name: "展开上下文栏", exact: true }).click();
   if (width < BP_LG) {
     const info = page.getByRole("dialog", { name: "笔记信息", exact: true });
     await info.waitFor();
@@ -304,20 +319,9 @@ await group("3. 连续拉伸 320→1920→320（无溢出 + 三态正确切换�
   await page.getByRole("button", { name: "切换笔记列表", exact: true }).click();
   await page.locator(".knowledge-app.show-sidebar").waitFor();
   await settle(320);
-  const drawer = await page.evaluate(() => {
-    const side = document.querySelector(".knowledge-sidebar");
-    const backdrop = document.querySelector(".knowledge-backdrop");
-    return {
-      position: getComputedStyle(side).position,
-      transform: getComputedStyle(side).transform,
-      opacity: Number(getComputedStyle(side).opacity),
-      backdrop: backdrop === null ? null : getComputedStyle(backdrop).display,
-    };
-  });
-  assert.equal(drawer.position, "absolute", "抽屉应绝对定位覆盖正文");
-  assert.equal(drawer.transform, "none", "抽屉打开应落位");
-  assert(drawer.opacity > 0.9, `抽屉打开应可见（opacity=${drawer.opacity}）`);
-  assert.equal(drawer.backdrop, "block", "抽屉打开应有压暗层");
+  const drawer = page.locator(".knowledge-library-sheet");
+  assert(await drawer.evaluate((element) => element.matches(":modal")), "笔记库应在顶层覆盖正文");
+  assert(await drawer.locator(".knowledge-sidebar").isVisible(), "打开抽屉后笔记列表可见");
   const open = await mainWidth();
   assert(Math.abs(open - closed) <= 1, `抽屉应覆盖而非挤开正文：${closed} → ${open}`);
   await page.getByRole("button", { name: "收起列表" }).click();

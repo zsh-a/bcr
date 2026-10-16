@@ -4,6 +4,7 @@ import { pwaForApp } from "../pwa/apps";
 import {
   Button,
   AppUpdateButton,
+  AppUpdateInfo,
   IconButton,
   StatusDot,
   formatBytes,
@@ -160,6 +161,7 @@ export function TopBar(props: {
         </Button>
         <section className="studio-options-section" aria-label="应用安装">
           <AppUpdateButton className="studio-options-command" />
+          <AppUpdateInfo />
           <InstallControl app={currentPwa ?? pwaForApp(props.active) ?? pwaForApp("workspace")!} />
         </section>
         <section className="studio-options-section" aria-label="外观设置">
