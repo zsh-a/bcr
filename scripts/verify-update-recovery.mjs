@@ -16,6 +16,10 @@ assert(diagram, "Diagram must remain a lazy workspace");
 let version = 0;
 const unavailable = new Set();
 const htmlFallback = new Set();
+let slowAsset;
+let slowAssetStarted;
+let transientAsset;
+let transientAttempts = 0;
 const server = await startPwaServer({
   async respond(request, response, root) {
     const path = new URL(request.url, "http://localhost").pathname;
@@ -27,6 +31,14 @@ const server = await startPwaServer({
       response.writeHead(200, { "Content-Type": "text/html", "Cache-Control": "no-store" });
       response.end(await readFile(resolve(root, "index.html")));
       return true;
+    }
+    if (path === transientAsset && ++transientAttempts === 1) {
+      response.writeHead(503, { "Cache-Control": "no-store" }).end();
+      return true;
+    }
+    if (path === slowAsset) {
+      slowAssetStarted?.();
+      await new Promise((done) => setTimeout(done, 48_000));
     }
     if (path === "/sw.js") {
       response.writeHead(200, { "Content-Type": "text/javascript", "Cache-Control": "no-store" });
@@ -107,8 +119,22 @@ try {
     null,
   );
   htmlFallback.clear();
+  // A slow but healthy download must survive both the old 12s request abort
+  // and the old 45s UI deadline. A temporary 503 should retry automatically.
+  slowAsset = `/${css}`;
+  transientAsset = "/icons/reader-icon-192.svg";
+  const downloading = new Promise((done) => {
+    slowAssetStarted = done;
+  });
   await page.getByRole("button", { name: "重试检查更新", exact: true }).click();
+  await downloading;
+  await page.waitForTimeout(46_000);
+  assert.equal(await page.getByText("正在检查并准备更新…", { exact: true }).isVisible(), true);
+  assert.equal(await page.getByText("更新未完成", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "立即更新", exact: true }).waitFor();
+  assert.equal(transientAttempts, 2);
+  slowAsset = undefined;
+  transientAsset = undefined;
   await Promise.all([
     page.waitForEvent("load"),
     page.getByRole("button", { name: "立即更新", exact: true }).click(),
@@ -167,7 +193,7 @@ try {
   await first.locator(".diagram-app").waitFor();
   await fresh.close();
   console.log(
-    "Production update recovery PASSED: manual check, stale lazy import, retry, HTML rejection, retained notes, failed first install and offline status",
+    "Production update recovery PASSED: manual check, 48s download, transient retry, stale lazy import, HTML rejection, retained notes, failed first install and offline status",
   );
 } finally {
   await browser.close();

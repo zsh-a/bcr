@@ -3,7 +3,7 @@ const CACHE_PREFIX = "bcr-reader-shell-";
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_ID}`;
 const BUILD_MANIFEST = "/build-manifest.json";
 const NETWORK_TIMEOUT_MS = 2_000;
-const INSTALL_TIMEOUT_MS = 12_000;
+const INSTALL_TIMEOUT_MS = 60_000;
 const APP_SHELL = [
   "/",
   "/reader",
@@ -56,15 +56,41 @@ async function fetchWithTimeout(request, init = {}, timeoutMs = NETWORK_TIMEOUT_
   }
 }
 
-async function shellUrls() {
-  const response = await fetchWithTimeout(
-    BUILD_MANIFEST,
-    { cache: "no-store" },
-    INSTALL_TIMEOUT_MS,
-  );
-  if (!response.ok) throw new Error(`Reader build manifest returned ${response.status}`);
+// Keep this installer in sync across the three worker entries. The root worker
+// is classic, so sharing an ES module here would break existing registrations.
+async function installResource(url, init, consume) {
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), INSTALL_TIMEOUT_MS);
+    let retryable = true;
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal });
+      const fallbackHtml =
+        url.startsWith("/assets/") &&
+        (response.headers.get("content-type") ?? "").includes("text/html");
+      if (!response.ok || fallbackHtml) {
+        retryable =
+          !fallbackHtml &&
+          (response.status === 408 || response.status === 429 || response.status >= 500);
+        throw new Error(`Shell resource unavailable: ${url} (${response.status})`);
+      }
+      // Keep the deadline active until the body is parsed or written to cache,
+      // not just until fetch resolves with response headers.
+      return await consume(response);
+    } catch (reason) {
+      if (!retryable || attempt >= 2)
+        throw new Error(`Shell resource download failed: ${url}`, { cause: reason });
+    } finally {
+      clearTimeout(timeout);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)));
+  }
+}
 
-  const manifest = await response.json();
+async function shellUrls() {
+  const manifest = await installResource(BUILD_MANIFEST, { cache: "no-store" }, (response) =>
+    response.json(),
+  );
   const urls = new Set(APP_SHELL);
   urls.add(BUILD_MANIFEST);
   const visited = new Set();
@@ -77,23 +103,31 @@ async function shellUrls() {
 }
 
 async function stageShell() {
-  // A failed deployment or a transient network error must never expose a
-  // partially populated cache as the next application version.
+  // Publish only a complete shell. Limit active downloads so browser queues do
+  // not consume every request's deadline before it even reaches the network.
   await caches.delete(CACHE_NAME);
   const cache = await caches.open(CACHE_NAME);
   try {
     const urls = await shellUrls();
-    await Promise.all(
-      urls.map(async (url) => {
-        const response = await fetchWithTimeout(url, { cache: "reload" }, INSTALL_TIMEOUT_MS);
-        const fallbackHtml =
-          url.startsWith("/assets/") &&
-          (response.headers.get("content-type") ?? "").includes("text/html");
-        if (!response.ok || fallbackHtml)
-          throw new Error(`Reader shell asset unavailable: ${url} (${response.status})`);
-        await cache.put(new Request(url), response);
-      }),
-    );
+    let next = 0;
+    let failed = false;
+    const downloads = Array.from({ length: Math.min(6, urls.length) }, async () => {
+      while (!failed && next < urls.length) {
+        const url = urls[next++];
+        try {
+          await installResource(url, { cache: "reload" }, (response) =>
+            cache.put(new Request(url), response),
+          );
+        } catch (reason) {
+          failed = true;
+          throw reason;
+        }
+      }
+    });
+    // Let in-flight writes settle before deleting a failed staging cache.
+    const results = await Promise.allSettled(downloads);
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
   } catch (reason) {
     await caches.delete(CACHE_NAME);
     throw reason;
@@ -209,7 +243,11 @@ globalThis.addEventListener("fetch", (event) => {
     (async () => {
       const cached = await matchCached(request, url.pathname);
       if (cached !== undefined && !refreshAllowed()) return cached;
-      const network = fetchWithTimeout(request)
+      const network = fetchWithTimeout(
+        request,
+        {},
+        cached === undefined ? INSTALL_TIMEOUT_MS : NETWORK_TIMEOUT_MS,
+      )
         .then(async (response) => {
           // SPA 兜底会以 200 + text/html 应答缺失的 /assets/ 请求；把它当失败，
           // 绝不写进缓存——写进去就是永久的「Unable to preload CSS/JS」。

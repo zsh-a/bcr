@@ -2,12 +2,10 @@ import { configureAppUpdates, setAppUpdateState } from "@bcr/react";
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1_000;
 const CHECK_THROTTLE_MS = 60 * 1_000;
-const INSTALL_TIMEOUT_MS = 45_000;
 
 function installed(worker: ServiceWorker): Promise<void> {
   return new Promise((resolve, reject) => {
     const finish = (error?: Error) => {
-      clearTimeout(timeout);
       worker.removeEventListener("statechange", changed);
       if (error) reject(error);
       else resolve();
@@ -17,10 +15,8 @@ function installed(worker: ServiceWorker): Promise<void> {
       else if (worker.state === "redundant")
         finish(new Error("新版资源下载失败，请检查网络后重试。"));
     };
-    const timeout = setTimeout(
-      () => finish(new Error("新版资源下载超时，请重试检查更新。")),
-      INSTALL_TIMEOUT_MS,
-    );
+    // Each installer request has its own deadline and retries. A separate
+    // wall-clock limit here would misreport a healthy, slower batch as failed.
     worker.addEventListener("statechange", changed);
     changed();
   });
