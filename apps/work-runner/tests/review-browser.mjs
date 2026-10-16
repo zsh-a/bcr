@@ -156,7 +156,18 @@ try {
   });
   assert(sourceDiff.detail.before.includes(">1680") && sourceDiff.detail.after.includes(">1800"));
   const nextCapture = await produce(next.revision, "capture", { frames: [30] });
-  const video = await produce(next.revision, "video", { from: 15, to: 74, profile: "draft" });
+  const video = await produce(next.revision, "video", {
+    from: 15,
+    to: 74,
+    profile: "draft",
+    ...(process.env.BCR_ENGINE_TEST_CPU
+      ? {
+          encoder: "libaom-av1",
+          cpuReason: "Explicit acceptance run on a host without NVIDIA",
+          cq: 40,
+        }
+      : {}),
+  });
   const after = await call("review_edit", {
     id: "review-film",
     revision: before.revision,
