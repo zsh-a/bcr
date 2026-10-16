@@ -188,6 +188,12 @@ jobs:
       - name: Install Chromium
         run: node_modules/.bin/playwright install --with-deps chromium
 
+      - name: Install Runner media dependencies
+        if: matrix.group == 'workspace'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Download production Studio bundle
         if: matrix.group == 'reader'
         uses: actions/download-artifact@v4
@@ -220,6 +226,8 @@ jobs:
         run: BCR_KNOWLEDGE_PRODUCTION=1 node scripts/verify-knowledge.mjs
 
       - name: Run browser verification
+        env:
+          BCR_ENGINE_TEST_CPU: "1"
         run: node scripts/verify-ci.mjs --suite="$BCR_BROWSER_SUITE" --group="${{ matrix.group }}"
 
       - name: Verify standalone rendering dependencies and portable work archives

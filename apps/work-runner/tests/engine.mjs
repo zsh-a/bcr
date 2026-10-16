@@ -11,7 +11,7 @@ mkdirSync(root);
 process.env.BCR_WORK_ROOT = root;
 process.env.BCR_WORK_STATE = join(directory, "engine-state");
 process.env.BCR_WORK_CACHE = join(directory, "cache");
-process.env.BCR_WORK_BROWSER ??= "/usr/bin/chromium";
+process.env.BCR_WORK_BROWSER ??= chromium.executablePath();
 writeFileSync(
   join(root, "workspace.json"),
   JSON.stringify({
