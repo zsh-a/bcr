@@ -1,4 +1,5 @@
 import { validId } from "../session/model";
+import { normalizeFolderPath, pathKey } from "../notes/paths";
 
 /** 侧栏形态：展开（完整面板）/ 图标栏（56px）/ 全隐藏。 */
 export type SidebarForm = "expanded" | "rail" | "hidden";
@@ -9,6 +10,8 @@ export interface WorkbenchState {
   pinned: string[];
   recent: string[];
   favorites: string[];
+  /** 目录折叠状态独立于筛选视图，按规范化路径保存在本机。 */
+  collapsedFolders: string[];
   sidebar: SidebarForm;
   /** 拖拽调节后的侧栏宽度（px）；null 表示跟随 --w-sidebar 的流体默认。 */
   sidebarWidth: number | null;
@@ -28,6 +31,7 @@ export const emptyWorkbench = (): WorkbenchState => ({
   pinned: [],
   recent: [],
   favorites: [],
+  collapsedFolders: [],
   sidebar: "expanded",
   sidebarWidth: null,
   context: "hidden",
@@ -45,11 +49,21 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
     const contextForm: unknown = value.context;
     const contextWidth: unknown = value.contextWidth;
     const tabs = ids(value.tabs, MAX_TABS);
+    const collapsedFolders = Array.isArray(value.collapsedFolders)
+      ? value.collapsedFolders.flatMap((folder: unknown) => {
+          try {
+            return [pathKey(normalizeFolderPath(folder))];
+          } catch {
+            return [];
+          }
+        })
+      : [];
     return {
       tabs,
       pinned: ids(value.pinned, MAX_TABS).filter((id) => tabs.includes(id)),
       recent: ids(value.recent, 50),
       favorites: ids(value.favorites, 500),
+      collapsedFolders: [...new Set<string>(collapsedFolders)].slice(0, 2000),
       sidebar: form === "rail" || form === "hidden" ? form : "expanded",
       sidebarWidth:
         typeof width === "number" && Number.isFinite(width) ? clampSidebarWidth(width) : null,
@@ -62,6 +76,31 @@ export function decodeWorkbench(raw: string | null): WorkbenchState {
   } catch {
     return emptyWorkbench();
   }
+}
+export function setFolderExpanded(
+  state: WorkbenchState,
+  path: string,
+  expanded: boolean,
+): WorkbenchState {
+  const key = pathKey(path);
+  const collapsed = state.collapsedFolders.includes(key);
+  if (collapsed === !expanded) return state;
+  return {
+    ...state,
+    collapsedFolders: expanded
+      ? state.collapsedFolders.filter((folder) => folder !== key)
+      : [...state.collapsedFolders, key],
+  };
+}
+/** 新建内容时只展开目标目录及其祖先，保留其他分支的折叠状态。 */
+export function revealFolder(state: WorkbenchState, path: string): WorkbenchState {
+  const key = pathKey(path);
+  const collapsedFolders = state.collapsedFolders.filter(
+    (folder) => folder !== key && !key.startsWith(`${folder}/`),
+  );
+  return collapsedFolders.length === state.collapsedFolders.length
+    ? state
+    : { ...state, collapsedFolders };
 }
 /** 侧栏宽度夹到 [SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH] 的整像素值。 */
 export function clampSidebarWidth(value: number): number {

@@ -20,6 +20,7 @@ const folderRow = (name) =>
   nav()
     .locator(".knowledge-file-folder > summary")
     .filter({ hasText: new RegExp(`^${name}$`, "u") });
+const folderOpen = (name) => folderRow(name).evaluate((row) => row.parentElement.open);
 const menu = () => page.getByRole("menu", { name: "目录树操作" });
 const nameInput = () => page.getByLabel("目录名称", { exact: true });
 const summaries = () => nav().locator(".knowledge-file-folder > summary").allInnerTexts();
@@ -87,6 +88,7 @@ try {
   await folderRow("工作").click({ button: "right" });
   await menu().waitFor();
   assert.deepEqual(await menu().getByRole("menuitem").allTextContents(), [
+    "新建笔记",
     "新建子目录",
     "重命名目录",
     "移动到…",
@@ -161,9 +163,58 @@ try {
     `deleted folder returns its notes to the root: ${await notePaths().then(String)}`,
   );
 
+  // 筛选会卸载目录树，但手动收起的分支应在返回「全部」和刷新后保持原样。
+  await createFolder("外部/目标/子目录");
+  await createFolder("保持收起");
+  for (const name of ["子目录", "目标", "外部", "保持收起"]) await folderRow(name).click();
+  const views = page.getByRole("group", { name: "笔记范围", exact: true });
+  for (const view of ["收藏", "最近"]) {
+    await views.getByRole("button", { name: view, exact: true }).click();
+    await views.getByRole("button", { name: "全部", exact: true }).click();
+    assert.equal(await folderOpen("外部"), false);
+    assert.equal(await folderOpen("保持收起"), false);
+  }
+  const search = page.getByRole("searchbox", { name: "筛选笔记列表", exact: true });
+  await search.fill("Alpha");
+  await search.clear();
+  assert.equal(await folderOpen("外部"), false);
+  await page.reload({ waitUntil: "networkidle" });
+  await folderRow("外部").waitFor();
+  assert.equal(await folderOpen("外部"), false);
+  assert.equal(await folderOpen("保持收起"), false);
+
+  // 在收起的目录内创建笔记：直接落位、打开编辑，只展开目标路径。
+  for (const [name, path] of [
+    ["外部", "外部"],
+    ["目标", "外部/目标"],
+  ]) {
+    const old = page.url();
+    await folderRow(name).click({ button: "right" });
+    assert.equal(await folderOpen(name), false, "right-click does not expand the folder");
+    await menu().getByRole("menuitem", { name: "新建笔记", exact: true }).click();
+    await page.waitForURL((url) => url.href !== old);
+    await page.waitForFunction(
+      () => document.activeElement?.getAttribute("aria-label") === "笔记标题",
+    );
+    const id = new URL(page.url()).searchParams.get("note");
+    assert.ok((await notePaths()).includes(`${path}/${id}.md`));
+    assert.equal(await folderOpen(name), true);
+    assert.equal(await folderOpen("子目录"), false);
+    assert.equal(await folderOpen("保持收起"), false);
+    await title().fill(`${name}中新建的笔记`);
+    await body().fill("直接创建在指定目录。");
+    await saved();
+  }
+  await folderRow("目标").click();
+  await folderRow("目标").click({ button: "right" });
+  await createFolder("新增子目录", true);
+  assert.equal(await folderOpen("目标"), true);
+  assert.equal(await folderOpen("子目录"), false);
+  assert.equal(await folderOpen("保持收起"), false);
+
   assert.deepEqual(errors, []);
   console.log(
-    "knowledge tree PASSED: inline create/rename, context menus, note/folder drag & drop with undo, guarded folder delete",
+    "knowledge tree PASSED: folder-scoped notes, persistent collapse state, inline create/rename, context menus, drag & drop with undo, guarded folder delete",
   );
 } catch (error) {
   console.error(await page.locator("body").innerText());

@@ -36,6 +36,34 @@ describe("knowledge application operations", () => {
     await workspace.close();
   });
 
+  it("creates notes directly inside a folder and leaves no root note on invalid paths", async () => {
+    const data = new Map<string, string>();
+    const workspace = createWorkspaceServices({
+      get: async (key) => data.get(key),
+      set: async (key, value) => {
+        data.set(key, value);
+      },
+    });
+    const store = workspace.knowledge;
+    const actions = createKnowledgeActions(store, workspace.research, async () => {});
+    await store.saveCollection("work", "工作");
+    await store.saveFolder("工作/项目");
+    const a = await actions.create("work", "", "工作/项目");
+    const b = await actions.create("work", "", "工作/项目");
+    expect(a).not.toBe(b);
+    for (const id of [a, b])
+      expect(store.getSnapshot().notes[id]).toMatchObject({
+        title: "",
+        collectionId: "work",
+        path: `工作/项目/${id}.md`,
+      });
+    await expect(actions.create(null, "", "../outside")).rejects.toThrow("相对目录路径");
+    await expect(actions.create(null, "", `工作/项目/${a}.md`)).rejects.toThrow("路径冲突");
+    expect(Object.keys(store.getSnapshot().notes).sort()).toEqual([a, b].sort());
+    expect(store.getSnapshot().folders).toEqual(["工作/项目"]);
+    await workspace.close();
+  });
+
   it("retries a shared note without duplicating or overwriting later edits", async () => {
     const data = new Map<string, string>();
     const workspace = createWorkspaceServices({

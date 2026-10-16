@@ -5,6 +5,7 @@ import type { KnowledgeStore } from "../session/store";
 import { FILE_LIMIT, importMarkdown } from "../storage/files";
 import { writeKnowledgeBackup } from "../storage/backup";
 import { localDay } from "../editor/format";
+import { normalizeFolderPath, normalizeNotePath } from "./paths";
 
 /** Stable source IDs make repeated imports idempotent without merging the two domain models. */
 export function researchToKnowledge(library: ResearchLibrary) {
@@ -37,9 +38,10 @@ export function createKnowledgeActions(
   flush: () => Promise<void>,
 ) {
   return {
-    async create(collection: string | null, title = "") {
+    async create(collection: string | null, title = "", folder = "") {
       await flush();
       const note = newNote(title, collection);
+      if (folder) note.path = normalizeNotePath(`${normalizeFolderPath(folder)}/${note.id}.md`);
       await store.saveNote(note, null);
       return note.id;
     },

@@ -17,7 +17,13 @@ import {
   Star,
 } from "lucide-react";
 import { noteSearchHit } from "../search/retrieval";
-import { setSidebar, setSidebarWidth, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from "./workbench";
+import {
+  setFolderExpanded,
+  setSidebar,
+  setSidebarWidth,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+} from "./workbench";
 import { PanelResizer } from "./PanelResizer";
 import { NoteResults } from "./NoteResults";
 import { NoteFileTree } from "./NoteFileTree";
@@ -205,6 +211,10 @@ export function KnowledgeSidebar({ controller }: { controller: KnowledgeWorkbenc
             notes={filtered}
             activeId={note?.id}
             folders={state.folders}
+            collapsedFolders={workbench.state.collapsedFolders}
+            onToggleFolder={(path, expanded) =>
+              workbench.setState((current) => setFolderExpanded(current, path, expanded))
+            }
             editing={treeEdit}
             onSelect={(id) =>
               go(async () => {

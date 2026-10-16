@@ -27,6 +27,8 @@ import {
   setContextWidth,
   setSidebar,
   setSidebarWidth,
+  setFolderExpanded,
+  revealFolder,
 } from "../src/knowledge/workbench/workbench";
 import { fillTemplate, localDay } from "../src/knowledge/editor/format";
 import { createWorkspaceServices } from "../src/workspace";
@@ -162,6 +164,7 @@ describe("personal workspace", () => {
       pinned: ["a"],
       recent: [],
       favorites: ["b"],
+      collapsedFolders: [],
       sidebar: "expanded",
       sidebarWidth: null,
       context: "hidden",
@@ -227,6 +230,34 @@ describe("personal workspace", () => {
     const state = toggleFavorite(emptyWorkbench(), "note-2");
     expect(state.favorites).toEqual(["note-2"]);
     expect(toggleFavorite(state, "note-2").favorites).toEqual([]);
+  });
+  it("remembers collapsed folders and reveals only the destination's ancestors", () => {
+    let state = emptyWorkbench();
+    for (const folder of ["Work", "Work/Project", "Work/Project/Archive", "Other"])
+      state = setFolderExpanded(state, folder, false);
+    expect(setFolderExpanded(state, "WORK", false)).toBe(state);
+    const restored = decodeWorkbench(JSON.stringify({ version: 1, ...state }));
+    expect(restored.collapsedFolders).toEqual([
+      "work",
+      "work/project",
+      "work/project/archive",
+      "other",
+    ]);
+    const revealed = revealFolder(restored, "Work/Project");
+    expect(revealed.collapsedFolders).toEqual(["work/project/archive", "other"]);
+    expect(revealFolder(revealed, "Work/Project")).toBe(revealed);
+    expect(setFolderExpanded(revealed, "OTHER", true).collapsedFolders).toEqual([
+      "work/project/archive",
+    ]);
+    expect(
+      decodeWorkbench(
+        JSON.stringify({
+          version: 1,
+          tabs: ["note"],
+          collapsedFolders: [null, false, "", "../bad", "Work", "WORK", "工作/项目"],
+        }),
+      ),
+    ).toMatchObject({ tabs: ["note"], collapsedFolders: ["work", "工作/项目"] });
   });
   it("opens tabs only on explicit open; visits just record recent", () => {
     let state = emptyWorkbench();

@@ -77,6 +77,8 @@ export function NoteFileTree({
   notes,
   activeId,
   folders,
+  collapsedFolders,
+  onToggleFolder,
   editing,
   onSelect,
   onOpen,
@@ -89,6 +91,8 @@ export function NoteFileTree({
   notes: KnowledgeNote[];
   activeId?: string | undefined;
   folders?: readonly string[] | undefined;
+  collapsedFolders?: readonly string[] | undefined;
+  onToggleFolder?: ((path: string, expanded: boolean) => void) | undefined;
   editing?: { kind: "create" | "rename"; parent: string; path: string } | null | undefined;
   onSelect: (id: string) => void;
   onOpen?: ((id: string) => void) | undefined;
@@ -189,7 +193,14 @@ export function NoteFileTree({
                   onCancel={() => onEditCancel?.()}
                 />
               ) : (
-                <details open className="knowledge-file-folder">
+                <details
+                  open={!collapsedFolders?.includes(pathKey(folder.path))}
+                  className="knowledge-file-folder"
+                  onToggle={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    onToggleFolder?.(folder.path, event.currentTarget.open);
+                  }}
+                >
                   <summary
                     data-drop={drop === folder.path ? "true" : undefined}
                     {...dropProps({ kind: "folder", path: folder.path }, folder.path, folder.path)}

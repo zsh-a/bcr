@@ -43,7 +43,7 @@ import { searchKnowledge, noteSearchHit } from "../search/retrieval";
 import { EditorSessions } from "../editor/editorSessions";
 import { KnowledgeLinkIndex, resolveNoteLink, splitNoteTarget } from "../notes/markdownAnalysis";
 import { useWorkbench } from "./useWorkbench";
-import { openNote, setSidebar, toggleFavorite } from "./workbench";
+import { openNote, revealFolder, setSidebar, toggleFavorite } from "./workbench";
 import { knowledgePaletteActions } from "./knowledgePalette";
 import { type TreeDrag, type TreeTarget } from "./NoteFileTree";
 import { type TreeMenuItem } from "./TreeMenu";
@@ -320,6 +320,7 @@ export function useKnowledgeWorkbench() {
       if (edit.kind === "create") {
         const path = normalizeFolderPath(edit.parent ? `${edit.parent}/${name}` : name);
         await store.saveFolder(path);
+        workbench.setState((current) => revealFolder(current, path));
         showUndoToast(`已新建目录「${name}」`, () => {
           void run(() => store.removeFolders([path]));
         });
@@ -375,9 +376,18 @@ export function useKnowledgeWorkbench() {
       : target.kind === "folder"
         ? [
             {
+              label: "新建笔记",
+              icon: <Plus size={15} />,
+              disabled: busy,
+              run: () => void run(() => create("", target.path)),
+            },
+            {
               label: "新建子目录",
               icon: <FolderPlus size={15} />,
-              run: () => setTreeEdit({ kind: "create", parent: target.path, path: "" }),
+              run: () => {
+                workbench.setState((current) => revealFolder(current, target.path));
+                setTreeEdit({ kind: "create", parent: target.path, path: "" });
+              },
             },
             {
               label: "重命名目录",
@@ -453,10 +463,14 @@ export function useKnowledgeWorkbench() {
     () => createKnowledgeActions(store, workspaceServices(services).research, flushEditor),
     [store, services.metadata, flushEditor],
   );
-  const create = async (title = "") => {
-    await select(await actions.create(collection || null, title), true);
+  const create = async (title = "", folder = "") => {
+    await select(await actions.create(collection || null, title, folder), true);
+    if (folder) workbench.setState((current) => revealFolder(current, folder));
     setQuery("");
     setView("all");
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLInputElement>(".knowledge-title")?.focus(),
+    );
   };
   const openResult = (id: string, open = false) =>
     go(async () => {
