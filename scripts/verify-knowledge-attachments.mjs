@@ -208,8 +208,9 @@ try {
     .getByRole("button", { name: /拖放\.txt/u })
     .first()
     .waitFor();
+  await a.page.locator('.knowledge-prose img[alt="趋势图.png"]').scrollIntoViewIfNeeded();
   await a.page.waitForFunction(
-    () => document.querySelector('img[alt="趋势图.png"]')?.naturalWidth === 1440,
+    () => document.querySelector('.knowledge-prose img[alt="趋势图.png"]')?.naturalWidth === 1440,
   );
   assert(
     (await image.first().boundingBox()).height <= 40,
@@ -283,8 +284,11 @@ try {
     .getByRole("button", { name: "附件回归", exact: true })
     .click();
   await c.page.getByRole("button", { name: "阅读", exact: true }).click();
+  // The retained editor contains the same lazy image. Only the visible reading
+  // preview is required to decode; the hidden editor can legitimately stay unloaded.
+  await c.page.locator('.knowledge-prose img[alt="趋势图.png"]').scrollIntoViewIfNeeded();
   await c.page.waitForFunction(
-    () => document.querySelector('img[alt="趋势图.png"]')?.naturalWidth === 1440,
+    () => document.querySelector('.knowledge-prose img[alt="趋势图.png"]')?.naturalWidth === 1440,
   );
   await b.page.reload();
   await b.page.getByRole("button", { name: "阅读", exact: true }).click();
