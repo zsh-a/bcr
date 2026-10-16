@@ -14,7 +14,7 @@
     "build:wasm:agent": "wasm-pack build crates/agent-runtime/crates/agent-wasm --target web --out-dir ../../../agent-wasm/pkg",
     "check": "vp check && bun run typecheck && bun run --cwd packages/work-engine lint && bun run test:animation && bun run test:work && bun run --cwd packages/work-engine test:audio && bun run test:runner",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/agent-bridge/tsconfig.json --noEmit && tsc -p apps/work-runner/tsconfig.json --noEmit && bun run --cwd packages/work-engine typecheck && bun run --cwd packages/animation-core typecheck",
-    "test": "vp test run",
+    "test": "bun run --cwd packages/animation-core build && vp test run",
     "test:ci": "node --test scripts/tests/browser-suites.test.mjs",
     "test:browser": "node scripts/verify-ci.mjs",
     "test:browser:full": "node scripts/verify-ci.mjs --suite=full",

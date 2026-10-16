@@ -14,7 +14,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { assertMeasured, audio } from '../src/audio';
-import { type Content, readContent, writeDraft } from '../src/audio/content';
+import { type Content, readContent } from '../src/audio/content';
+import { writeDraft } from '../src/audio/draft';
 import {
   assets,
   atomicJSON,

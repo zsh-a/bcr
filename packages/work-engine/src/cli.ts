@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { audio, ensureAudio } from './audio';
-import { writeDraft } from './audio/content';
+import { writeDraft } from './audio/draft';
 import { transcript } from './audio/transcript';
 import { parseCli } from './cli/args';
 import { check, doctor } from './cli/diagnostics';
