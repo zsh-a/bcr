@@ -3,6 +3,7 @@ import { currentPwa } from "../pwa/routing";
 import { pwaForApp } from "../pwa/apps";
 import {
   Button,
+  AppUpdateButton,
   IconButton,
   StatusDot,
   formatBytes,
@@ -158,6 +159,7 @@ export function TopBar(props: {
           {props.active !== "knowledge" && <kbd>{modifier}K</kbd>}
         </Button>
         <section className="studio-options-section" aria-label="应用安装">
+          <AppUpdateButton className="studio-options-command" />
           <InstallControl app={currentPwa ?? pwaForApp(props.active) ?? pwaForApp("workspace")!} />
         </section>
         <section className="studio-options-section" aria-label="外观设置">

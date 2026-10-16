@@ -20,9 +20,12 @@ globalThis.addEventListener("fetch", (event) => {
       );
       for (const name of names) {
         const cached = await (await caches.open(name)).match(request);
-        if (cached) return cached;
+        if (cached && !(cached.headers.get("content-type") ?? "").includes("text/html"))
+          return cached;
       }
       const response = await fetch(request);
+      if ((response.headers.get("content-type") ?? "").includes("text/html"))
+        return Response.error();
       if (response.ok)
         await (await caches.open(CACHE)).put(request, response.clone()).catch(() => undefined);
       return response;

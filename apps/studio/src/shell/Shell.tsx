@@ -22,6 +22,7 @@ import { createRuntimeServices, createShellRuntime } from "../runtime";
 import { SearchBridge } from "../search-bridge";
 import { appIdFromPath, LAUNCH_PAD_APPS, MANIFESTS } from "./registry";
 import { Home } from "./Home";
+import { WorkspaceErrorBoundary } from "./WorkspaceErrorBoundary";
 import { ResearchCaptureBridge } from "../research/CaptureBridge";
 import { PLUGINS } from "./registry";
 import { workspaceSearchPlugin } from "../assistant/workspace-search-plugin";
@@ -229,17 +230,19 @@ function ShellContent() {
               key={app.id}
               className={app.id === active ? "relative isolate h-full min-h-0" : "hidden"}
             >
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center">
-                    <p className="font-mono text-xs text-faint">{app.title} 加载中…</p>
-                  </div>
-                }
-              >
-                <RuntimeActivity active={app.id === active}>
-                  <app.component />
-                </RuntimeActivity>
-              </Suspense>
+              <WorkspaceErrorBoundary title={app.title}>
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center">
+                      <p className="font-mono text-xs text-faint">{app.title} 加载中…</p>
+                    </div>
+                  }
+                >
+                  <RuntimeActivity active={app.id === active}>
+                    <app.component />
+                  </RuntimeActivity>
+                </Suspense>
+              </WorkspaceErrorBoundary>
             </div>
           ))}
         </WorkspaceNavigation>

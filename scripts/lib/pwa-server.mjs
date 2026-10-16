@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { resolve, extname, sep } from "node:path";
 
-export async function startPwaServer() {
+export async function startPwaServer({ respond } = {}) {
   const root = resolve("apps/studio/dist");
   const types = {
     ".html": "text/html",
@@ -24,6 +24,7 @@ export async function startPwaServer() {
       return;
     }
     try {
+      if (await respond?.(request, response, root)) return;
       const url = new URL(request.url, "http://localhost");
       let file = resolve(root, `.${decodeURIComponent(url.pathname)}`);
       if (file !== root && !file.startsWith(root + sep)) {

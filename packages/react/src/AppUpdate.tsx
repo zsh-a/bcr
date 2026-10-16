@@ -8,10 +8,15 @@ import {
   type ReactNode,
 } from "react";
 import { createUpdateCoordinator, type UpdateParticipant } from "./updateCoordinator";
+import {
+  applyAppUpdate,
+  checkForAppUpdate,
+  setAppUpdateState,
+  useAppUpdateState,
+} from "./appUpdateState";
 import "./app-update.css";
 
 const UpdateContext = createContext<ReturnType<typeof createUpdateCoordinator> | null>(null);
-type UpdateWindow = Window & { __bcrUpdateReady?: boolean };
 
 export function useUpdateParticipant(participant: UpdateParticipant): void {
   const coordinator = useContext(UpdateContext);
@@ -31,28 +36,25 @@ export function useUpdateParticipant(participant: UpdateParticipant): void {
 
 export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const [coordinator] = useState(createUpdateCoordinator);
-  const [ready, setReady] = useState(
-    () => typeof window !== "undefined" && (window as UpdateWindow).__bcrUpdateReady === true,
-  );
+  const update = useAppUpdateState();
   const [collapsed, setCollapsed] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    const announce = () => {
-      setReady(true);
-      setCollapsed(false);
-      setError("");
-    };
+    const announce = () => setAppUpdateState({ phase: "ready" });
     window.addEventListener("bcr-update-ready", announce);
-    if ((window as UpdateWindow).__bcrUpdateReady) announce();
     return () => window.removeEventListener("bcr-update-ready", announce);
   }, []);
+  useEffect(() => {
+    setCollapsed(false);
+    setError("");
+  }, [update]);
   const apply = async () => {
     if (applying) return;
     setApplying(true);
     setError("");
     try {
-      await coordinator.apply(() => window.dispatchEvent(new Event("bcr-apply-update")));
+      await coordinator.apply(applyAppUpdate);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
       setApplying(false);
@@ -63,7 +65,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       <div className="bcr-update-content" inert={applying}>
         {children}
       </div>
-      {ready && (
+      {update.phase !== "idle" && update.phase !== "unavailable" && (
         <aside
           className={`bcr-update-notice${collapsed ? " is-collapsed" : ""}`}
           aria-label="应用更新"
@@ -74,13 +76,32 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
               className="ui-btn ui-btn-ghost"
               onClick={() => setCollapsed(false)}
             >
-              新版本可用 ↗
+              {update.phase === "ready" ? "新版本可用 ↗" : "查看更新状态 ↗"}
             </button>
           ) : (
             <>
               <div role="status">
-                <strong>新版本已准备好</strong>
-                <p>保存当前工作后刷新，继续使用新版本。</p>
+                <strong>
+                  {update.phase === "ready"
+                    ? "新版本已准备好"
+                    : update.phase === "checking"
+                      ? "正在检查并准备更新…"
+                      : update.phase === "current"
+                        ? "当前已是最新版本"
+                        : update.phase === "reload"
+                          ? "页面资源需要重新加载"
+                          : "更新未完成"}
+                </strong>
+                <p>
+                  {update.message ??
+                    (update.phase === "ready" || update.phase === "reload"
+                      ? "保存当前工作后刷新，继续使用。"
+                      : update.phase === "checking"
+                        ? "下载完成后即可更新，当前工作会保留。"
+                        : update.phase === "current"
+                          ? "已完成在线检查。"
+                          : "请联网后重试。")}
+                </p>
               </div>
               {error && <p role="alert">{error}</p>}
               <div className="bcr-update-actions">
@@ -95,10 +116,24 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
                 <button
                   className="ui-btn ui-btn-primary"
                   type="button"
-                  disabled={applying}
-                  onClick={() => void apply()}
+                  disabled={applying || update.phase === "checking"}
+                  onClick={() => {
+                    if (update.phase === "current") setAppUpdateState({ phase: "idle" });
+                    else if (update.phase === "error") checkForAppUpdate();
+                    else void apply();
+                  }}
                 >
-                  {applying ? "正在保存并更新…" : "立即更新"}
+                  {applying
+                    ? "正在保存并更新…"
+                    : update.phase === "ready"
+                      ? "立即更新"
+                      : update.phase === "reload"
+                        ? "保存并重新加载"
+                        : update.phase === "current"
+                          ? "关闭"
+                          : update.phase === "error"
+                            ? "重试检查更新"
+                            : "正在准备…"}
                 </button>
               </div>
             </>

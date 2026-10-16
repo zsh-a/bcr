@@ -37,9 +37,8 @@ import { KnowledgeApp } from "./workbench/KnowledgeApp";
  *
  * 与宿主 Studio 共享同源的 OPFS / localStorage，因此嵌入版与独立版读写同一
  * 份笔记；差别只在组合根——这里不挂 Shell / 命令面板 / 助手，只保留
- * KnowledgeApp 依赖的最小 Provider 链。SW 更新协议与 Reader 完全一致
- * （__bcrUpdateReady / bcr-update-ready / bcr-apply-update），AppUpdateProvider
- * 原样复用。
+ * KnowledgeApp 依赖的最小 Provider 链。SW 更新协议与 Reader 完全一致，
+ * 通过共享更新状态与 AppUpdateProvider 协调保存和重载。
  *
  * KnowledgeApp 内部把选择硬编码导航到 `/knowledge`，路由树必须保留这个
  * path（与宿主嵌入路由共用 host-manifests 的 KNOWLEDGE_PATH 常量）；

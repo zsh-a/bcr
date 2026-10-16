@@ -126,7 +126,11 @@ async function stageShell() {
     await Promise.all(
       urls.map(async (url) => {
         const response = await fetchWithTimeout(url, { cache: "reload" }, INSTALL_TIMEOUT_MS);
-        if (!response.ok) throw new Error(`App shell asset returned ${response.status}: ${url}`);
+        const fallbackHtml =
+          url.startsWith("/assets/") &&
+          (response.headers.get("content-type") ?? "").includes("text/html");
+        if (!response.ok || fallbackHtml)
+          throw new Error(`App shell asset unavailable: ${url} (${response.status})`);
         await cache.put(new Request(url), response);
       }),
     );
@@ -240,7 +244,8 @@ globalThis.addEventListener("fetch", (event) => {
           // 绝不写进缓存——写进去就是永久的「Unable to preload CSS/JS」。
           const type = response.headers.get("content-type") ?? "";
           const fallbackHtml = url.pathname.startsWith("/assets/") && type.includes("text/html");
-          if (response.ok && !fallbackHtml) {
+          if (fallbackHtml) return cached ?? Response.error();
+          if (response.ok) {
             const cache = await caches.open(CACHE_NAME);
             await cache.put(request, response.clone());
           }

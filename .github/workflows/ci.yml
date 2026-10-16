@@ -205,6 +205,10 @@ jobs:
         if: matrix.group == 'reader'
         run: bun run test:pwa
 
+      - name: Verify production update recovery
+        if: matrix.group == 'reader'
+        run: node scripts/verify-update-recovery.mjs
+
       - name: Verify independent PWA installation and offline starts
         if: matrix.group == 'reader' && github.event_name == 'workflow_dispatch' && inputs.full
         run: bun run test:pwa:apps

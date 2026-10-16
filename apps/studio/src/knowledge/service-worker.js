@@ -89,7 +89,11 @@ async function stageShell() {
     await Promise.all(
       urls.map(async (url) => {
         const response = await fetchWithTimeout(url, { cache: "reload" }, INSTALL_TIMEOUT_MS);
-        if (!response.ok) throw new Error(`Notes shell asset returned ${response.status}: ${url}`);
+        const fallbackHtml =
+          url.startsWith("/assets/") &&
+          (response.headers.get("content-type") ?? "").includes("text/html");
+        if (!response.ok || fallbackHtml)
+          throw new Error(`Notes shell asset unavailable: ${url} (${response.status})`);
         await cache.put(new Request(url), response);
       }),
     );
@@ -200,6 +204,11 @@ globalThis.addEventListener("fetch", (event) => {
       if (cached !== undefined && !refreshAllowed()) return cached;
       const network = fetchWithTimeout(request)
         .then(async (response) => {
+          if (
+            url.pathname.startsWith("/assets/") &&
+            (response.headers.get("content-type") ?? "").includes("text/html")
+          )
+            return cached ?? Response.error();
           if (response.ok) {
             const cache = await caches.open(CACHE_NAME);
             await cache.put(request, response.clone());
