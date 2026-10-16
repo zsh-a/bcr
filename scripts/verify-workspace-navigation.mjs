@@ -100,14 +100,10 @@ try {
   await page.getByRole("dialog", { name: "全局搜索", exact: true }).waitFor();
   await page.mouse.move(400, 500);
   await page.waitForTimeout(800);
-  assert(await surface().isVisible());
+  assert.equal(await surface().isVisible(), false);
   await page.keyboard.press("Escape");
-  assert(
-    await page
-      .getByRole("button", { name: "打开全局搜索", exact: true })
-      .evaluate((el) => el === document.activeElement),
-  );
-  await close();
+  await focused("展开工作区导航");
+  assert.equal(await surface().isVisible(), false, "search returns to the unobstructed app");
 
   // A completed app session survives navigation; the shell never remounts the app.
   await run.click();

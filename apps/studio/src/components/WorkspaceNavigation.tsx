@@ -51,6 +51,16 @@ export function WorkspaceNavigation(
         surface.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true }),
       );
   };
+  const openSurface = (action: (() => void) | undefined) => {
+    if (!action) return;
+    if (floating) {
+      close();
+      // Dialogs capture their opener on mount. Return focus to the visible app
+      // trigger so dismissing search never leaves the launcher covering content.
+      (trigger.current ?? availableTrigger())?.focus({ preventScroll: true });
+    }
+    action();
+  };
   const scheduleHide = () => {
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
@@ -131,7 +141,16 @@ export function WorkspaceNavigation(
             onFocusCapture={() => clearTimeout(hideTimer.current)}
             onBlurCapture={scheduleHide}
           >
-            <TopBar {...props} onCollapse={floating ? () => close(true) : undefined} />
+            <TopBar
+              {...props}
+              onOpenSearch={() => openSurface(props.onOpenSearch)}
+              onOpenPalette={() => openSurface(props.onOpenPalette)}
+              onOpenAgent={() => openSurface(props.onOpenAgent)}
+              onOpenExternalAgent={
+                props.onOpenExternalAgent ? () => openSurface(props.onOpenExternalAgent) : undefined
+              }
+              onCollapse={floating ? () => close(true) : undefined}
+            />
             {floating && (
               <WorkspaceSwitcher
                 active={props.active}
