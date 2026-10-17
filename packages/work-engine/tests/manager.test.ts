@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { assertMeasured, audio } from '../src/audio';
 import { type Content, readContent } from '../src/audio/content';
 import { writeDraft } from '../src/audio/draft';
+import { workContext } from '../src/cli/context';
 import {
   assets,
   atomicJSON,
@@ -143,6 +144,10 @@ test('init creates registered drafts with separate content, targets and shared p
   expect(existsSync(join(result.path, 'public/audio/reference.wav'))).toBe(false);
   expect(existsSync(join(result.path, '.bcr/audio-env'))).toBe(false);
   expect(existsSync(join(result.path, 'docs/platform-description.md'))).toBe(true);
+  const handoff = workContext(current, 'resume');
+  expect(handoff.status.exists).toBe(true);
+  expect(handoff.status.truncated).toBe(false);
+  expect(handoff.reads.required.every((entry) => entry.exists)).toBe(true);
   const pkg = json<{ dependencies: Record<string, string>; scripts: Record<string, string> }>(
     join(result.path, 'package.json'),
   );
