@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { audioCppInputFiles, audioCppSettings } from './audio/audiocpp';
 import type { VoiceSettings } from './audio/content';
 import { contentHash, readContent } from './audio/content';
+import { dramaSettings } from './audio/drama';
 import { AUDIO, audioEnvironmentPath, ensureAudio } from './audio/environment';
 import { requireVoice } from './audio/standard';
 import { type AudioTimeline, type AudioTrack, isAudioTrack } from './audio/types';
@@ -118,6 +119,7 @@ function inputs(p: Project, stage: Stage) {
           'src/audio/audiocpp.ts',
           'src/audio/recorded.ts',
           'src/audio/align.ts',
+          'src/audio/drama.ts',
         ].map((file) => join(TOOLS, file))
       : sourceGraph(TOOLS, 'src/audio.ts');
   toolFiles.push(join(AUDIO, 'uv.lock'));
@@ -143,10 +145,15 @@ function inputs(p: Project, stage: Stage) {
       env: cfg.env,
       work,
       native: ['voiceover', 'align'].includes(stage)
-        ? audioCppSettings(json<VoiceSettings>(inside(p.root, cfg.voice!)), stage === 'align')
+        ? nativeIdentity(json<VoiceSettings>(inside(p.root, cfg.voice!)), stage === 'align')
         : undefined,
     }),
   );
+}
+function nativeIdentity(voice: VoiceSettings, alignment: boolean) {
+  return voice.backend === 'drama-rs' && !alignment
+    ? dramaSettings(voice)
+    : audioCppSettings(voice, alignment);
 }
 function outputs(p: Project, stage: Stage): string[] {
   const cfg = p.config.audio!;
@@ -237,6 +244,7 @@ export async function audio(p: Project, checkOnly = false, force = false) {
             ];
       console.log(`${p.id} audio:${stage}`);
       if (stage === 'voiceover' || stage === 'align') {
+        // Both TTS backends share the GPU; one lock keeps their models from loading together.
         await locked('shared-audio-cpp', () => command(cmd, p.root, audioEnv(p)));
       } else {
         await command(cmd, p.root, audioEnv(p));

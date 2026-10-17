@@ -29,7 +29,7 @@ Biome 2.5.15 与 Ruff 0.16.10 均锁定版本。采用两空格 TS/JSON、四空
 
 `bun run check` 执行 Biome/Ruff、TypeScript、管理工具行为测试和 Python 音频链路测试。音频测试使用明确标记的合成波形，不调用 TTS 或对齐模型，不作为真实口播的听感或强制对齐质量证据。工具修改后还应捕获真实画面或导出短片，检查文件、缓存与私有素材策略。
 
-标准音频工程统一通过 audio.cpp 原生 `/v1/tasks/run` 完成 TTS 和强制对齐。未使用标准驱动的历史原型继续执行各期脚本。采样点拼接、响度校准与验收仍由 FFmpeg 和共享 Python 工具执行，标准链路不再加载 Python TTS 或对齐模型。新模板默认禁用配乐。原始语音、强制对齐与历史交付不是可清理缓存。
+标准音频工程通过 audio.cpp 原生 `/v1/tasks/run` 完成强制对齐，TTS 使用 audio.cpp 或 drama-rs。未使用标准驱动的历史原型继续执行各期脚本。采样点拼接、响度校准与验收仍由 FFmpeg 和共享 Python 工具执行，标准链路不再加载 Python TTS 或对齐模型。新模板默认禁用配乐。原始语音、强制对齐与历史交付不是可清理缓存。
 
 ## audio.cpp 原生服务
 
@@ -59,6 +59,24 @@ Work 的 `voice.json` 指定 `backend: "audio.cpp"` 和服务中的模型 ID。�
 
 缓存身份包括实际正文、带标签的生成文本、参考声音与情绪参考哈希、模型身份、原生运行版本和生成设置。原始 WAV 与 `.generation.json` 一起保存；对齐会验证完整文本覆盖，把原生采样点换成既有秒级时间戳格式。更换对齐版本时，先保留历史记录，再原子写入新对齐。音频来源改变后仍需重新拼接与验收，不能沿用旧时序。
 
+## drama-rs 生成
+
+`voice.json` 指定 `backend: "drama-rs"` 时，配音阶段在本机空闲端口启动 `drama serve`，登记 `referenceFile` 与 `referenceTranscript` 后逐个语义段落整段生成（`split: false`），全部段落完成或失败即停止服务；对齐、拼接与母带仍走上面的 audio.cpp 与共享工具。运行程序和模型目录写在 `~/.config/bcr/drama-rs.json`（或 `DRAMA_RS_PROFILE`），字段为 `runtime`、`model`，可选 `experts`（默认 `q4`）与 `maxLength`。缓存身份含二进制哈希、模型文件清单统计、风格标签与生成参数，不含本机路径。
+
+```json
+{
+  "backend": "drama-rs",
+  "model": "Drama-3-Q4",
+  "generation": {
+    "styleTag": "[conversational, relaxed and engaged]",
+    "options": { "seed": 42, "temperature": 1.0, "top_k": 30, "top_p": 0.9, "max_new": 2560 },
+    "paragraphs": { "conclusion": { "text": "我们要看的是这<emphasis>一整片面积</emphasis>。" } }
+  }
+}
+```
+
+`styleTag` 加在每段之前；`paragraphs.ID.text` 只能添加 `[...]`、`<emphasis>` 或 `<slow>` 标记，去掉标记后必须与 `content.json` 段落文字相同。Drama 权重约 21 GB，与 audio.cpp 共用 GPU；配音与对齐阶段共用同一把锁，且服务在对齐前退出。
+
 Fish 官方检查点的原生转换可使用 `audio/scripts/prepare-fish-audiocpp.py --source CHECKPOINT --output NATIVE_DIR`，保持原始精度并折叠 codec 的 weight normalization。先运行 `bcr-work env --models`，再使用 `audio/.venv-models/bin/python` 执行转换。Index 使用 audio.cpp 自带的 `convert_index_tts2_5.py --native-dir` 转换工具；服务运行时直接由原生二进制推理。
 
 Python 使用同一份 `audio/uv.lock`，按用途安装到独立环境：
@@ -68,7 +86,7 @@ Python 使用同一份 `audio/uv.lock`，按用途安装到独立环境：
 | `bcr-work env` | `audio/.venv` | NumPy、SoundFile，拼接、母带与音频验收 |
 | `bcr-work env --models` | `audio/.venv-models` | Torch、Safetensors，离线模型转换 |
 
-所有作品的生成与对齐统一使用 audio.cpp，只同步日常环境。`audio.driver=scripted` 为含多版本与定制配乐的工程保留拼接、配乐、母带及验收脚本，`voiceover.ts` 仅向共享 `generateNarration` 提供本期段落与节目顺序。已确认的原始录音通过 `voice.generation.recordedSource` 校验并直接复用，改稿只生成受影响段落。`env` 返回实际 Python 路径，不在作品内创建环境链接。锁定依赖中的重模型包不等于日常环境已安装或加载它们。
+对齐统一使用 audio.cpp，生成按 `voice.json` 的 backend 选择，只同步日常环境。`audio.driver=scripted` 为含多版本与定制配乐的工程保留拼接、配乐、母带及验收脚本，`voiceover.ts` 仅向共享 `generateNarration` 提供本期段落与节目顺序。已确认的原始录音通过 `voice.generation.recordedSource` 校验并直接复用，改稿只生成受影响段落。`env` 返回实际 Python 路径，不在作品内创建环境链接。锁定依赖中的重模型包不等于日常环境已安装或加载它们。
 
 ## 环境与存储
 

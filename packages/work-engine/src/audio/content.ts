@@ -23,10 +23,10 @@ export interface Content {
 
 export interface VoiceSettings {
   referenceFile?: string;
-  backend: 'audio.cpp';
+  backend: 'audio.cpp' | 'drama-rs';
   referenceTranscript: string;
   language: string;
-  endpoint: string;
+  endpoint?: string;
   model: string;
   modelRevision?: string;
   runtimeRevision?: string;
@@ -39,6 +39,8 @@ export interface VoiceSettings {
     };
     options?: Record<string, string | number | boolean | number[]>;
     emotionReference?: string;
+    /** drama-rs delivery tag prefixed to each paragraph without its own tag. */
+    styleTag?: string;
     paragraphs?: Record<
       string,
       {

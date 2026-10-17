@@ -49,9 +49,10 @@ export function audioCppSettings(voice: VoiceSettings, alignment = false) {
   if (!modelRevision || !runtimeRevision) {
     throw new Error(`请在 ${profilePath} 配置 audio.cpp 的运行版本和模型身份: ${model}`);
   }
+  // A drama-rs voice generates locally but still aligns on audio.cpp.
   const endpoint = (
     process.env.AUDIO_CPP_ENDPOINT ??
-    voice.endpoint ??
+    (voice.backend === 'audio.cpp' ? voice.endpoint : undefined) ??
     profile?.endpoint ??
     'http://127.0.0.1:8089'
   ).replace(/\/$/, '');

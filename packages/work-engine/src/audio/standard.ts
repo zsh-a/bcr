@@ -6,6 +6,7 @@ import type { Config, Project, Work } from '../project';
 import { nativeAlignment } from './align';
 import { audioCppSettings, nativeWav, paragraphRequest, runNativeTask } from './audiocpp';
 import { contentHash, readContent, type VoiceSettings } from './content';
+import { dramaRequest, dramaSettings, startDrama } from './drama';
 import { recordedSource } from './recorded';
 
 interface MeasuredTrack {
@@ -70,146 +71,167 @@ export async function generateNarration(p: Project, program: NarrationProgram) {
   const reference = inside(p.root, voice.referenceFile ?? 'public/audio/reference.wav');
   const cache = inside(p.root, cfg.directory ?? '.bcr/narration');
   mkdirSync(cache, { recursive: true });
+  const drama = voice.backend === 'drama-rs';
   const settings = {
-    ...audioCppSettings(voice),
+    ...(drama ? dramaSettings(voice) : audioCppSettings(voice)),
     language: voice.language,
     referenceTranscript: voice.referenceTranscript,
     referenceHash: hashFile(reference),
   };
   const groups = [];
   const recorded = recordedSource(p.root, voice);
-  for (const paragraph of program.groups) {
-    const text = paragraph.lines.map((line) => line.text).join('');
-    const { request, emotionHash } = paragraphRequest(p.root, voice, paragraph.id, text);
-    let source = recorded?.groups.find((group) => group.id === paragraph.id);
-    if (recorded && (!source || source.text !== text || request.text !== text || emotionHash)) {
-      if (recorded.onTextChange === 'generate') {
-        source = undefined;
-      } else {
-        throw new Error(`已录旁白与当前完整语义段落不一致: ${paragraph.id}`);
-      }
-    }
-    const derivation =
-      source && recorded
-        ? {
-            planSha256: recorded.sha256,
-            originalTtsHash: source.hash,
-            sourceSha256: source.sourceSha256,
-            source: source.raw,
-            tempo: recorded.tempo,
-            filter: `atempo=${recorded.tempo}`,
-          }
-        : undefined;
-    const generation = { text: request.text, options: request.options, emotionHash, derivation };
-    const computation = {
-      ...generation,
-      derivation: derivation
-        ? {
-            sourceSha256: derivation.sourceSha256,
-            tempo: derivation.tempo,
-            filter: derivation.filter,
-          }
-        : undefined,
-    };
-    const preserved = recorded?.tempo === 1 ? source : undefined;
-    const hash = preserved
-      ? basename(preserved.raw, '.wav')
-      : sha(stable({ text, settings, generation: computation }));
-    const raw = preserved ? preserved.raw : join(cache, `${hash}.wav`);
-    const provenance = join(cache, `${hash}.generation.json`);
-    if (!existsSync(raw)) {
-      const temporary = `${raw}.tmp`;
-      try {
-        let nativeTiming: { wall_ms?: number } | undefined;
-        if (source && derivation) {
-          console.log(`Reuse original voice, tempo ${derivation.tempo}: ${paragraph.id}`);
-          await command(
-            [
-              'ffmpeg',
-              '-v',
-              'error',
-              '-nostdin',
-              '-y',
-              '-i',
-              source.raw,
-              '-af',
-              derivation.filter,
-              '-ar',
-              '48000',
-              '-ac',
-              '1',
-              '-c:a',
-              'pcm_s16le',
-              '-f',
-              'wav',
-              temporary,
-            ],
-            p.root,
-            {},
-            true,
-          );
+  let session: Awaited<ReturnType<typeof startDrama>> | undefined;
+  try {
+    for (const paragraph of program.groups) {
+      const text = paragraph.lines.map((line) => line.text).join('');
+      const { request, emotionHash } = drama
+        ? { request: dramaRequest(voice, paragraph.id, text), emotionHash: undefined }
+        : paragraphRequest(p.root, voice, paragraph.id, text);
+      let source = recorded?.groups.find((group) => group.id === paragraph.id);
+      if (recorded && (!source || source.text !== text || request.text !== text || emotionHash)) {
+        if (recorded.onTextChange === 'generate') {
+          source = undefined;
         } else {
-          console.log(`audio.cpp ${settings.model}: ${paragraph.id}`);
-          const result = await runNativeTask(settings, request);
-          nativeTiming = result.timing;
-          writeFileSync(temporary, nativeWav(result));
+          throw new Error(`已录旁白与当前完整语义段落不一致: ${paragraph.id}`);
         }
-        const duration = Number(
-          await command(
-            [
-              'ffprobe',
-              '-v',
-              'error',
-              '-show_entries',
-              'format=duration',
-              '-of',
-              'default=nw=1:nk=1',
-              temporary,
-            ],
-            p.root,
-            {},
-            true,
-          ),
-        );
-        if (!Number.isFinite(duration) || duration <= 0) {
-          throw new Error(`TTS 音频无效: ${paragraph.id}`);
+      }
+      const derivation =
+        source && recorded
+          ? {
+              planSha256: recorded.sha256,
+              originalTtsHash: source.hash,
+              sourceSha256: source.sourceSha256,
+              source: source.raw,
+              tempo: recorded.tempo,
+              filter: `atempo=${recorded.tempo}`,
+            }
+          : undefined;
+      const generation = { text: request.text, options: request.options, emotionHash, derivation };
+      const computation = {
+        ...generation,
+        derivation: derivation
+          ? {
+              sourceSha256: derivation.sourceSha256,
+              tempo: derivation.tempo,
+              filter: derivation.filter,
+            }
+          : undefined,
+      };
+      const preserved = recorded?.tempo === 1 ? source : undefined;
+      const hash = preserved
+        ? basename(preserved.raw, '.wav')
+        : sha(stable({ text, settings, generation: computation }));
+      const raw = preserved ? preserved.raw : join(cache, `${hash}.wav`);
+      const provenance = join(cache, `${hash}.generation.json`);
+      if (!existsSync(raw)) {
+        const temporary = `${raw}.tmp`;
+        try {
+          let nativeTiming: { wall_ms?: number } | undefined;
+          if (source && derivation) {
+            console.log(`Reuse original voice, tempo ${derivation.tempo}: ${paragraph.id}`);
+            await command(
+              [
+                'ffmpeg',
+                '-v',
+                'error',
+                '-nostdin',
+                '-y',
+                '-i',
+                source.raw,
+                '-af',
+                derivation.filter,
+                '-ar',
+                '48000',
+                '-ac',
+                '1',
+                '-c:a',
+                'pcm_s16le',
+                '-f',
+                'wav',
+                temporary,
+              ],
+              p.root,
+              {},
+              true,
+            );
+          } else if (drama) {
+            console.log(`drama-rs ${settings.model}: ${paragraph.id}`);
+            session ??= await startDrama(
+              reference,
+              voice.referenceTranscript,
+              join(cache, 'drama-server.log'),
+            );
+            const started = performance.now();
+            writeFileSync(temporary, await session.speak(request));
+            nativeTiming = { wall_ms: performance.now() - started };
+          } else {
+            console.log(`audio.cpp ${settings.model}: ${paragraph.id}`);
+            const result = await runNativeTask(
+              settings as ReturnType<typeof audioCppSettings>,
+              request as Parameters<typeof runNativeTask>[1],
+            );
+            nativeTiming = result.timing;
+            writeFileSync(temporary, nativeWav(result));
+          }
+          const duration = Number(
+            await command(
+              [
+                'ffprobe',
+                '-v',
+                'error',
+                '-show_entries',
+                'format=duration',
+                '-of',
+                'default=nw=1:nk=1',
+                temporary,
+              ],
+              p.root,
+              {},
+              true,
+            ),
+          );
+          if (!Number.isFinite(duration) || duration <= 0) {
+            throw new Error(`TTS 音频无效: ${paragraph.id}`);
+          }
+          atomicJSON(provenance, {
+            backend: derivation ? 'recording-derivative' : settings.backend,
+            settings,
+            generation,
+            request: derivation ? undefined : request,
+            rawSha256: hashFile(temporary),
+            durationSeconds: duration,
+            nativeTiming,
+          });
+          renameSync(temporary, raw);
+        } finally {
+          rmSync(temporary, { force: true });
         }
+      }
+      if (preserved && !existsSync(provenance)) {
         atomicJSON(provenance, {
-          backend: derivation ? 'recording-derivative' : 'audio.cpp',
+          backend: 'recording',
           settings,
           generation,
-          request: derivation ? undefined : request,
-          rawSha256: hashFile(temporary),
-          durationSeconds: duration,
-          nativeTiming,
+          rawSha256: preserved.sourceSha256,
         });
-        renameSync(temporary, raw);
-      } finally {
-        rmSync(temporary, { force: true });
       }
-    }
-    if (preserved && !existsSync(provenance)) {
-      atomicJSON(provenance, {
-        backend: 'recording',
-        settings,
-        generation,
-        rawSha256: preserved.sourceSha256,
+      if (!existsSync(provenance)) {
+        throw new Error(`原生 TTS 缓存缺少生成记录: ${paragraph.id}`);
+      }
+      if (json<{ rawSha256: string }>(provenance).rawSha256 !== hashFile(raw)) {
+        throw new Error(`原生 TTS 缓存录音发生变化: ${paragraph.id}`);
+      }
+      groups.push({
+        ...paragraph,
+        text,
+        hash,
+        raw: cfg.directory ? relative(p.root, raw) : raw,
+        generation: cfg.directory ? relative(p.root, provenance) : provenance,
+        gap: paragraph.gap,
       });
     }
-    if (!existsSync(provenance)) {
-      throw new Error(`原生 TTS 缓存缺少生成记录: ${paragraph.id}`);
-    }
-    if (json<{ rawSha256: string }>(provenance).rawSha256 !== hashFile(raw)) {
-      throw new Error(`原生 TTS 缓存录音发生变化: ${paragraph.id}`);
-    }
-    groups.push({
-      ...paragraph,
-      text,
-      hash,
-      raw: cfg.directory ? relative(p.root, raw) : raw,
-      generation: cfg.directory ? relative(p.root, provenance) : provenance,
-      gap: paragraph.gap,
-    });
+  } finally {
+    await session?.close();
   }
   atomicJSON(inside(p.root, cfg.plan), {
     fps: program.fps,
