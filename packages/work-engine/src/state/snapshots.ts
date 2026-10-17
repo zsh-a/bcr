@@ -19,13 +19,14 @@ import {
   verifyMap,
 } from '../lib/files';
 import { STATE } from '../lib/paths';
+import { targetScope } from '../pipeline/scope';
 import { type Project, type Target, targetIdentity } from '../project';
 
 /** Source objects are independent copies; mutable Work files never share their inode. */
 export function sourceSnapshot(p: Project, t: Target) {
   const identity = targetIdentity(p, t);
   const inputFiles = { ...identity.files };
-  if (p.config.runtime) {
+  if (p.config.runtime && targetScope(p, t).runtime) {
     for (const path of [
       p.config.runtime.timing,
       p.config.runtime.events,

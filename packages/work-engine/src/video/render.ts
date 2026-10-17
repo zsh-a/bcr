@@ -26,6 +26,7 @@ import {
   targetIdentity,
 } from '../core';
 import { assertWritableOutput } from '../lib/output';
+import { targetScope } from '../pipeline/scope';
 import { browser } from './browser';
 import { build } from './build';
 import { av1Level, encodeOptions, probe } from './encoding';
@@ -54,10 +55,13 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
   ) {
     return renderScenes(p, t, options);
   }
-  if (p.config.stage === 'draft') {
+  const scope = targetScope(p, t);
+  if ((scope.audio || scope.runtime) && p.config.stage === 'draft') {
     throw new Error('工程仍是草稿，请先执行 audio；草稿画面可用 preview/capture');
   }
-  assertMeasured(p);
+  if (scope.audio || scope.runtime) {
+    assertMeasured(p);
+  }
   const audio = p.config.targets[t.id]?.audio;
   const scale = options.scale ?? 1;
   const width = Math.round(t.width! * scale);

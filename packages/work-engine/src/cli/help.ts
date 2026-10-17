@@ -6,13 +6,16 @@ export const help = `bcr-work — BCR 仓库中的共享制作引擎
                                     创建标准草稿工程并登记
   draft PROJECT [--force]           按内容更新草稿估算时序
   status [PROJECT]                  工程、缓存与交付状态
+  context PROJECT --task TASK [--target ID]
+                                    只读、限长 JSON 交接；不启动服务或读入原始数据
+                                    TASK: resume|review|write|model|audio|visual|cover|chapters|deliver
   doctor [PROJECT]                  工具、依赖、时间轴、私有素材检查
   env [--legacy | --models]         同步日常音频、旧对齐或模型转换的独立环境
   check PROJECT|all                 类型/内容回归与音频验收
   audio PROJECT [--check] [--force]  按依赖执行旁白→对齐→混音→验收
   transcript PROJECT [--output REL] 从正式 content.json 生成阅读稿
   prepare PROJECT                  从真实声音与 cues.json 编译画面时序
-  plan PROJECT                     列出时序、验收状态与逐镜头依赖/缓存
+  plan PROJECT [--target ID]       按目标列出阶段、时序来源、阻塞项与制作依赖/缓存
   identity PROJECT [--target ID]    当前目标的完整输入身份
   qa PROJECT [--force]             启动指定快照的预览，执行本期验收和镜头等价检查
   freeze PROJECT                   拒绝过期报告，登记当前输入与验收

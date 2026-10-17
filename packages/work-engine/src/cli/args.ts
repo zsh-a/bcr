@@ -10,6 +10,7 @@ export function parseCli(args = process.argv.slice(2)) {
       'no-install': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       target: { type: 'string' },
+      task: { type: 'string' },
       output: { type: 'string' },
       frame: { type: 'string' },
       from: { type: 'string' },

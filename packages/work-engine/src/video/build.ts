@@ -18,6 +18,7 @@ import {
 import { dependencies } from '../lib/dependencies';
 import { dependencyPath } from '../lib/paths';
 import { prepareRuntime } from '../pipeline/runtime';
+import { targetScope } from '../pipeline/scope';
 import { props } from './props';
 
 function entrySource(p: Project, t: Target) {
@@ -27,7 +28,9 @@ import ${t.exportName ? `{${t.exportName} as Scene}` : 'Scene'} from ${JSON.stri
 registerRoot(()=> <Composition id="Managed" component={Scene} width={${t.width}} height={${t.height}} fps={${t.fps}} durationInFrames={${t.durationInFrames}} defaultProps={${JSON.stringify(props(p, t))}}/>);\n`;
 }
 export async function build(p: Project, t: Target, signal?: AbortSignal) {
-  prepareRuntime(p);
+  if (targetScope(p, t).runtime) {
+    prepareRuntime(p);
+  }
   if (t.runtime !== 'remotion') {
     throw new Error('build/capture/render 需要 Remotion 目标，HTML 目标使用 preview');
   }

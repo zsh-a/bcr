@@ -3,6 +3,7 @@ import { audio, ensureAudio } from './audio';
 import { writeDraft } from './audio/draft';
 import { transcript } from './audio/transcript';
 import { parseCli } from './cli/args';
+import { workContext } from './cli/context';
 import { check, doctor } from './cli/diagnostics';
 import { help } from './cli/help';
 import { printStatus, status } from './cli/status';
@@ -160,6 +161,9 @@ async function main() {
     throw new Error('请指定工程 ID');
   }
   const current = project(id);
+  if (action === 'context') {
+    return emit(JSON.stringify(workContext(current, values.task, values.target)));
+  }
   if (action === 'backup') {
     return print(await backup(current, values.output));
   }

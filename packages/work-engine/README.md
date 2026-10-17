@@ -85,9 +85,13 @@ Runner 直接执行校验过的源码快照。依赖环境按锁文件复用，R
 
 公开入口为包根导出与 bcr-work CLI。Work 只保留内容、表现、声明和业务检查，不导入 src 或 node_modules 内部路径。工作区链接 .tools 可作为 SDK 包入口；新模板的标准流程只需要 CLI。
 
+Agent 接续从 `bcr-work context PROJECT --task resume` 开始；明确任务后传 `review|write|model|audio|visual|cover|chapters|deliver`，可加 `--target ID`。命令输出紧凑 JSON，包含当前阶段、时序来源、限长 STATUS 摘要和带大小/选择范围的读取清单；只读本地元数据，不启动音频服务、浏览器或制作任务。先读 required 中与修改相关的字段，再按问题查询 onDemand，避免整份创作历史与数据重复进入上下文。配置与目标关键字段已经在交接中，修改配置时才需重新读原文件。
+
+`context --task model` 额外输出有界数据摘要，保留小型 parameters/exact/simulation/checks；记录数组仅列 recordCount、omittedRecords 与序列化字节数，深层对象、长字符串、编码载荷和超限字段均显式标记省略。摘要不是原数据的替代品，核查具体值仍应按 JSON 路径查询或运行本期模型检查。`docs/STATUS.md` 保存当前范围、待办与验收边界；完整分镜和人工连续听审观看仍决定作品是否完成。
+
 - prepare 编译 production.runtime 指定的 cues、字幕和视觉事件；audio 完成后自动运行，预览/导出前检查依赖。
 - scenes.json 显式声明镜头入口、动作依赖、共享组件和交接。render 自动使用共享 FFV1/RGB 镜头缓存，最终合成全局进度、连续旁白并统一编码 AV1。缩放预览沿用整帧渲染路径。
-- plan 展示各音频阶段、时序与验收新鲜度、镜头依赖和缓存。完整审计与计算依赖身份分开，独立命令、音轨或无关引擎维护代码不使正文镜头缓存失效。
+- plan 按 `--target` 展示依赖、stage、timing.mode（draft/measured/missing）、阻塞项与技术新鲜度；fresh 只指依赖身份，不证明成片镜头已实现或人工验收完成。无音轨且不引用派生时序的单帧目标不要求主片配音/prepare，打包、预览、快照与导出使用同一依赖判定；main 保留正式声音与时序要求。完整审计与计算依赖身份分开，独立命令、音轨或无关引擎维护代码不使正文镜头缓存失效。
 - qa 使用不可变源码快照启动独立预览，身份接口绑定实际所验版本。报告按输入与运行 ID 保存；freeze 和 release 拒绝过期报告。
 - source snapshot policy 对 Runner 使用同一声明：私有 media 与实验原始资料不进源码快照，已声明的构建时间轴和编译证明随快照保存，外部快照也必须通过已有输入和输出的身份验证。
 - Work 与实验目标由 readProjectDefinition 共用加载；Runner 从已经捕获的文件集合解析，CLI 从工作目录解析，目标清单保持一致。

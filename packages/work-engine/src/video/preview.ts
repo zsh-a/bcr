@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { assets, hashFile, inside, locked, type Project, type Target, TOOLS } from '../core';
 import { dependencies } from '../lib/dependencies';
 import { prepareRuntime } from '../pipeline/runtime';
+import { targetScope } from '../pipeline/scope';
 import { targetIdentity } from '../project';
 import { sourceSnapshot } from '../state/snapshots';
 import { props } from './props';
@@ -95,7 +96,9 @@ export async function writePreview(p: Project, t: Target, site: string, signal?:
 }
 
 export async function startPreview(original: Project, t: Target, port = 0) {
-  prepareRuntime(original);
+  if (targetScope(original, t).runtime) {
+    prepareRuntime(original);
+  }
   const snapshot =
     t.runtime === 'remotion'
       ? sourceSnapshot(original, t)

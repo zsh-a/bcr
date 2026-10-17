@@ -20,6 +20,7 @@ import { locked } from '../state/lock';
 import { startPreview } from '../video/preview';
 import { checkScenes } from '../video/scenes/check';
 import { prepareRuntime } from './runtime';
+import { targetScope } from './scope';
 
 interface ValidationReport {
   status: string;
@@ -88,7 +89,10 @@ export function assertValidation(p: Project, t: Target) {
 }
 
 export async function validate(p: Project, t: Target, force = false) {
-  prepareRuntime(p);
+  const scope = targetScope(p, t);
+  if (scope.runtime) {
+    prepareRuntime(p);
+  }
   if (!p.config.validation) {
     throw new Error('未配置本期验收');
   }
@@ -117,7 +121,7 @@ export async function validate(p: Project, t: Target, force = false) {
         });
         checks.push({ id: check.id, status: 'passed' });
       }
-      if (p.config.scenes) {
+      if (scope.scenes) {
         await checkScenes(p, t, { directory: join(directory, 'scenes') });
         checks.push({ id: 'scene-equivalence', status: 'passed' });
       }

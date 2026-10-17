@@ -2,6 +2,7 @@ export { audio, ensureAudio } from './audio';
 export { audioCppSettings, type NativeRequest, nativeWav, runNativeTask } from './audio/audiocpp';
 export type { VoiceSettings } from './audio/content';
 export { transcript } from './audio/transcript';
+export { type ContextTask, contextTasks, workContext } from './cli/context';
 export { diagnose, execute } from './execute';
 export { createProject, initProject } from './init';
 export { atomicJSON, hashFile, json, sourceGraph, stable, walk } from './lib/files';
