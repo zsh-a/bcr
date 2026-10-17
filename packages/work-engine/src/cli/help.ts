@@ -6,9 +6,16 @@ export const help = `bcr-work — BCR 仓库中的共享制作引擎
                                     创建标准草稿工程并登记
   draft PROJECT [--force]           按内容更新草稿估算时序
   status [PROJECT]                  工程、缓存与交付状态
-  context PROJECT --task TASK [--target ID]
+  context PROJECT --task TASK [--target ID] [--segment ID]
                                     只读、限长 JSON 交接；不启动服务或读入原始数据
                                     TASK: resume|review|write|model|audio|visual|cover|chapters|deliver
+                                    --segment 返回 content.paragraphs 中的完整语义段，审稿仍需通读
+  review PROJECT --kind script|pilot|visual|listening --status passed|needs-work
+         --note TEXT --evidence REL --reviewer NAME [--reviewer-type agent|human]
+         [--scope sample|full] [--target ID]
+                                    登记已经发生的检查与真实证据，不执行人工审阅或授权发布
+                                    reviewer-type 默认 agent；listening 需显式 human
+                                    script 默认 full，其余默认 sample，pilot 仅 sample
   doctor [PROJECT]                  工具、依赖、时间轴、私有素材检查
   env [--legacy | --models]         同步日常音频、旧对齐或模型转换的独立环境
   check PROJECT|all                 类型/内容回归与音频验收

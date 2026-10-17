@@ -1,7 +1,11 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { inside } from '../lib/files';
+import { hashFile, inside } from '../lib/files';
 import { targetScope, timingStatus } from '../pipeline/scope';
 import { type Project, targetOf } from '../project';
+import { reviewStatus } from '../review';
+import { contextActions } from './context-actions';
+import { contentDetails } from './context-details';
+import { statusExcerpt } from './context-status';
 import { summarizeData } from './context-summary';
 
 export const contextTasks = [
@@ -23,7 +27,12 @@ const file = (path: string, role: string, select?: string): Read => ({
   ...(select ? { select } : {}),
 });
 
-export function workContext(p: Project, task: string = 'resume', target?: string) {
+export function workContext(
+  p: Project,
+  task: string = 'resume',
+  target?: string,
+  segment?: string,
+) {
   if (!contextTasks.includes(task as ContextTask)) {
     throw new Error(`--task 需要 ${contextTasks.join('|')}`);
   }
@@ -67,6 +76,19 @@ export function workContext(p: Project, task: string = 'resume', target?: string
       onDemand.push(content, storyboard, sources);
       break;
     case 'review':
+      required.push(
+        brief,
+        {
+          ...content,
+          select: '通读完整文稿、论证和段落交接；指定语义段的局部核查不能替代回归通读',
+        },
+        sources,
+      );
+      onDemand.push(file('docs/argument-review.md', '论证边界与已知问题'), storyboard);
+      if (modelInputs) {
+        onDemand.push(file(modelInputs, '教学模型参数'));
+      }
+      break;
     case 'write':
       required.push(brief, content, sources);
       onDemand.push(file('docs/argument-review.md', '论证边界与已知问题'), storyboard);
@@ -148,14 +170,16 @@ export function workContext(p: Project, task: string = 'resume', target?: string
       );
       break;
   }
-  const describe = (item: Read) => {
+  const describe = (item: Read, fingerprint = false) => {
     const path = inside(p.root, item.path);
     const exists = existsSync(path) && statSync(path).isFile();
-    return { ...item, exists, bytes: exists ? statSync(path).size : null };
+    return {
+      ...item,
+      exists,
+      bytes: exists ? statSync(path).size : null,
+      ...(fingerprint ? { sha256: exists ? hashFile(path) : null } : {}),
+    };
   };
-  const statusPath = inside(p.root, 'docs/STATUS.md');
-  const statusText = existsSync(statusPath) ? readFileSync(statusPath, 'utf8') : '';
-  const excerpt = statusText.slice(0, 2400);
   const dataPath = inside(p.root, 'data.json');
   let dataSummary: unknown;
   if (task === 'model' && existsSync(dataPath)) {
@@ -177,6 +201,7 @@ export function workContext(p: Project, task: string = 'resume', target?: string
       };
     }
   }
+  const timing = timingStatus(p);
   return {
     version: 1,
     project: p.id,
@@ -191,26 +216,31 @@ export function workContext(p: Project, task: string = 'resume', target?: string
       height: t.height,
       durationInFrames: t.durationInFrames,
     },
-    timing: timingStatus(p),
+    timing,
     scope: targetScope(p, t),
-    status: {
-      path: 'docs/STATUS.md',
-      exists: existsSync(statusPath),
-      text: excerpt,
-      characters: statusText.length,
-      omittedCharacters: statusText.length - excerpt.length,
-      truncated: statusText.length > excerpt.length,
-    },
+    status: statusExcerpt(p.root),
+    ...contentDetails(p, task, segment),
+    ...contextActions(p, t, task, timing.mode === 'measured'),
+    reviews: reviewStatus(p, t),
+    ...(task === 'review'
+      ? {
+          readingRequirement: {
+            scope: 'full-script',
+            required: true,
+            note: '定向语义段只用于局部检查，回归审稿仍需通读完整文稿。',
+          },
+        }
+      : {}),
     reads: {
-      required: required.map(describe),
-      onDemand: onDemand.map(describe),
+      required: required.map((item) => describe(item, true)),
+      onDemand: onDemand.map((item) => describe(item)),
       configuration: [
         file('work.json', '目标与作品身份，当前关键字段已在本交接中'),
         file('production.json', '制作声明，修改相关配置时再读'),
         ...(!required.some((item) => item.path === 'video-assets.lock.json')
           ? [file('video-assets.lock.json', '本期视觉资产与品牌选择；不存在时不要猜测其他锁文件名')]
           : []),
-      ].map(describe),
+      ].map((item) => describe(item)),
     },
     ...(dataSummary ? { dataSummary } : {}),
     policy:

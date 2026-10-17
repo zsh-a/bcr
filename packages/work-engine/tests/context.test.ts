@@ -190,10 +190,69 @@ test('model handoff accounts for 700 KB of raw records without reading them into
   expect(summary.value.batches.serializedBytes).toBe(Buffer.byteLength(JSON.stringify(batches)));
   expect(JSON.stringify(context).length).toBeLessThan(10_000);
   expect(context.status.truncated).toBe(true);
-  expect(context.status.omittedCharacters + context.status.text.length).toBe(
+  expect(context.status.omittedCharacters + context.status.includedCharacters).toBe(
     context.status.characters,
   );
   expect(fileMap(dir, walk(dir))).toEqual(before);
+});
+
+test('cover context supplies bounded copy and executable actions without requiring TTS', () => {
+  const { p, dir, cover } = fixture('cover-copy-actions');
+  atomicJSON(join(dir, 'content.json'), { title: '标题'.repeat(300), subtitle: '副标题' });
+  const context = workContext(p, 'cover', cover.id);
+  expect(context.copy?.title?.value.length).toBe(320);
+  expect(context.copy?.title?.omittedCharacters).toBe(280);
+  expect(context.copy?.title?.truncated).toBe(true);
+  expect(context.copy?.subtitle?.value).toBe('副标题');
+  expect(context.scope.audio).toBe(false);
+  expect(context.actions.map((item) => item.id)).toEqual(['preview', 'capture']);
+  expect(context.actions[0]?.argv).toEqual([
+    'bcr-work',
+    '--root',
+    root,
+    'preview',
+    p.id,
+    '--target',
+    cover.id,
+  ]);
+  expect(context.actions.every((item) => item.cwd === p.root)).toBe(true);
+  expect(context.reads.required.find((item) => item.path === 'content.json')?.sha256).toMatch(
+    /^[a-f0-9]{64}$/,
+  );
+});
+
+test('selected semantic paragraphs are complete, invalid IDs fail, and regression review still requires full reading', () => {
+  const { p, dir } = fixture('semantic-selection');
+  const paragraph = {
+    id: 'opening',
+    gapAfter: 0.1,
+    lines: [
+      { id: 'first', chapter: 'a', text: '第一句话。', caption: '第一句话。' },
+      { id: 'second', chapter: 'a', text: '第二句话。', caption: '第二句话。' },
+    ],
+  };
+  atomicJSON(join(dir, 'content.json'), { title: '标题', subtitle: '', paragraphs: [paragraph] });
+  const before = fileMap(dir, walk(dir));
+  const context = workContext(p, 'review', undefined, 'opening');
+  expect(context.selectedSegment?.paragraph).toEqual(paragraph);
+  expect(context.selectedSegment?.complete).toBe(true);
+  expect(context.readingRequirement?.scope).toBe('full-script');
+  expect(context.reads.required.find((item) => item.path === 'content.json')?.select).toContain(
+    '通读',
+  );
+  expect(() => workContext(p, 'write', undefined, 'first')).toThrow('找不到语义段');
+  expect(() => workContext(p, 'write', undefined, 'missing')).toThrow('找不到语义段');
+  expect(fileMap(dir, walk(dir))).toEqual(before);
+  paragraph.lines[0]!.text = '长'.repeat(24_000);
+  atomicJSON(join(dir, 'content.json'), { title: '标题', subtitle: '', paragraphs: [paragraph] });
+  expect(() => workContext(p, 'write', undefined, 'opening')).toThrow('没有截断返回');
+});
+
+test('draft chapters expose a blocker and route to audio handoff instead of suggesting guessed chapter times', () => {
+  const { p } = fixture('draft-chapters');
+  const context = workContext(p, 'chapters');
+  expect(context.blockers[0]?.code).toBe('measured-timing-required');
+  expect(context.actions[0]?.argv).toContain('audio');
 });
 
 test('cover manifests omit unrelated data and audio, and CLI emits read-only compact handoffs', async () => {

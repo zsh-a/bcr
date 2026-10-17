@@ -15,6 +15,7 @@ import { freeze, validate } from './pipeline/validation';
 import { project, targetIdentity, targetOf, workspace } from './project';
 import { registerHistory, release, releases } from './release';
 import { build, capture, preview, render } from './render';
+import { recordReview } from './review';
 import { locked } from './state/lock';
 import { backup, restore } from './storage/backup';
 import { checkScenes } from './video/scenes/check';
@@ -162,7 +163,20 @@ async function main() {
   }
   const current = project(id);
   if (action === 'context') {
-    return emit(JSON.stringify(workContext(current, values.task, values.target)));
+    return emit(JSON.stringify(workContext(current, values.task, values.target, values.segment)));
+  }
+  if (action === 'review') {
+    return print(
+      recordReview(current, targetOf(current, values.target), {
+        kind: values.kind,
+        status: values.status,
+        note: values.note,
+        evidence: values.evidence,
+        reviewer: values.reviewer,
+        reviewerType: values['reviewer-type'],
+        scope: values.scope,
+      }),
+    );
   }
   if (action === 'backup') {
     return print(await backup(current, values.output));

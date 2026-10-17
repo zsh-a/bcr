@@ -13,6 +13,7 @@ export { prepareRuntime, readRuntime, runtimeStatus } from './pipeline/runtime';
 export { assets, loadProject, project, readProjectDefinition, targetIdentity } from './project';
 export { snapshotPolicy } from './project-policy';
 export { build, capture, preview, render } from './render';
+export { recordReview, reviewStatus } from './review';
 export { connectReviewPage, seekReviewFrame } from './video/review';
 export {
   localRuntime,

@@ -5,6 +5,7 @@ import { requireVoice } from '../audio/standard';
 import { CACHE } from '../lib/paths';
 import { command } from '../lib/process';
 import { type Project, type Target, targetIdentity } from '../project';
+import { reviewStatus } from '../review';
 import { browser } from '../video/browser';
 import { planScenes } from '../video/scenes/plan';
 import { runtimeStatus } from './runtime';
@@ -72,6 +73,7 @@ export async function productionPlan(p: Project, t: Target) {
     timing,
     scope,
     blockers,
+    reviews: reviewStatus(p, t),
     input: targetIdentity(p, t),
     runtime,
     audio,

@@ -87,6 +87,10 @@ Runner 直接执行校验过的源码快照。依赖环境按锁文件复用，R
 
 Agent 接续从 `bcr-work context PROJECT --task resume` 开始；明确任务后传 `review|write|model|audio|visual|cover|chapters|deliver`，可加 `--target ID`。命令输出紧凑 JSON，包含当前阶段、时序来源、限长 STATUS 摘要和带大小/选择范围的读取清单；只读本地元数据，不启动音频服务、浏览器或制作任务。先读 required 中与修改相关的字段，再按问题查询 onDemand，避免整份创作历史与数据重复进入上下文。配置与目标关键字段已经在交接中，修改配置时才需重新读原文件。
 
+STATUS 摘要优先保留当前、下一步、恢复入口和尾部；`text` 中明确标记缺口，`fragments` 给出源行号、源字符区间及摘要中的字符区间，`includedCharacters/omittedCharacters/truncated` 如实说明覆盖范围。状态与 required 文件附 SHA256，供接续核对输入。封面交接直接包含限长 `copy.title/subtitle`；`--segment ID` 仅返回 `content.paragraphs[].id` 对应的完整语义段，找不到或超出上限明确报错，不截断段落。回归审稿的 `readingRequirement` 仍要求通读，局部片段不能替代完整论证核查。`actions` 提供可直接执行的 argv 数组与 cwd；仅为建议，不会自动执行，草稿章节有明确 blocker。
+
+`review PROJECT --kind script|pilot|visual|listening --status passed|needs-work --note TEXT --evidence REL --reviewer NAME` 只登记已经发生的检查。检查人必填，`--reviewer-type` 默认为 agent；人工听审需明确声明 human，记录始终标注来源由调用者声明、未独立核实，不执行或冒充人工观看听审。`--scope sample|full` 区分抽样与全片，script 默认 full，其他默认 sample，pilot 只能 sample。证据必须是项目内真实文件，记录保存当前目标 input.key、相关输入身份、证据 SHA256、说明和时间，写入 `.bcr/reviews/` 的唯一文件且不可覆盖。context/plan 分别汇总各类检查的 missing/fresh/stale/needs-work；script 依据文稿、brief、来源和模型等创作输入判断，后续 TTS 或时序变化不使它过期；音画类依据所审目标或音频相关输入及证据判断。fresh 只表示登记仍匹配当前输入，抽样不代表全片，人工声明不等于独立核验；现有技术 QA、freeze/release 门槛与发布授权保持独立。
+
 `context --task model` 额外输出有界数据摘要，保留小型 parameters/exact/simulation/checks；记录数组仅列 recordCount、omittedRecords 与序列化字节数，深层对象、长字符串、编码载荷和超限字段均显式标记省略。摘要不是原数据的替代品，核查具体值仍应按 JSON 路径查询或运行本期模型检查。`docs/STATUS.md` 保存当前范围、待办与验收边界；完整分镜和人工连续听审观看仍决定作品是否完成。
 
 - prepare 编译 production.runtime 指定的 cues、字幕和视觉事件；audio 完成后自动运行，预览/导出前检查依赖。
