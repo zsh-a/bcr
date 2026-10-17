@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { assets, hashFile, inside, locked, type Project, type Target, TOOLS } from '../core';
+import { assets, inside, locked, type Project, type Target, TOOLS } from '../core';
 import { dependencies } from '../lib/dependencies';
 import { prepareRuntime } from '../pipeline/runtime';
 import { targetScope } from '../pipeline/scope';
@@ -82,19 +82,6 @@ export function previewDocument(outputs: readonly { path: string }[]) {
   return `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;width:100%;height:100%;background:#111}</style>${styles}<div id="root"></div><script>window.remotion_staticBase=new URL('./public',location.href).pathname;</script><script type="module" src="./player.js"></script></html>`;
 }
 
-/** A preview keeps small JS artifacts; large assets remain in its immutable source snapshot. */
-export async function writePreview(p: Project, t: Target, site: string, signal?: AbortSignal) {
-  mkdirSync(site, { recursive: true });
-  const outputs = await compilePreview(p, t, signal);
-  for (const output of outputs) {
-    await Bun.write(join(site, basename(output.path)), output);
-  }
-  writeFileSync(join(site, 'index.html'), previewDocument(outputs));
-  return Object.fromEntries(
-    assets(p, t).map((file) => [file.slice(p.root.length + 1), hashFile(file)]),
-  );
-}
-
 export async function startPreview(original: Project, t: Target, port = 0) {
   if (targetScope(original, t).runtime) {
     prepareRuntime(original);
@@ -152,21 +139,4 @@ export async function startPreview(original: Project, t: Target, port = 0) {
     input: snapshot.input,
     stop: () => server.stop(true),
   };
-}
-
-export async function preview(p: Project, t: Target, port = 0) {
-  return locked(`preview-source:${p.id}`, async () => {
-    const running = await startPreview(p, t, port);
-    console.log(`preview ${running.url} project=${p.id} target=${t.id} input=${running.input.key}`);
-    await new Promise<void>((resolveStop) => {
-      const stop = () => {
-        running.stop();
-        process.off('SIGINT', stop);
-        process.off('SIGTERM', stop);
-        resolveStop();
-      };
-      process.on('SIGINT', stop);
-      process.on('SIGTERM', stop);
-    });
-  });
 }

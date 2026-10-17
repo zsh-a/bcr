@@ -17,10 +17,12 @@ import { assertMeasured, audio } from '../src/audio';
 import { type Content, readContent } from '../src/audio/content';
 import { writeDraft } from '../src/audio/draft';
 import { workContext } from '../src/cli/context';
+import { statusSummary } from '../src/cli/status';
 import {
   assets,
   atomicJSON,
   fileMap,
+  hashFile,
   inside,
   json,
   locked,
@@ -32,11 +34,12 @@ import {
   TOOLS,
   targetIdentity,
   verifyMap,
+  walk,
 } from '../src/core';
 import { initProject } from '../src/init';
 import { dependencies } from '../src/lib/dependencies';
 import { packageArchives } from '../src/lib/package-archives';
-import { dedupSnapshots, orphanPlan, scratchPlan } from '../src/maintenance';
+import { orphanPlan } from '../src/maintenance';
 import { release } from '../src/release';
 import { av1Level, encodeOptions, render } from '../src/render';
 import { testState } from './setup';
@@ -113,7 +116,6 @@ test('dependency caches and render identities include vendored package bytes', a
 function workspaceFixture(name: string) {
   const dir = join(root, name);
   mkdirSync(dir);
-  symlinkSync(TOOLS, join(dir, '.tools'));
   atomicJSON(join(dir, 'workspace.json'), {
     version: 1,
     cacheBudgetGiB: 8,
@@ -122,6 +124,30 @@ function workspaceFixture(name: string) {
   });
   return dir;
 }
+test('compact status reads current configuration and delivery without creating a database', async () => {
+  const dir = workspaceFixture('summary-workspace');
+  const created = await initProject(
+    'summary-work',
+    { title: '摘要', install: false },
+    { root: dir },
+  );
+  const before = fileMap(dir, walk(dir));
+  const stateDirectory = join(testState, 'state');
+  const stateBefore = fileMap(stateDirectory, walk(stateDirectory));
+  const summary = statusSummary(undefined, dir);
+  expect(summary.projects[0]).toMatchObject({
+    id: 'summary-work',
+    timing: 'estimated',
+    currentRelease: null,
+  });
+  expect(fileMap(dir, walk(dir))).toEqual(before);
+  expect(fileMap(stateDirectory, walk(stateDirectory))).toEqual(stateBefore);
+  const delivery = join(root, 'summary-delivery');
+  mkdirSync(join(delivery, 'files'), { recursive: true });
+  atomicJSON(join(delivery, 'manifest.json'), { id: 'immutable-release' });
+  symlinkSync(join(delivery, 'files'), join(created.path, 'out'));
+  expect(statusSummary('summary-work', dir).projects[0].currentRelease).toBe('immutable-release');
+});
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
   rmSync(testState, { recursive: true, force: true });
@@ -161,7 +187,7 @@ test('init creates registered drafts with separate content, targets and shared p
   expect(readdirSync(dir).some((name) => name.startsWith('.init-'))).toBe(false);
 });
 
-test('init enforces the Runner title limit before publishing or registering a work', async () => {
+test('init enforces the title limit before publishing or registering a work', async () => {
   const dir = workspaceFixture('init-title-limit');
   await initProject('accepted', { title: '字'.repeat(200), install: false }, { root: dir });
   const registry = readFileSync(join(dir, 'workspace.json'), 'utf8');
@@ -409,70 +435,71 @@ test('orphan cleanup selects only owned, unregistered cache paths', () => {
   expect(orphanPlan(dir, [cached])).toEqual([abandoned]);
   expect(existsSync(unknown)).toBe(true);
 });
-test('legacy scratch GC skips running, young, and output-corrupt jobs', () => {
-  const state = join(root, 'runner');
-  mkdirSync(join(state, 'jobs'), { recursive: true });
-  const make = (id: string, status: string, updatedAt: number, corrupt = false) => {
-    const dir = join(state, 'jobs', id);
-    mkdirSync(join(dir, 'project'), { recursive: true });
-    mkdirSync(join(dir, 'outputs'));
-    writeFileSync(join(dir, 'project', 'source.ts'), 'source');
-    writeFileSync(join(dir, 'outputs', 'main.mp4'), 'video');
-    writeFileSync(
-      join(dir, 'job.json'),
-      JSON.stringify({
-        status,
-        updatedAt,
-        outputs: [{ name: 'main.mp4', hash: sha(corrupt ? 'wrong' : 'video') }],
-      }),
-    );
-  };
-  make('safe', 'succeeded', 1);
-  make('active', 'running', 1);
-  make('young', 'succeeded', Date.now());
-  make('bad', 'succeeded', 1, true);
-  expect(scratchPlan([state]).map((j) => j.job)).toEqual(['safe']);
-  expect(existsSync(join(state, 'jobs/safe/outputs/main.mp4'))).toBe(true);
-});
-test('snapshot dedup validates identities and leaves manifests/bytes unchanged', async () => {
-  const state = join(root, 'snapshots-runner');
-  const ids = ['a'.repeat(64), 'b'.repeat(64)];
-  const content = 'immutable source';
-  const hash = sha(content);
-  for (const id of ids) {
-    const dir = join(state, 'snapshots', id);
-    mkdirSync(join(dir, 'source'), { recursive: true });
-    writeFileSync(join(dir, 'source/Scene.tsx'), content);
-    writeFileSync(
-      join(dir, 'manifest.json'),
-      JSON.stringify({ files: [{ path: 'Scene.tsx', hash, size: content.length }] }),
-    );
-  }
-  const report = await dedupSnapshots(false, [state]);
-  expect(report.checked).toBe(2);
-  expect(report.uniqueContents).toBe(1);
-  expect(report.replaced).toBe(1);
-  expect(readFileSync(join(state, 'snapshots', ids[0]!, 'source/Scene.tsx'), 'utf8')).toBe(content);
-  writeFileSync(join(state, 'snapshots', ids[1]!, 'source/Scene.tsx'), 'corrupt');
-  await expect(dedupSnapshots(false, [state])).rejects.toThrow('快照内容损坏');
-});
 test('release copies have stable identity and failed private-asset checks preserve current', async () => {
-  const { p, dir } = fixture('release-test');
+  const { p, t, dir } = fixture('release-test');
+  t.width = t.height = 64;
+  t.durationInFrames = 2;
   const source = join(root, 'release-input');
   const base = join(root, 'releases');
   mkdirSync(source);
   writeFileSync(join(source, 'publish.txt'), 'accepted publication');
-  const first = await release(p, source, true, base);
+  await expect(release(p, source, base)).rejects.toThrow('完整 AV1');
+  const clip = join(source, 'main.mp4');
+  const encode = Bun.spawn(
+    [
+      'ffmpeg',
+      '-v',
+      'error',
+      '-nostdin',
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      'color=c=black:s=64x64:r=30',
+      '-frames:v',
+      '2',
+      '-c:v',
+      'libaom-av1',
+      '-cpu-used',
+      '8',
+      clip,
+    ],
+    { stdout: 'ignore', stderr: 'pipe' },
+  );
+  const error = await new Response(encode.stderr).text();
+  if (await encode.exited) {
+    throw new Error(error);
+  }
+  const report = {
+    project: p.id,
+    target: t.id,
+    status: 'succeeded',
+    scope: 'sample',
+    sha256: hashFile(clip),
+    input: targetIdentity(p, t),
+  };
+  atomicJSON(`${clip}.json`, report);
+  await expect(release(p, source, base)).rejects.toThrow('全片 AV1');
+  report.scope = 'full';
+  atomicJSON(`${clip}.json`, report);
+  p.config.stage = 'draft';
+  await expect(release(p, source, base)).rejects.toThrow('草稿');
+  p.config.stage = 'production';
+  const first = await release(p, source, base);
   expect(readlinkSync(first.current)).toBe(first.id);
   expect(readFileSync(join(first.path, 'files/publish.txt'), 'utf8')).toBe('accepted publication');
-  const retry = await release(p, source, true, base);
+  const retry = await release(p, source, base);
   expect(retry.id).toBe(first.id);
   copyFileSync(join(dir, 'public/audio/reference.wav'), join(source, 'accidental.wav'));
-  await expect(release(p, source, true, base)).rejects.toThrow('私有旁白');
+  await expect(release(p, source, base)).rejects.toThrow('私有旁白');
   expect(readlinkSync(first.current)).toBe(first.id);
   rmSync(join(source, 'accidental.wav'));
+  writeFileSync(join(dir, 'content.ts'), 'export const value=2;');
+  await expect(release(p, source, base)).rejects.toThrow('当前源码身份');
+  expect(readlinkSync(first.current)).toBe(first.id);
+  writeFileSync(join(dir, 'content.ts'), 'export const value=1;');
   writeFileSync(join(source, 'publish.txt'), 'next publication');
-  const second = await release(p, source, true, base);
+  const second = await release(p, source, base);
   expect(readlinkSync(second.current)).toBe(second.id);
   expect(first.id).not.toBe(second.id);
   expect(readFileSync(join(first.path, 'files/publish.txt'), 'utf8')).toBe('accepted publication');

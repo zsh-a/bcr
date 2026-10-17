@@ -16,13 +16,13 @@ import { type Project, type Target, targetIdentity } from './project';
 export const reviewKinds = ['script', 'pilot', 'visual', 'listening'] as const;
 type ReviewKind = (typeof reviewKinds)[number];
 interface ReviewOptions {
-  kind?: string;
-  status?: string;
-  note?: string;
-  evidence?: string;
-  reviewer?: string;
-  reviewerType?: string;
-  scope?: string;
+  kind?: string | undefined;
+  status?: string | undefined;
+  note?: string | undefined;
+  evidence?: string | undefined;
+  reviewer?: string | undefined;
+  reviewerType?: string | undefined;
+  scope?: string | undefined;
 }
 interface ReviewRecord {
   version: 1;

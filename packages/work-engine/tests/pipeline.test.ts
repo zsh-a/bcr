@@ -118,10 +118,10 @@ test('Player rendering tracks shared preview code and QA accepts only the public
   expect(player.key).not.toBe(frames.key);
   expect(Object.keys(player.producer)).toContain('src/video/review.ts');
   expect(Object.keys(player.producer)).toContain('src/video/preview.ts');
-  writeFileSync(join(dir, 'check.ts'), 'import {seekReviewFrame} from "../.tools";');
+  writeFileSync(join(dir, 'check.ts'), 'import {seekReviewFrame} from "@bcr/work-engine";');
   p.config.validation = { checks: [{ id: 'browser', command: ['bun', 'check.ts'] }] };
   const previous = validationIdentity(p, t);
-  writeFileSync(join(dir, 'check.ts'), 'import {connectReviewPage} from "../.tools";');
+  writeFileSync(join(dir, 'check.ts'), 'import {connectReviewPage} from "@bcr/work-engine";');
   expect(validationIdentity(p, t)).not.toBe(previous);
   writeFileSync(join(dir, 'check.ts'), 'import "../private-file";');
   expect(() => validationIdentity(p, t)).toThrow();

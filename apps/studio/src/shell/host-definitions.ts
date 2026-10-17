@@ -1,20 +1,6 @@
 import type { AppDefinition } from "@bcr/shell-contract";
 export const KNOWLEDGE_PATH = "/knowledge";
 export const hostDefinitions = {
-  works: {
-    id: "works",
-    title: "作品",
-    path: "/works",
-    description: "让 AI 从文件构建交互页面、图表与工具，预览并导出",
-    section: "reading",
-    installation: {
-      name: "BCR 作品",
-      shortName: "作品",
-      entry: "src/works/WorksApp.tsx",
-      boot: "workspace",
-      precacheDynamicImports: true,
-    },
-  },
   workspace: {
     id: "workspace",
     title: "工作区",

@@ -84,6 +84,7 @@ try {
     await navigator.serviceWorker.ready;
   });
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await page.evaluate(() => caches.open("bcr-reader-shell-v3"));
   await page.getByLabel("导入阅读文件").setInputFiles({
     name: "pwa-book.html",
     mimeType: "text/html",
@@ -257,6 +258,7 @@ try {
     "update lost the saved reading position",
   );
   const cacheNames = await page.evaluate(() => caches.keys());
+  assert(!cacheNames.includes("bcr-reader-shell-v3"), "retired cache generations are removed");
   assert(cacheNames.includes(`bcr-reader-shell-${Number(buildId) + version}`));
   assert(
     cacheNames.includes(`bcr-reader-shell-${buildId}`),

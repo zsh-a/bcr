@@ -31,8 +31,8 @@ try {
     });
   const initial = await theme();
   for (const [name, selector] of [
-    ["Media Studio", ".media-studio"],
-    ["DocGen Lab", ".docgen-studio"],
+    ["媒体字幕", ".media-studio"],
+    ["票据生成", ".docgen-studio"],
   ]) {
     await open(name);
     await page.locator(selector).waitFor();
@@ -43,9 +43,11 @@ try {
   await page.getByRole("dialog", { name: "AI 助手", exact: true }).waitFor();
   assert.equal(page.url(), before, "global panel commands must preserve the active workspace");
   assert.equal(await page.locator(".bcr-chat").count(), 1);
-  await page.goto(`${origin}/assistant`, { waitUntil: "networkidle" });
+  await page.keyboard.press("Control+j");
+  await page.getByRole("dialog", { name: "AI 助手", exact: true }).waitFor({ state: "hidden" });
+  await page.keyboard.press("Control+j");
   await page.getByRole("dialog", { name: "AI 助手", exact: true }).waitFor();
-  assert.equal(new URL(page.url()).pathname, "/", "legacy route resolves to the global panel");
+  assert.equal(page.url(), before, "assistant shortcuts preserve the active workspace");
   assert.deepEqual(errors, []);
   console.log("Shell architecture verification PASSED");
 } finally {

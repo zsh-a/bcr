@@ -86,10 +86,6 @@ def backup(spec):
     for name in ['package.json', 'tsconfig.json', 'audio/pyproject.toml', 'audio/uv.lock']:
         entries[f'engine/work-engine/{name}'] = engine / name
     entries['engine/bun.lock'] = Path(spec['engineLock'])
-    core = engine.parent / 'work-core'
-    collect(core / 'src', 'engine/work-core/src', entries)
-    if (core / 'package.json').is_file():
-        entries['engine/work-core/package.json'] = core / 'package.json'
     workspace_file = Path(spec['workspace']) / 'workspace.json'
     if workspace_file.is_file():
         entries['workspace/workspace.json'] = workspace_file

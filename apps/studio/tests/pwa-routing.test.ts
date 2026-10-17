@@ -3,6 +3,11 @@ import { PWA_APPS, pwaAtPath } from "../src/pwa/apps";
 import { pwaRewrite } from "../src/pwa/routing";
 
 describe("independent PWA routing", () => {
+  it("does not register the removed Works app or installation scope", () => {
+    expect(PWA_APPS.map((app) => app.key)).not.toContain("works");
+    expect(PWA_APPS.map((app) => app.path)).not.toContain("/works");
+    expect(pwaAtPath("/pwa/works/")).toBeUndefined();
+  });
   it("keeps published Reader and Notes identities distinct and stable", () => {
     expect(PWA_APPS.find((app) => app.key === "reader")?.id).toBe("/reader");
     expect(PWA_APPS.find((app) => app.key === "knowledge")?.id).toBe("/notes/");

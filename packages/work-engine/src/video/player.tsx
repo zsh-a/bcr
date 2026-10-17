@@ -1,8 +1,8 @@
-import type { Parameter } from '@bcr/work-core';
 import { Player, type PlayerRef } from '@remotion/player';
 import { type ComponentType, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import type { Parameter } from '../project';
 import { connectPreview } from './bridge';
 
 interface PreviewSettings<Props> {

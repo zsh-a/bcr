@@ -14,7 +14,6 @@ import {
   Database,
   FilePlus2,
   Shapes,
-  Code2,
 } from "../apps/studio/node_modules/lucide-react/dist/cjs/lucide-react.js";
 const icons = {
   workspace: LayoutGrid,
@@ -27,7 +26,6 @@ const icons = {
   data: Database,
   docgen: FilePlus2,
   diagram: Shapes,
-  works: Code2,
 };
 const directory = "apps/studio/public/icons";
 for (const [key, icon] of Object.entries(icons)) {

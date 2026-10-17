@@ -205,15 +205,17 @@ test('cover context supplies bounded copy and executable actions without requiri
   expect(context.copy?.title?.truncated).toBe(true);
   expect(context.copy?.subtitle?.value).toBe('副标题');
   expect(context.scope.audio).toBe(false);
-  expect(context.actions.map((item) => item.id)).toEqual(['preview', 'capture']);
+  expect(context.actions.map((item) => item.id)).toEqual(['capture']);
   expect(context.actions[0]?.argv).toEqual([
     'bcr-work',
     '--root',
     root,
-    'preview',
+    'capture',
     p.id,
     '--target',
     cover.id,
+    '--frame',
+    '0',
   ]);
   expect(context.actions.every((item) => item.cwd === p.root)).toBe(true);
   expect(context.reads.required.find((item) => item.path === 'content.json')?.sha256).toMatch(

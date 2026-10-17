@@ -58,7 +58,6 @@ function templatePackage(id: string) {
       typecheck: 'tsc --noEmit',
       lint: 'biome check .',
       format: 'biome check --write .',
-      preview: `${cli} preview ${id}`,
       draft: `${cli} draft ${id}`,
       'audio:build': `${cli} audio ${id}`,
       'audio:check': `${cli} audio ${id} --check`,

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 import { atomicJSON, hashFile, inside, json, sha, stable } from '../lib/files';
 import { command } from '../lib/process';
 import type { Config, Project, Work } from '../project';
@@ -40,15 +40,32 @@ export function requireVoice(p: Project) {
     !existsSync(inside(p.root, voice.referenceFile ?? 'public/audio/reference.wav'))
   ) {
     throw new Error(
-      '请准备可使用的参考声音，在 voice.json 配置 referenceFile 与 referenceTranscript；草稿可先用 preview/capture',
+      '请准备可使用的参考声音，在 voice.json 配置 referenceFile 与 referenceTranscript；草稿可先用 capture',
     );
   }
 }
 
+export interface NarrationProgram {
+  fps: number;
+  contentHash?: string;
+  groups: { id: string; lines: { text: string }[]; gap: number; [key: string]: unknown }[];
+  programs: Record<string, string[]>;
+}
+
 export async function voiceover(p: Project) {
   requireVoice(p);
-  const cfg = p.config.audio!;
   const content = readContent(p);
+  await generateNarration(p, {
+    fps: p.work.targets.find((target) => target.id === 'main')!.fps!,
+    contentHash: contentHash(content),
+    groups: content.paragraphs.map((paragraph) => ({ ...paragraph, gap: paragraph.gapAfter })),
+    programs: { main: content.paragraphs.map((paragraph) => paragraph.id) },
+  });
+}
+
+/** Native generation shared by JSON content and authored multi-track programs. */
+export async function generateNarration(p: Project, program: NarrationProgram) {
+  const cfg = p.config.audio!;
   const voice = voiceSettings(p);
   const reference = inside(p.root, voice.referenceFile ?? 'public/audio/reference.wav');
   const cache = inside(p.root, cfg.directory ?? '.bcr/narration');
@@ -61,7 +78,7 @@ export async function voiceover(p: Project) {
   };
   const groups = [];
   const recorded = recordedSource(p.root, voice);
-  for (const paragraph of content.paragraphs) {
+  for (const paragraph of program.groups) {
     const text = paragraph.lines.map((line) => line.text).join('');
     const { request, emotionHash } = paragraphRequest(p.root, voice, paragraph.id, text);
     let source = recorded?.groups.find((group) => group.id === paragraph.id);
@@ -94,8 +111,11 @@ export async function voiceover(p: Project) {
           }
         : undefined,
     };
-    const hash = sha(stable({ text, settings, generation: computation }));
-    const raw = join(cache, `${hash}.wav`);
+    const preserved = recorded?.tempo === 1 ? source : undefined;
+    const hash = preserved
+      ? basename(preserved.raw, '.wav')
+      : sha(stable({ text, settings, generation: computation }));
+    const raw = preserved ? preserved.raw : join(cache, `${hash}.wav`);
     const provenance = join(cache, `${hash}.generation.json`);
     if (!existsSync(raw)) {
       const temporary = `${raw}.tmp`;
@@ -168,6 +188,14 @@ export async function voiceover(p: Project) {
         rmSync(temporary, { force: true });
       }
     }
+    if (preserved && !existsSync(provenance)) {
+      atomicJSON(provenance, {
+        backend: 'recording',
+        settings,
+        generation,
+        rawSha256: preserved.sourceSha256,
+      });
+    }
     if (!existsSync(provenance)) {
       throw new Error(`原生 TTS 缓存缺少生成记录: ${paragraph.id}`);
     }
@@ -180,16 +208,15 @@ export async function voiceover(p: Project) {
       hash,
       raw: cfg.directory ? relative(p.root, raw) : raw,
       generation: cfg.directory ? relative(p.root, provenance) : provenance,
-      gap: paragraph.gapAfter,
+      gap: paragraph.gap,
     });
   }
-  const fps = p.work.targets.find((target) => target.id === 'main')?.fps;
   atomicJSON(inside(p.root, cfg.plan), {
-    fps,
-    contentHash: contentHash(content),
+    fps: program.fps,
+    contentHash: program.contentHash,
     settings,
     groups,
-    programs: { main: groups.map((group) => group.id) },
+    programs: program.programs,
   });
 }
 

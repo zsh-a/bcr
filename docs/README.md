@@ -12,7 +12,7 @@
 | 写作与知识关联   | [知识工作台](KNOWLEDGE-WORKBENCH.md) · [路径与文件夹](KNOWLEDGE-PATHS.md) · [图片与附件](KNOWLEDGE-ATTACHMENTS.md) |
 | 多设备笔记       | [GitHub 同步与恢复](KNOWLEDGE-SYNC.md) · [知识库存储](KNOWLEDGE-STORAGE.md)                                        |
 | 画布与图表       | [绘图工作区](DRAWING.md)                                                                                           |
-| 页面与视频创作   | [作品工作区](WORKS.md) · [Runner 安装与运行](../apps/work-runner/README.md)                                        |
+| 页面与视频创作   | [独立视频制作](VIDEO-AUTHORING.md)                                                                                 |
 | 摘录与资料迁移   | [引用与集合备份](RESEARCH-CITATIONS.md) · [Reader 资料包](RESEARCH-PACKAGE.md)                                     |
 | 安装、离线与更新 | [独立 PWA](INDEPENDENT-PWAS.md) · [Notes 入口](KNOWLEDGE-PWA.md) · [更新和恢复](APP-UPDATES.md)                    |
 
@@ -40,7 +40,6 @@
 
 ## 包级文档
 
-- [Works Runner](../apps/work-runner/README.md)
 - [场景渲染器](../packages/scene-renderer/README.md)
 - [Quant Rust 引擎](../crates/quant/README.md)、[基准](../crates/quant/BENCHMARKS.md)与[对账](../crates/quant/RECONCILIATION.md)
 - [Agent Runtime](../crates/agent-runtime/README.md)（独立 Git 子模块）

@@ -28,16 +28,6 @@ export function workspaceRoot() {
     }
     current = parent;
   }
-  const connection = join(
-    process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'),
-    'bcr/work-runner.json',
-  );
-  if (existsSync(connection)) {
-    const saved = JSON.parse(readFileSync(connection, 'utf8')) as { options?: { root?: string } };
-    if (saved.options?.root) {
-      return resolve(saved.options.root);
-    }
-  }
   return process.cwd();
 }
 
@@ -59,7 +49,6 @@ export const TOOLS = resolve(
       ? sourceRoot
       : join(import.meta.dir, '../engine')),
 );
-export const MIGRATIONS = join(ROOT, '.bcr/migrations');
 const requireEngine = createRequire(join(TOOLS, 'package.json'));
 export function dependencyPath(name: string) {
   return dirname(requireEngine.resolve(`${name}/package.json`));

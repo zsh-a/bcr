@@ -81,7 +81,7 @@ Media、Quant 在自身数据初始化完成后发布搜索文档；宿主不导
 
 ### 宿主插件、导航和全局助手
 
-每个 App 的 `app-definition.ts` 只包含身份、路由、分组与 PWA 安装／启动配置，供构建工具直接使用；`AppManifest` 扩展它并添加 UI、插件和计算声明。宿主 UI 注册、安装清单和生成产物从同一份有序目录派生。全局工具使用 `PanelManifest`。AI 助手由 Shell 的唯一浮动面板承载，启动台、命令面板和快捷键不会切换当前领域；旧 `/assistant` 地址只作为兼容入口，打开面板后替换为首页地址。
+每个 App 的 `app-definition.ts` 只包含身份、路由、分组与 PWA 安装／启动配置，供构建工具直接使用；`AppManifest` 扩展它并添加 UI、插件和计算声明。宿主 UI 注册、安装清单和生成产物从同一份有序目录派生。全局工具使用 `PanelManifest`。AI 助手由 Shell 的唯一浮动面板承载，启动台、命令面板和快捷键不会切换当前领域。
 
 领域服务通过 `WorkspacePlugin.activate({ runtime, agent, reportError })` 注册，返回幂等释放函数。宿主激活所需 manifest 声明的插件，拒绝重复 ID，初始化同步失败时逆序回收已经激活的插件。知识库搜索投影与 Agent 能力不依赖知识库页面是否打开；异步初始化错误按插件身份报告，恢复一个插件不会清除其他插件的错误。
 

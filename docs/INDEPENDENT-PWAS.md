@@ -14,7 +14,6 @@ BCR 的应用可分别安装到桌面。同源入口共享本地数据，但拥�
 | Reader     | `/reader`    | `/pwa/reader/`      |
 | 个人知识库 | `/knowledge` | `/notes/knowledge/` |
 | 绘图       | `/diagram`   | `/pwa/diagram/`     |
-| 作品       | `/works`     | `/pwa/works/`       |
 | Media      | `/media`     | `/pwa/media/`       |
 | Documents  | `/documents` | `/pwa/documents/`   |
 | Manga      | `/manga`     | `/pwa/manga/`       |
@@ -30,19 +29,18 @@ Reader 保留 `id: "/reader"` 与 `/manifest.webmanifest`；Notes 保留 `id: "/
 
 应用通过浏览器 origin 共享 OPFS、IndexedDB 和 localStorage；这不是权限隔离。清除整个站点数据会影响所有同源应用，更换域名或端口则进入另一份存储空间。
 
-独立 Market、Quant、Media、Manga、DocGen、Diagram 使用轻量外壳，不打开 Studio 元数据库；Reader 使用专用启动流程。Workspace、Studio、Notes、Data、Documents 仍使用共同的 Studio 工作区。作品 PWA 只提供 Works 控制面；源码工程和渲染任务由独立 Runner 持有。项目写锁与 Reader 书库锁继续生效，独立安装不解除写入限制。
+独立 Market、Quant、Media、Manga、DocGen、Diagram 使用轻量外壳，不打开 Studio 元数据库；Reader 使用专用启动流程。Workspace、Studio、Notes、Data、Documents 仍使用共同的 Studio 工作区。项目写锁与 Reader 书库锁继续生效，独立安装不解除写入限制。
 
 专属应用跳到其他领域时进入宿主工作区；Workspace PWA 可以在自己的作用域内访问完整工作区。查询参数与 fragment 在导航时保留。
 
 ## 离线与更新
 
 - 首次联网加载后，Service Worker 预缓存当前应用外壳。未下载的模型、实时行情与外部 AI 接口仍需要网络。
-- 作品页只缓存 Works 控制面；连接 Runner 后才能读取工程、预览和导出，离线不会创建或执行作品源码。
 - `/pwa/sw.js?app=<key>` 共用实现，按应用分别注册与缓存；Notes 使用 `/notes/sw.js`。
 - `/assets/sw.js` 只管理资源作用域，为 Worker 的嵌套 JS/WASM 请求提供缓存，不接管页面导航或安装身份。
 - 新版本先后台下载，用户确认后保存当前内容并更新；保存失败保留原页面。详见[更新与恢复](APP-UPDATES.md)。
 
-根 `/sw.js` 保留宿主与旧 Reader 客户端的服务，对 `/notes/` 和 `/pwa/` 导航放行，由更具体的作用域接管。旧 Reader 安装的元数据由浏览器刷新；无需通过修改 ID 或清空内容来迁移。
+根 `/sw.js` 为浏览器工作台提供离线外壳；`/notes/` 和 `/pwa/` 由各自的作用域接管。安装应用统一使用当前目录中声明的独立入口。
 
 ## 开发与验证
 

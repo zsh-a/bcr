@@ -17,19 +17,15 @@ import {
   hashFile,
   json,
   locked,
-  MIGRATIONS,
   type Project,
   ROOT,
-  STATE,
   sha,
   stable,
   targetIdentity,
   targetOf,
   verifyExactMap,
-  verifyMap,
   walk,
 } from './core';
-import type { Baseline } from './maintenance/history';
 import { assertRuntime } from './pipeline/runtime';
 import { assertValidation } from './pipeline/validation';
 import { probe } from './render';
@@ -37,11 +33,9 @@ import { renderIdentity } from './video/identity';
 import type { ArtifactReport } from './video/reports';
 
 export const RELEASES = resolve(process.env.BCR_WORK_RELEASES ?? join(ROOT, '.releases'));
-export async function release(p: Project, source: string, legacy = false, releaseRoot = RELEASES) {
-  if (!legacy) {
-    assertRuntime(p);
-  }
-  if (!legacy && p.config.stage === 'draft') {
+export async function release(p: Project, source: string, releaseRoot = RELEASES) {
+  assertRuntime(p);
+  if (p.config.stage === 'draft') {
     throw new Error('草稿不能正式交付，请先完成音频制作与全片导出');
   }
   return locked(`release:${p.id}`, async () => {
@@ -84,38 +78,36 @@ export async function release(p: Project, source: string, legacy = false, releas
       const stream = result.streams.find((s) => s.codec_type === 'video');
       const reportFile = `${file}.json`;
       const report = existsSync(reportFile) ? json<ArtifactReport>(reportFile) : null;
-      if (!legacy) {
-        assertValidation(p, targetOf(p, report?.target));
-        if (
-          stream?.codec_name !== 'av1' ||
-          report?.status !== 'succeeded' ||
-          report.scope !== 'full' ||
-          report.sha256 !== hashes[relative(dir, file)]
-        ) {
-          throw new Error(`新交付需要通过检查的全片 AV1 与对应 .json 报告: ${file}`);
-        }
-        if (
-          report.project !== p.id ||
-          (report.renderInput
-            ? renderIdentity(p, targetOf(p, report.target), false, report.renderer).key !==
-              report.renderInput.key
-            : targetIdentity(p, targetOf(p, report.target)).key !== report.input?.key)
-        ) {
-          throw new Error(`成片与当前源码身份不一致: ${file}`);
-        }
+      assertValidation(p, targetOf(p, report?.target));
+      if (
+        stream?.codec_name !== 'av1' ||
+        report?.status !== 'succeeded' ||
+        report.scope !== 'full' ||
+        report.sha256 !== hashes[relative(dir, file)]
+      ) {
+        throw new Error(`新交付需要通过检查的全片 AV1 与对应 .json 报告: ${file}`);
+      }
+      if (
+        report.project !== p.id ||
+        (report.renderInput
+          ? renderIdentity(p, targetOf(p, report.target), false, report.renderer).key !==
+            report.renderInput.key
+          : targetIdentity(p, targetOf(p, report.target)).key !== report.input?.key)
+      ) {
+        throw new Error(`成片与当前源码身份不一致: ${file}`);
       }
       media.push({
         path: relative(dir, file),
         codec: stream?.codec_name,
         frames: stream?.nb_read_frames,
         originalReport: report,
-        currentInput: !legacy && report ? targetIdentity(p, targetOf(p, report.target)) : undefined,
+        currentInput: report ? targetIdentity(p, targetOf(p, report.target)) : undefined,
       });
     }
-    if (!legacy && !media.length) {
+    if (!media.length) {
       throw new Error('新视频交付需要至少一部通过检查的完整 AV1 成片');
     }
-    const id = sha(stable({ files: hashes, legacy, project: p.id })).slice(0, 20);
+    const id = sha(stable({ files: hashes, project: p.id })).slice(0, 20);
     const base = join(releaseRoot, p.id);
     const final = join(base, id);
     const stage = join(base, `.stage-${randomUUID()}`);
@@ -135,13 +127,13 @@ export async function release(p: Project, source: string, legacy = false, releas
           version: 1,
           id,
           project: p.id,
-          provenance: legacy ? 'legacy-import' : 'managed-production',
+          provenance: 'managed-production',
           sourceDirectory: dir,
           files: hashes,
           media,
           createdAt: new Date().toISOString(),
           reviews: {
-            automatic: legacy ? 'historical-reports-preserved' : 'passed',
+            automatic: 'passed',
             listening: 'pending',
             viewing: 'pending',
             platformTranscode: 'pending',
@@ -177,7 +169,7 @@ export async function release(p: Project, source: string, legacy = false, releas
       path: final,
       current,
       files: files.length,
-      provenance: legacy ? 'legacy-import' : 'managed-production',
+      provenance: 'managed-production',
     };
   });
 }
@@ -188,48 +180,4 @@ export function releases(p: Project) {
     .all(p.id);
   db.close();
   return rows;
-}
-export function registerHistory(p: Project) {
-  const dir = join(p.root, 'out');
-  if (!existsSync(dir)) {
-    return { project: p.id, registered: false };
-  }
-  const baseline = json<Baseline>(join(MIGRATIONS, 'baseline-20261007.json'));
-  const prefix = `${p.id}/out/`;
-  const files = Object.fromEntries(
-    Object.entries(baseline.files)
-      .filter(([path]) => path.startsWith(prefix))
-      .map(([path, info]) => [path.slice(prefix.length), info.sha256]),
-  );
-  if (!verifyMap(dir, files)) {
-    throw new Error(`历史交付与迁移基线不同，请先检查: ${p.id}`);
-  }
-  const id = `legacy-${sha(stable(files)).slice(0, 20)}`;
-  const manifest = {
-    version: 1,
-    id,
-    project: p.id,
-    provenance: 'legacy-directory',
-    path: dir,
-    files,
-    reviews: {
-      automatic: 'original-reports-preserved',
-      listening: 'pending',
-      viewing: 'pending',
-      platformTranscode: 'pending',
-    },
-    note: '登记既有文件，不复制、不转码；历史源码包仍是私有归档。',
-    registeredAt: new Date().toISOString(),
-  };
-  atomicJSON(join(STATE, 'history', `${p.id}.json`), manifest);
-  const db = database();
-  db.query('INSERT OR IGNORE INTO releases VALUES (?,?,?,?,?)').run(
-    p.id,
-    id,
-    dir,
-    JSON.stringify(manifest),
-    Date.now(),
-  );
-  db.close();
-  return { project: p.id, id, path: dir, files: Object.keys(files).length, registered: true };
 }

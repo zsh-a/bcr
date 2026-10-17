@@ -82,7 +82,7 @@ export function ExternalAgentBridge({
         <div>
           <p className="external-agent-kicker">BCR × MCP</p>
           <h3>让助手进入你的工作区</h3>
-          <p>连接外部 Agent，共用 BCR 中的资料与知识能力；代码作品直接由 Runner MCP 管理。</p>
+          <p>连接外部 Agent，检索资料、读取来源并维护知识笔记。</p>
         </div>
       </div>
       <div className="external-agent-status" data-connected={connected} role="status">

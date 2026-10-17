@@ -5,7 +5,7 @@ import { command } from '../lib/process';
 import { locked } from '../state/lock';
 
 export const AUDIO = join(TOOLS, 'audio');
-export type AudioEnvironment = 'runtime' | 'legacy' | 'models';
+export type AudioEnvironment = 'runtime' | 'models';
 
 export function audioEnvironmentPath(mode: AudioEnvironment = 'runtime') {
   return join(AUDIO, mode === 'runtime' ? '.venv' : `.venv-${mode}`);

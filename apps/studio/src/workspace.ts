@@ -4,7 +4,6 @@ import { KnowledgeStore } from "./knowledge/session/store";
 import { ResearchStore } from "./research";
 import { DiagramStore } from "./diagram/store";
 import { createDiagramStorage } from "./diagram/browserStorage";
-import { WorkService } from "./works/service";
 
 /** The session owns lazy domain services; views and plugins borrow the same instances. */
 export function createWorkspaceServices(
@@ -17,15 +16,10 @@ export function createWorkspaceServices(
   let diagrams: DiagramStore | undefined;
   let diagramStorage: ReturnType<typeof createDiagramStorage> | undefined;
   let closing: Promise<void> | undefined;
-  let workService: WorkService | undefined;
   const assertOpen = () => {
     if (closing) throw new Error("工作区服务已关闭");
   };
   return {
-    get workService(): WorkService {
-      assertOpen();
-      return (workService ??= new WorkService());
-    },
     get knowledge() {
       if (knowledge) return knowledge;
       assertOpen();
@@ -46,7 +40,6 @@ export function createWorkspaceServices(
       return diagrams;
     },
     close() {
-      workService?.close();
       return (closing ??= Promise.allSettled([
         knowledge?.close(),
         research?.close(),

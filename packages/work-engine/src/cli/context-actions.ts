@@ -35,7 +35,6 @@ export function contextActions(p: Project, t: Target, task: string, measured: bo
   const actions =
     task === 'cover' || task === 'visual'
       ? [
-          action('preview', 'preview', '查看当前目标画面', [], true),
           action(
             'capture',
             'capture',

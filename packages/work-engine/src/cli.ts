@@ -6,18 +6,19 @@ import { parseCli } from './cli/args';
 import { workContext } from './cli/context';
 import { check, doctor } from './cli/diagnostics';
 import { help } from './cli/help';
-import { printStatus, status } from './cli/status';
+import { printStatus, status, statusSummary } from './cli/status';
 import { initProject } from './init';
-import { cleanScratch, dedupSnapshots, gc, verifyBaseline } from './maintenance';
+import { gc } from './maintenance';
 import { productionPlan } from './pipeline/plan';
 import { prepareRuntime } from './pipeline/runtime';
 import { freeze, validate } from './pipeline/validation';
 import { project, targetIdentity, targetOf, workspace } from './project';
-import { registerHistory, release, releases } from './release';
-import { build, capture, preview, render } from './render';
+import { release, releases } from './release';
+import { build, capture, render } from './render';
 import { recordReview } from './review';
 import { locked } from './state/lock';
 import { backup, restore } from './storage/backup';
+import { version } from './version';
 import { checkScenes } from './video/scenes/check';
 import { verifyArtifact } from './video/verify';
 
@@ -70,7 +71,7 @@ function printArtifact(result: Artifact) {
 }
 
 async function collectCache() {
-  if (!['build', 'capture', 'render', 'preview'].includes(action)) {
+  if (!['build', 'capture', 'render'].includes(action)) {
     return;
   }
   try {
@@ -91,6 +92,8 @@ async function main() {
     return emit(help);
   }
   switch (action) {
+    case 'version':
+      return print(version());
     case 'restore': {
       if (!values.snapshot || !values.output) {
         throw new Error('restore 需要 --snapshot 和全新 --output 目录');
@@ -100,35 +103,18 @@ async function main() {
     case 'doctor':
       return print(await doctor(id));
     case 'env':
-      if (values.legacy && values.models) {
-        throw new Error('每次选择一种音频环境');
-      }
       return print({
-        python: await ensureAudio(values.legacy ? 'legacy' : values.models ? 'models' : 'runtime'),
+        python: await ensureAudio(values.models ? 'models' : 'runtime'),
       });
-    case 'verify-history': {
-      const report = verifyBaseline();
-      print(report);
-      if (!report.unchanged) {
-        process.exitCode = 1;
-      }
-      return;
-    }
-    case 'import-history':
-      return print(workspace().projects.map((entry) => registerHistory(project(entry.id))));
     case 'status': {
+      if (values.summary) {
+        return print(statusSummary(id));
+      }
       const result = status(id);
       return values.json ? print(result) : printStatus(result);
     }
     case 'gc': {
-      if (values['legacy-scratch'] && values['dedup-snapshots']) {
-        throw new Error('每次选择一种清理方式');
-      }
-      const report = values['legacy-scratch']
-        ? await cleanScratch(!!values.apply)
-        : values['dedup-snapshots']
-          ? await dedupSnapshots(!!values.apply)
-          : await gc(!!values.apply, number('budget-gib'));
+      const report = await gc(!!values.apply, number('budget-gib'));
       return print(
         values.json ? report : { ...report, items: undefined, substitutions: undefined },
       );
@@ -142,7 +128,9 @@ async function main() {
         return print(result);
       }
       emit(`已创建 ${result.project}：${result.path}`);
-      emit(`下一步：填写 docs/brief.md 和 content.json，然后 bcr-work preview ${id}`);
+      emit(
+        `下一步：填写 docs/brief.md 和 content.json，然后 bcr-work capture ${id} --target cover`,
+      );
       if (!result.dependenciesInstalled) {
         emit(`尚未安装依赖：在工程目录运行 bun install --ignore-scripts`);
       }
@@ -199,7 +187,7 @@ async function main() {
       if (!values['from-dir']) {
         throw new Error('请指定 --from-dir 交付文件目录');
       }
-      return print(await release(current, values['from-dir'], !!values.legacy));
+      return print(await release(current, values['from-dir']));
     }
   }
   const target = targetOf(current, values.target);
@@ -231,8 +219,6 @@ async function main() {
       const result = await build(current, target);
       return values.json ? print(result) : emit(result.dir);
     }
-    case 'preview':
-      return preview(current, target, number('port') ?? 0);
     case 'capture':
       return printArtifact(await capture(current, target, number('frame') ?? 0, values.output));
     case 'render':

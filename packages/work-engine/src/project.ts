@@ -1,9 +1,16 @@
 import { existsSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
-import type { Parameter } from '@bcr/work-core';
 import { fileMap, hashFile, inside, json, sha, sourceGraph, stable, walk } from './lib/files';
 import { packageArchives } from './lib/package-archives';
 import { engineLock, ROOT, TOOLS } from './lib/paths';
+export interface Parameter {
+  key: string;
+  label: string;
+  type: 'number' | 'string' | 'boolean';
+  min?: number;
+  max?: number;
+  step?: number;
+}
 export interface Target {
   id: string;
   runtime: string;
@@ -36,7 +43,7 @@ export interface Config {
   validation?: { target?: string; checks: { id: string; command: string[] }[] };
   storage?: { sources?: string[]; experiments?: string[]; backupDirectory?: string };
   audio?: {
-    driver?: 'standard';
+    driver: 'standard' | 'scripted';
     directory?: string;
     subtitlesDirectory?: string;
     content?: string;

@@ -43,15 +43,9 @@ const appRoutes = MANIFESTS.map((app) =>
   }),
 );
 
-// Compatibility URL only; the assistant is a global panel, not a workspace.
-const assistantAlias = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/assistant",
-  component: () => null,
-});
 export const router = createRouter({
   ...(currentPwa ? { rewrite: pwaRewrite(currentPwa) } : {}),
-  routeTree: rootRoute.addChildren([homeRoute, assistantAlias, ...appRoutes]),
+  routeTree: rootRoute.addChildren([homeRoute, ...appRoutes]),
 });
 
 declare module "@tanstack/react-router" {

@@ -146,12 +146,6 @@ function ShellContent() {
     }
   }, [active]);
 
-  useEffect(() => {
-    if (pathname !== "/assistant") return;
-    openPanel("assistant");
-    void navigate({ to: "/", replace: true });
-  }, [pathname, navigate, openPanel]);
-
   // ⌘K 命令面板；Alt+0 主页 / Alt+数字 切 App（⌘+数字被浏览器标签页占用）
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

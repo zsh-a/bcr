@@ -51,7 +51,7 @@ export function audioCppSettings(voice: VoiceSettings, alignment = false) {
   }
   const endpoint = (
     process.env.AUDIO_CPP_ENDPOINT ??
-    (voice.backend === 'audio.cpp' ? voice.endpoint : undefined) ??
+    voice.endpoint ??
     profile?.endpoint ??
     'http://127.0.0.1:8089'
   ).replace(/\/$/, '');

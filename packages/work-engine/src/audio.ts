@@ -30,7 +30,7 @@ export function audioEnv(p: Project): Record<string, string> {
     ...p.config.audio?.env,
     PYTHONPATH: '',
     PYTHONNOUSERSITE: '1',
-    VIRTUAL_ENV: audioEnvironmentPath(p.config.audio?.driver === 'standard' ? 'runtime' : 'legacy'),
+    VIRTUAL_ENV: audioEnvironmentPath(),
   };
 }
 function rawFiles(p: Project, aligned = false) {
@@ -72,7 +72,7 @@ function inputs(p: Project, stage: Stage) {
   const cfg = p.config.audio!;
   const script = join(p.root, 'scripts', scripts[stage]);
   const files =
-    cfg.driver === 'standard'
+    cfg.driver === 'standard' || stage === 'align'
       ? []
       : stage === 'voiceover' || stage === 'soundtrack' || stage === 'master'
         ? sourceGraph(p.root, script)
@@ -83,17 +83,13 @@ function inputs(p: Project, stage: Stage) {
       ? json<VoiceSettings>(inside(p.root, p.config.audio.voice))
       : undefined;
     add(voice?.referenceFile ?? 'public/audio/reference.wav');
-    for (const optional of ['scripts/voiceover-reference.txt', 'voice-config.json']) {
-      if (existsSync(join(p.root, optional))) {
-        add(optional);
-      }
-    }
   }
   if (cfg.driver === 'standard') {
-    add(cfg.content!, cfg.voice!);
-    if (stage === 'voiceover') {
-      files.push(...audioCppInputFiles(p.root, json<VoiceSettings>(inside(p.root, cfg.voice!))));
-    }
+    add(cfg.content!);
+  }
+  add(cfg.voice!);
+  if (stage === 'voiceover') {
+    files.push(...audioCppInputFiles(p.root, json<VoiceSettings>(inside(p.root, cfg.voice!))));
   }
   if (['align', 'assemble', 'check'].includes(stage)) {
     add(cfg.plan);
@@ -146,12 +142,9 @@ function inputs(p: Project, stage: Stage) {
       tool,
       env: cfg.env,
       work,
-      native:
-        cfg.driver === 'standard' && ['voiceover', 'align'].includes(stage)
-          ? audioCppSettings(json<VoiceSettings>(inside(p.root, cfg.voice!)), stage === 'align')
-          : undefined,
-      endpoint: cfg.driver !== 'standard' ? process.env.GRADIO_ENDPOINT : undefined,
-      device: cfg.driver !== 'standard' ? (process.env.ALIGN_DEVICE ?? 'cuda:0') : undefined,
+      native: ['voiceover', 'align'].includes(stage)
+        ? audioCppSettings(json<VoiceSettings>(inside(p.root, cfg.voice!)), stage === 'align')
+        : undefined,
     }),
   );
 }
@@ -189,7 +182,7 @@ function outputs(p: Project, stage: Stage): string[] {
 }
 export async function audio(p: Project, checkOnly = false, force = false) {
   if (!p.config.audio) {
-    throw new Error('原型没有连续母带制作流程；请使用 preview/capture，保留原型配音方式。');
+    throw new Error('原型没有连续母带制作流程；请使用 capture，保留原型配音方式。');
   }
   return locked(`audio:${p.id}`, async () => {
     if (p.config.audio!.driver === 'standard') {
@@ -201,7 +194,7 @@ export async function audio(p: Project, checkOnly = false, force = false) {
         atomicJSON(join(p.root, 'production.json'), p.config);
       }
     }
-    const python = await ensureAudio(p.config.audio!.driver === 'standard' ? 'runtime' : 'legacy');
+    const python = await ensureAudio();
     const cfg = p.config.audio!;
     for (const path of [cfg.timeline, cfg.mastering, cfg.quality]) {
       mkdirSync(dirname(inside(p.root, path)), { recursive: true });
@@ -227,7 +220,7 @@ export async function audio(p: Project, checkOnly = false, force = false) {
         continue;
       }
       const cmd =
-        cfg.driver === 'standard'
+        cfg.driver === 'standard' || stage === 'align'
           ? [
               scripts[stage].endsWith('.py') && stage !== 'align' ? python : process.execPath,
               scripts[stage].endsWith('.py') && stage !== 'align'
@@ -243,12 +236,8 @@ export async function audio(p: Project, checkOnly = false, force = false) {
               ...(stage === 'check' ? ['--require-raw'] : []),
             ];
       console.log(`${p.id} audio:${stage}`);
-      if (cfg.driver === 'standard' && (stage === 'voiceover' || stage === 'align')) {
+      if (stage === 'voiceover' || stage === 'align') {
         await locked('shared-audio-cpp', () => command(cmd, p.root, audioEnv(p)));
-      } else if (stage === 'voiceover') {
-        await locked('shared-tts', () => command(cmd, p.root, audioEnv(p)));
-      } else if (stage === 'align') {
-        await locked('shared-gpu', () => command(cmd, p.root, audioEnv(p)));
       } else {
         await command(cmd, p.root, audioEnv(p));
       }

@@ -9,7 +9,7 @@ syncInstallMetadata(
   dedicated ?? PWA_APPS.find((app) => app.path !== "/" && location.pathname === app.path),
 );
 captureInstallPrompt();
-// Compatibility worker for existing browser workspaces; not an installation identity.
+// The browser workspace uses the root offline shell; installed apps own their scopes.
 if (!dedicated) registerPwaWorker("/sw.js", "/");
 
 const rootElement = document.getElementById("root");

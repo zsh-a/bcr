@@ -68,7 +68,6 @@ const selectors = {
   data: ".data-studio",
   docgen: ".docgen-studio",
   diagram: ".diagram-app",
-  works: ".works-app",
 };
 const ids = new Set();
 try {
@@ -144,10 +143,6 @@ try {
       await code.getByRole("button", { name: "插入图形", exact: true }).click();
       await code.waitFor({ state: "hidden" });
       await page.locator(".diagram-save-state").filter({ hasText: "已保存" }).waitFor();
-      assert.equal(await page.getByRole("alert").count(), 0);
-    }
-    if (app.key === "works") {
-      await page.getByRole("heading", { name: "连接 Runner 开始创作" }).waitFor();
       assert.equal(await page.getByRole("alert").count(), 0);
     }
     if (app.key === "knowledge") {
@@ -248,7 +243,7 @@ try {
   await page.getByRole("button", { name: "工作区选项", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "安装工作区", exact: true }).count(), 1);
   await context.close();
-  console.log("PASS: legacy worker handoff, shared data and scoped navigation");
+  console.log("PASS: workspace offline shell, shared data and scoped navigation");
 } finally {
   await browser.close();
   await new Promise((done) => server.close(done));

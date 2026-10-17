@@ -39,9 +39,7 @@ export function validationIdentity(p: Project, t: Target) {
     if (!script || !existsSync(join(p.root, script))) {
       throw new Error(`验收命令需声明本期脚本: ${check.id}`);
     }
-    return /\.[jt]sx?$/.test(script)
-      ? sourceGraph(p.root, script, { externalEntries: [join(p.root, '../.tools'), TOOLS] })
-      : [inside(p.root, script)];
+    return /\.[jt]sx?$/.test(script) ? sourceGraph(p.root, script) : [inside(p.root, script)];
   });
   return sha(
     stable({
@@ -49,6 +47,7 @@ export function validationIdentity(p: Project, t: Target) {
       checks,
       files: fileMap(p.root, files),
       validator: hashFile(import.meta.filename),
+      reviewProtocol: hashFile(join(TOOLS, 'src/video/review.ts')),
     }),
   );
 }

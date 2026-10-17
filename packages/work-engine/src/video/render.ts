@@ -57,7 +57,7 @@ export async function render(p: Project, t: Target, options: RenderOptions = {})
   }
   const scope = targetScope(p, t);
   if ((scope.audio || scope.runtime) && p.config.stage === 'draft') {
-    throw new Error('工程仍是草稿，请先执行 audio；草稿画面可用 preview/capture');
+    throw new Error('工程仍是草稿，请先执行 audio；草稿画面可用 capture');
   }
   if (scope.audio || scope.runtime) {
     assertMeasured(p);

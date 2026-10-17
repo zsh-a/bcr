@@ -5,6 +5,40 @@ import { validationStatus } from '../pipeline/validation';
 import { project, targetOf, workspace } from '../project';
 import { releases } from '../release';
 
+/** Current configuration and delivery pointers only; no cache scan or database writes. */
+export function statusSummary(id?: string, root?: string) {
+  const registry = workspace(root);
+  return {
+    version: 1,
+    scope: 'technical-configuration-and-current-delivery',
+    projects: (id ? [id] : registry.projects.map((entry) => entry.id)).map((name) => {
+      const current = project(name, root);
+      const target = targetOf(current);
+      const out = join(current.root, 'out');
+      const manifest = join(out, '..', 'manifest.json');
+      const releaseManifest = existsSync(out)
+        ? join(realpathSync(out), '..', 'manifest.json')
+        : manifest;
+      const delivery =
+        existsSync(out) && existsSync(releaseManifest)
+          ? json<{ id: string }>(releaseManifest).id
+          : null;
+      return {
+        id: current.id,
+        title: current.work.title,
+        stage: current.config.stage ?? (current.config.audio ? 'production' : 'prototype'),
+        target: target.id,
+        timing: current.config.stage === 'draft' ? 'estimated' : 'configured',
+        frames: target.durationInFrames,
+        fps: target.fps,
+        currentRelease: delivery,
+        deliveryPresent: existsSync(out),
+        statusFile: join(current.root, 'docs/STATUS.md'),
+      };
+    }),
+  };
+}
+
 export function status(id?: string) {
   const registry = workspace();
   const ids = id ? [id] : registry.projects.map((entry) => entry.id);
@@ -46,3 +80,7 @@ export function printStatus(result: ReturnType<typeof status>) {
   );
   console.log(`制作记录 ${STATE}`);
 }
+
+import { existsSync, realpathSync } from 'node:fs';
+import { join } from 'node:path';
+import { json } from '../lib/files';

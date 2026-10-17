@@ -8,11 +8,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-legacy = [
-  "qwen-asr==0.0.6",
-  "transformers==4.57.6",
-  "torch==2.10.0+cu128",
-]
 models = [
   "torch==2.10.0+cu128",
   "safetensors==0.8.0",

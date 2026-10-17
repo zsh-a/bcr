@@ -57,7 +57,7 @@ async function fetchWithTimeout(request, init = {}, timeoutMs = NETWORK_TIMEOUT_
 }
 
 // Keep this installer in sync across the three worker entries. The root worker
-// is classic, so sharing an ES module here would break existing registrations.
+// is classic; keep its installer self-contained.
 async function installResource(url, init, consume) {
   for (let attempt = 0; ; attempt++) {
     const controller = new AbortController();
@@ -185,10 +185,7 @@ globalThis.addEventListener("activate", (event) => {
         .filter((name) => /^\d+$/u.test(name.slice(CACHE_PREFIX.length)))
         .sort()
         .reverse();
-      // During the first migration the old cache is named "v3". Retain it
-      // once, then prefer the immediately preceding timestamped release.
       const previous = generatedCandidates.slice(0, 1);
-      if (previous.length === 0 && candidates[0] !== undefined) previous.push(candidates[0]);
       const retained = new Set([CACHE_NAME, ...previous]);
       await Promise.all(
         (await readerCacheNames())

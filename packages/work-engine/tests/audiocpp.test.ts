@@ -13,7 +13,7 @@ import { isAbsolute, join } from 'node:path';
 import { nativeAlignment } from '../src/audio/align';
 import type { NativeRequest } from '../src/audio/audiocpp';
 import type { VoiceSettings } from '../src/audio/content';
-import { voiceover } from '../src/audio/standard';
+import { generateNarration, voiceover } from '../src/audio/standard';
 import { atomicJSON, hashFile, json } from '../src/lib/files';
 import type { Project } from '../src/project';
 
@@ -200,6 +200,64 @@ test('recorded narration changes tempo without another TTS call and rejects alte
   expect(record.generation.derivation).toMatchObject({ sourceSha256, tempo: 1.05 });
   writeFileSync(original, 'changed source');
   await expect(voiceover(project)).rejects.toThrow('原始录音身份发生变化');
+});
+
+test('multi-track programs preserve original recordings and generate only changed paragraphs', async () => {
+  const { project, voice } = fixture('multi-track-recording');
+  project.config.audio!.driver = 'scripted';
+  project.config.audio!.directory = '.bcr/narration';
+  const original = join(project.root, '.bcr/narration/original.wav');
+  writeFileSync(original, wav);
+  const originalHash = hashFile(original);
+  const sourcePlan = join(project.root, '.bcr/source-plan.json');
+  atomicJSON(sourcePlan, {
+    settings: {
+      model: voice.model,
+      referenceHash: hashFile(join(project.root, 'public/audio/reference.wav')),
+    },
+    groups: [
+      {
+        id: 'cooperate',
+        text: '一起合作。',
+        hash: 'original',
+        raw: '.bcr/narration/original.wav',
+        sourceSha256: originalHash,
+      },
+    ],
+  });
+  voice.generation = {
+    recordedSource: {
+      plan: '.bcr/source-plan.json',
+      sha256: hashFile(sourcePlan),
+      tempo: 1,
+      onTextChange: 'generate',
+    },
+  };
+  atomicJSON(join(project.root, 'voice.json'), voice);
+  const program = {
+    fps: 30,
+    groups: [{ id: 'cooperate', lines: [{ text: '一起合作。' }], gap: 0.6, holdReason: '留白' }],
+    programs: { main: ['cooperate'], highlight: ['cooperate'] },
+  };
+  const count = calls.length;
+  await generateNarration(project, program);
+  const plan = json<{
+    groups: { raw: string; hash: string; holdReason: string }[];
+    programs: Record<string, string[]>;
+  }>(join(project.root, project.config.audio!.plan));
+  expect(calls.length).toBe(count);
+  expect(plan.groups[0]).toMatchObject({
+    raw: '.bcr/narration/original.wav',
+    hash: 'original',
+    holdReason: '留白',
+  });
+  expect(plan.programs).toEqual(program.programs);
+  expect(hashFile(original)).toBe(originalHash);
+  program.groups[0]!.lines[0]!.text = '一起合作吧。';
+  await generateNarration(project, program);
+  expect(calls.length).toBe(count + 1);
+  expect(calls.at(-1)!.request.text).toBe('一起合作吧。');
+  expect(hashFile(original)).toBe(originalHash);
 });
 
 test('native alignment retains the Chinese year numeral spelling without dropping zero', async () => {

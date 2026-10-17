@@ -24,16 +24,6 @@ import { defineConfig } from "vite-plus";
  */
 const boundaries: { dir: string; allow: string[]; message: string }[] = [
   {
-    dir: "packages/work-core",
-    allow: [],
-    message: "Work contracts have no application or renderer dependencies.",
-  },
-  {
-    dir: "apps/work-runner",
-    allow: ["@bcr/work-core", "@bcr/work-engine", "@bcr/work-engine/*"],
-    message: "Runner adapts shared Work contracts and the execution engine, never browser stores.",
-  },
-  {
     dir: "apps/agent-bridge",
     allow: ["@bcr/agent/bridge"],
     message:
@@ -177,6 +167,34 @@ function boundaryOverrides(apps: ReadonlyArray<string>) {
 }
 
 export default defineConfig({
+  run: {
+    tasks: {
+      "work:types": {
+        command: "bun run --cwd packages/work-engine typecheck",
+        cache: true,
+        input: [
+          { auto: true },
+          "bun.lock",
+          "packages/work-engine/src/**",
+          "packages/work-engine/tests/**",
+          "packages/work-engine/build.ts",
+          "packages/work-engine/tsconfig.json",
+        ],
+        output: [],
+      },
+      "work:test": {
+        command: "bun run --cwd packages/work-engine test",
+        dependsOn: ["work:types"],
+        cache: false,
+      },
+      "work:audio": { command: "bun run --cwd packages/work-engine test:audio", cache: false },
+      "work:check": {
+        command: "bun run --cwd packages/work-engine lint",
+        dependsOn: ["work:types", "work:test", "work:audio"],
+        cache: false,
+      },
+    },
+  },
   fmt: {
     ignorePatterns: [
       "**/dist/**",
@@ -227,6 +245,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["{packages,apps}/*/tests/**/*.test.ts"],
-    exclude: ["apps/work-runner/**", "packages/work-engine/**", "packages/animation-core/**"],
+    exclude: ["packages/work-engine/**", "packages/animation-core/**"],
   },
 });

@@ -130,7 +130,6 @@ try {
     ["/markets", ".ma-header"],
     ["/knowledge", ".knowledge-app"],
     ["/diagram", ".diagram-app"],
-    ["/works", ".works-app"],
     ["/studio", ".studio-dock"],
   ]) {
     await page.goto(`${origin}${route}`, { waitUntil: "domcontentloaded" });
@@ -144,12 +143,12 @@ try {
   }
 
   await page.goto(`${origin}/reader`, { waitUntil: "networkidle" });
-  await page.locator(".reader-main").waitFor();
-  const reading = await page.locator(".reader-main").boundingBox();
+  await page.locator(".reader-workspace").waitFor();
+  const reading = await page.locator(".reader-workspace").boundingBox();
   await openTopBar(page);
-  assert.deepEqual(await page.locator(".reader-main").boundingBox(), reading);
+  assert.deepEqual(await page.locator(".reader-workspace").boundingBox(), reading);
   await close();
-  assert.deepEqual(await page.locator(".reader-main").boundingBox(), reading);
+  assert.deepEqual(await page.locator(".reader-workspace").boundingBox(), reading);
   await page.goto(`${origin}/quant`, { waitUntil: "networkidle" });
   await page.locator(".research-header").waitFor();
   await page.emulateMedia({ reducedMotion: "reduce" });

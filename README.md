@@ -11,7 +11,6 @@ Browser Compute Runtime（BCR）把面向日常使用的 Studio 工作区，与�
 | 应用       | 可以做什么                                            | 路由         |
 | ---------- | ----------------------------------------------------- | ------------ |
 | Reader     | 阅读 EPUB、PDF、TXT 等格式，搜索原文、管理书签与笔记  | `/reader`    |
-| 作品       | 网页与代码动画、交互预览、批注、版本与导出            | `/works`     |
 | 个人知识库 | Markdown 写作、双向链接、附件、版本历史与 GitHub 同步 | `/knowledge` |
 | 绘图       | 自由画布、Mermaid、AI 局部编辑与 SVG/PNG 导出         | `/diagram`   |
 | Media      | 音视频转字幕、校对、翻译与导出                        | `/media`     |
@@ -24,8 +23,6 @@ Browser Compute Runtime（BCR）把面向日常使用的 Studio 工作区，与�
 | 计算工作台 | 查看文件、任务、缓存与本地存储                        | `/studio`    |
 
 应用共享导航、搜索、主题与 AI 助手，也可[分别安装为 PWA](docs/INDEPENDENT-PWAS.md)。阅读摘录可进入资料集合，再关联到知识库；文档与漫画处理结果可交给 Reader 继续阅读。
-
-作品支持浏览器文件与本地代码工程。独立 [Runner](apps/work-runner/README.md) 提供预览、PNG/MP4 导出、CLI 和直接 MCP；[外部 Agent 接入](docs/EXTERNAL-AGENTS.md)说明如何选择 Runner 或浏览器 Bridge。
 
 ## 快速开始
 
@@ -51,7 +48,7 @@ bun run test:browser   # 核心浏览器回归，自动管理开发服务器
 
 ## 数据与离线
 
-- **本机优先**：浏览器资料保存在站点存储中，本地代码作品保存在选择的工程目录；计算产物可通过内容寻址缓存复用。
+- **本机优先**：浏览器资料保存在站点存储中，计算产物通过内容寻址缓存复用。
 - **显式联网**：AI 接口、GitHub 同步、行情和首次模型下载需要网络，使用对应功能时才建立连接。
 - **离线可用范围**：PWA 缓存应用外壳；本地文件和已下载资源可继续使用，未下载模型与实时数据不在离线范围内。
 - **备份由应用提供**：Reader 书库、知识库和图表各有导出入口。更换域名、端口或浏览器不会自动迁移数据，清除站点数据会删除本地内容。
@@ -62,7 +59,7 @@ bun run test:browser   # 核心浏览器回归，自动管理开发服务器
 
 | 目录             | 职责                                                                  |
 | ---------------- | --------------------------------------------------------------------- |
-| `apps/`          | Studio 宿主、独立领域应用、Works Runner 与浏览器 Bridge               |
+| `apps/`          | Studio 宿主、独立领域应用、浏览器 Bridge                              |
 | `packages/`      | Runtime、存储、Agent、共享 UI、领域契约与 Reader/Document/Data 工作台 |
 | `crates/`        | Rust 计算内核、Quant 引擎与 Agent Runtime 子模块                      |
 | `docs/`          | 使用、开发、架构与维护文档                                            |
@@ -74,7 +71,7 @@ bun run test:browser   # 核心浏览器回归，自动管理开发服务器
 
 ## 深入了解
 
-- 使用：[作品](docs/WORKS.md) · [Reader](docs/READER-ARCHITECTURE.md) · [知识库](docs/KNOWLEDGE-WORKBENCH.md) · [绘图](docs/DRAWING.md)
+- 使用：[Reader](docs/READER-ARCHITECTURE.md) · [知识库](docs/KNOWLEDGE-WORKBENCH.md) · [绘图](docs/DRAWING.md)
 - 扩展：[Runtime](docs/RUNTIME-ARCHITECTURE.md) · [Agent](docs/AGENT-UI.md) · [交互约定](docs/WORKSPACE-UI.md)
 - 外部助手：[Codex / Claude Code MCP 接入](docs/EXTERNAL-AGENTS.md)
 - 研究：[趋势研究索引](research/trend/README.md) · [研究架构](docs/TREND-RESEARCH-ARCHITECTURE.md)

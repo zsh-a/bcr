@@ -15,7 +15,6 @@ import {
   KNOWLEDGE_MANIFEST,
   STUDIO_MANIFEST,
   DIAGRAM_MANIFEST,
-  WORKS_MANIFEST,
 } from "./host-manifests";
 
 /**
@@ -36,7 +35,6 @@ const implementations = {
   reader,
   knowledge: KNOWLEDGE_MANIFEST,
   diagram: DIAGRAM_MANIFEST,
-  works: WORKS_MANIFEST,
   media,
   data,
   manga,

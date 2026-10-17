@@ -23,7 +23,7 @@ export interface Content {
 
 export interface VoiceSettings {
   referenceFile?: string;
-  backend?: 'audio.cpp';
+  backend: 'audio.cpp';
   referenceTranscript: string;
   language: string;
   endpoint: string;

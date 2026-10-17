@@ -28,7 +28,6 @@ export function parseCli(args = process.argv.slice(2)) {
       concurrency: { type: 'string' },
       encoder: { type: 'string' },
       'cpu-reason': { type: 'string' },
-      port: { type: 'string' },
       check: { type: 'boolean' },
       plan: { type: 'boolean' },
       'logic-only': { type: 'boolean' },
@@ -38,12 +37,10 @@ export function parseCli(args = process.argv.slice(2)) {
       force: { type: 'boolean' },
       apply: { type: 'boolean' },
       'budget-gib': { type: 'string' },
-      'legacy-scratch': { type: 'boolean' },
-      'dedup-snapshots': { type: 'boolean' },
       'from-dir': { type: 'string' },
-      legacy: { type: 'boolean' },
       models: { type: 'boolean' },
       json: { type: 'boolean' },
+      summary: { type: 'boolean' },
     },
   });
 }
