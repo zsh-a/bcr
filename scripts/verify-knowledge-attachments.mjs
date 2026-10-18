@@ -221,8 +221,11 @@ try {
     .first()
     .click();
   let dialog = a.page.getByRole("dialog", { name: "研究资料.txt", exact: true });
-  await dialog.getByRole("button", { name: "提取文本", exact: true }).click();
-  await dialog.getByText("附件原文证据", { exact: false }).waitFor();
+  await dialog
+    .getByLabel("附件正文", { exact: true })
+    .filter({ hasText: "附件原文证据" })
+    .waitFor();
+  assert.equal(await dialog.getByRole("button", { name: "提取文本", exact: true }).count(), 0);
   await a.page.keyboard.press("Escape");
   await a.page
     .getByRole("button", { name: /报告\.pdf/u })

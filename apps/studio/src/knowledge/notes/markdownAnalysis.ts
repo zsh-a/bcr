@@ -196,7 +196,7 @@ function walk(
       // The AST has decoded escapes/entities. Count the rendered prefix rather
       // than replacing an earlier escaped occurrence of the same literal.
       const prefix = source.slice(child.position!.start.offset!, link.from);
-      const at = parser.parse(`${prefix}x`).children.map(textOf).join("\n").length - 1;
+      const at = parser.parse(`x${prefix}x`).children.map(textOf).join("\n").length - 2;
       if (at < cursor || child.value.slice(at, at + literal.length) !== literal) continue;
       if (at > cursor) replacements.push({ type: "text", value: child.value.slice(cursor, at) });
       replacements.push({
@@ -237,6 +237,31 @@ export function remarkKnowledgeLinks() {
       definitionsIn(tree),
     );
   };
+}
+
+/** Count visible text, excluding attachment references, images and Markdown syntax. */
+export function noteCharacterCount(source: string): number {
+  const tree = parser.parse(source);
+  remarkKnowledgeLinks()(tree, { value: source });
+  const definitions = definitionsIn(tree);
+  function content(node: Root | RootContent): string {
+    if (
+      node.type === "definition" ||
+      node.type === "image" ||
+      node.type === "imageReference" ||
+      node.type === "html"
+    )
+      return "";
+    if (node.type === "link" && node.url.startsWith("attachment:")) return "";
+    if (
+      node.type === "linkReference" &&
+      definitions.get(node.identifier)?.url.startsWith("attachment:")
+    )
+      return "";
+    if ("value" in node) return node.value;
+    return "children" in node ? node.children.map((child) => content(child)).join(" ") : "";
+  }
+  return Array.from(content(tree).replace(/\s/gu, "")).length;
 }
 
 export function splitNoteTarget(target: string) {

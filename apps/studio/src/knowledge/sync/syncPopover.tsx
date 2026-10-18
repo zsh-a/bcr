@@ -97,6 +97,7 @@ export function SyncStatus({
   onRetrySave,
   target,
   pendingItems = [],
+  compact = false,
 }: {
   facts: SyncStatusFacts;
   auto: boolean;
@@ -107,6 +108,7 @@ export function SyncStatus({
   onRetrySave?: () => void;
   target?: GitTarget | null;
   pendingItems?: { label: string; change: string }[];
+  compact?: boolean;
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -176,12 +178,12 @@ export function SyncStatus({
         className="knowledge-status-trigger"
         popoverTarget={id}
         aria-expanded={open}
-        title="保存与同步状态"
+        title={`保存与同步状态：${line.text}`}
         aria-label={`保存与同步状态：${line.text}`}
       >
         <StatusDot status={line.dot} />
         <span className={`knowledge-status-line is-${line.tone}`} role="status">
-          {line.text}
+          {compact && line.tone === "synced" ? "已同步" : line.text}
         </span>
       </button>
       <div

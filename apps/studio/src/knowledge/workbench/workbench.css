@@ -309,7 +309,7 @@
   color: var(--color-faint);
 }
 
-.knowledge-context button {
+.knowledge-context-section > button {
   display: block;
   width: 100%;
   padding: var(--space-1) var(--space-2);
@@ -326,34 +326,34 @@
   transition: color var(--duration-fast) var(--ease-standard);
 }
 
-.knowledge-context button:hover {
+.knowledge-context-section > button:hover {
   color: var(--color-accent);
 }
 
 /* 大纲层级递进：h1 实色，h2/h3 缩进并逐级弱化。 */
-.knowledge-context button[data-depth="2"] {
+.knowledge-context-section > button[data-depth="2"] {
   padding-left: var(--space-5);
   color: var(--color-muted);
 }
 
-.knowledge-context button[data-depth="3"] {
+.knowledge-context-section > button[data-depth="3"] {
   padding-left: var(--space-6);
   color: var(--color-muted);
 }
 
-.knowledge-context button[data-depth="4"],
-.knowledge-context button[data-depth="5"],
-.knowledge-context button[data-depth="6"] {
+.knowledge-context-section > button[data-depth="4"],
+.knowledge-context-section > button[data-depth="5"],
+.knowledge-context-section > button[data-depth="6"] {
   padding-left: var(--space-7);
   color: var(--color-muted);
 }
 
 /* scrollspy：当前标题安静高亮，不做位移。 */
-.knowledge-context button.is-current {
+.knowledge-context-section > button.is-current {
   color: var(--color-accent);
 }
 
-.knowledge-context button small {
+.knowledge-context-section > button small {
   display: block;
   color: var(--color-amber);
   font-size: var(--text-xs);
@@ -627,17 +627,17 @@
     display: none;
   }
 
-  .knowledge-context button[data-depth="2"] {
+  .knowledge-context-section > button[data-depth="2"] {
     padding-left: calc(var(--space-5) / 2);
   }
 
-  .knowledge-context button[data-depth="3"] {
+  .knowledge-context-section > button[data-depth="3"] {
     padding-left: calc(var(--space-6) / 2);
   }
 
-  .knowledge-context button[data-depth="4"],
-  .knowledge-context button[data-depth="5"],
-  .knowledge-context button[data-depth="6"] {
+  .knowledge-context-section > button[data-depth="4"],
+  .knowledge-context-section > button[data-depth="5"],
+  .knowledge-context-section > button[data-depth="6"] {
     padding-left: calc(var(--space-7) / 2);
   }
 }

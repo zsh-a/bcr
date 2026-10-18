@@ -14,7 +14,7 @@ import {
 } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import { createPortal } from "react-dom";
-import { ChevronRight, Info, Paperclip, SlidersHorizontal, X } from "lucide-react";
+import { Info, Paperclip, SlidersHorizontal, X } from "lucide-react";
 import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "../session/model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
@@ -24,8 +24,10 @@ import {
   internalTarget,
   remarkKnowledgeLinks,
   linkKey,
+  noteCharacterCount,
 } from "../notes/markdownAnalysis";
 import { NoteContext } from "./NoteContext";
+import { NoteProperties, NoteMetadata } from "./NoteProperties";
 import { PanelResizer } from "../workbench/PanelResizer";
 import { CONTEXT_MAX_WIDTH, CONTEXT_MIN_WIDTH } from "../workbench/workbench";
 import { fillTemplate } from "./format";
@@ -44,7 +46,6 @@ import {
   Button,
   IconButton,
   Dialog,
-  Select,
   useMediaQuery,
   useNavigation,
   useAgentHost,
@@ -55,6 +56,9 @@ import { attachmentId, attachmentReferences } from "../attachments/attachmentMod
 import { AttachmentInline, RemoteImage } from "../attachments/AttachmentView";
 import { useNoteAttachments } from "../attachments/useNoteAttachments";
 import { NoteAttachmentOverlays } from "../attachments/NoteAttachmentOverlays";
+import { NoteAttachmentList } from "../attachments/NoteAttachmentList";
+import { AttachmentDocumentPreview } from "../attachments/AttachmentDocumentPreview";
+import { isPlainTextAttachment } from "../attachments/attachmentPlainText";
 import type { LocalSaveStatus } from "../sync/syncPopover";
 import { themeStore } from "../../theme/browser";
 
@@ -152,9 +156,6 @@ export function NoteEditor({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const menuAnchor = `--writing-menu-${menuId.replaceAll(/[^a-zA-Z0-9]/g, "")}`;
-  const [tagDraft, setTagDraft] = useState("");
-  const [tagEditing, setTagEditing] = useState(false);
-  const tagInput = useRef<HTMLInputElement>(null);
   const [navigationError, setNavigationError] = useState("");
   const source = useRef<MarkdownEditorHandle>(null);
   const reading = useRef<HTMLElement>(null);
@@ -212,11 +213,6 @@ export function NoteEditor({
       void import("@fontsource-variable/noto-serif-sc/wght.css").catch(() => {});
   }, [settings.font, view]);
 
-  // 标签输入立即聚焦；失焦提交，Escape 放弃尚未提交的输入。
-  useEffect(() => {
-    if (tagEditing) tagInput.current?.focus();
-  }, [tagEditing]);
-
   // 原生浮层处理外部点击；Esc 先收起设置，并把焦点归还触发器。
   useEffect(() => {
     if (!menuOpen) return;
@@ -248,99 +244,20 @@ export function NoteEditor({
   const templates = notes.filter(
     (item) => item.id !== note.id && item.tags.some((tag) => tag === "模板" || tag === "template"),
   );
+  const characters = useMemo(() => noteCharacterCount(body), [body]);
+  const attachmentCount = new Set(refs.map((ref) => ref.id)).size;
+  const file =
+    attachmentCount === 1 && characters === 0
+      ? store.getSnapshot().attachments?.[refs[0]!.id]
+      : undefined;
+  const filePreview = file && isPlainTextAttachment(file) && view !== "source" ? file : null;
   const properties = (
-    <div className="knowledge-property-controls">
-      <div className="knowledge-tags">
-        {draft.tags.map((tag) => (
-          <button
-            type="button"
-            key={tag}
-            className="knowledge-tag-chip"
-            aria-label={`移除标签 ${tag}`}
-            disabled={locked || !!initialError}
-            onClick={() => change({ tags: draft.tags.filter((item) => item !== tag) })}
-          >
-            {tag}
-            <X size={12} aria-hidden="true" />
-          </button>
-        ))}
-        {tagEditing ? (
-          <input
-            ref={tagInput}
-            className="knowledge-tag-input"
-            aria-label="笔记标签"
-            placeholder="用逗号或回车分隔"
-            value={tagDraft}
-            disabled={locked || !!initialError}
-            onChange={(event) => {
-              const parts = event.target.value.split(/[,，]/u);
-              const additions = parts.map((item) => item.trim()).filter(Boolean);
-              if (parts.length > 1) {
-                if (additions.length)
-                  change({ tags: [...new Set([...draft.tags, ...additions])].slice(0, 100) });
-                setTagDraft("");
-              } else setTagDraft(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.nativeEvent.isComposing) return;
-              if (event.key === "Enter") {
-                event.preventDefault();
-                const addition = tagDraft.trim();
-                if (addition)
-                  change({ tags: [...new Set([...draft.tags, addition])].slice(0, 100) });
-                setTagDraft("");
-              } else if (event.key === "Escape") {
-                event.preventDefault();
-                setTagDraft("");
-                setTagEditing(false);
-              } else if (event.key === "Backspace" && !tagDraft && draft.tags.length) {
-                change({ tags: draft.tags.slice(0, -1) });
-              }
-            }}
-            onBlur={() => {
-              const addition = tagDraft.trim();
-              if (addition && !locked && !initialError)
-                change({
-                  tags: [...new Set([...controller.getSnapshot().note.tags, addition])].slice(
-                    0,
-                    100,
-                  ),
-                });
-              setTagDraft("");
-              setTagEditing(false);
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            className="knowledge-tag-add"
-            aria-label="添加标签"
-            disabled={locked || !!initialError}
-            onClick={() => setTagEditing(true)}
-          >
-            + 标签
-          </button>
-        )}
-      </div>
-      <Select
-        aria-label="笔记所属集合"
-        className="knowledge-collection-select"
-        value={draft.collectionId ?? ""}
-        disabled={locked || !!initialError}
-        onChange={(e) => change({ collectionId: e.target.value || null })}
-      >
-        <option value="">未归类</option>
-        {draft.collectionId && !collections.some((c) => c.id === draft.collectionId) && (
-          <option value={draft.collectionId}>集合未同步</option>
-        )}
-        {collections.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </Select>
-      <span className="knowledge-editor-count">{draft.body.length.toLocaleString()} 字符</span>
-    </div>
+    <NoteProperties
+      controller={controller}
+      collections={collections}
+      disabled={locked || !!initialError}
+      characters={characters}
+    />
   );
   const context = (
     <NoteContext
@@ -364,33 +281,17 @@ export function NoteEditor({
       properties={properties}
       attachmentCount={new Set(refs.map((ref) => ref.id)).size}
       attachments={
-        <div className="knowledge-attachments-list">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={locked || !!initialError}
-            onClick={() => {
-              setView("edit");
-              source.current?.pickAttachment();
-            }}
-          >
-            <Paperclip size={15} />
-            添加附件
-          </Button>
-          {[...new Map(refs.map((ref) => [ref.id, ref])).values()].map((ref) => (
-            <AttachmentInline
-              key={ref.id}
-              asset={store.getSnapshot().attachments?.[ref.id]}
-              storage={store.attachments}
-              label={ref.label}
-              onOpen={() => openAttachment(ref.id)}
-              onMenu={(x, y) => menuAttachment(ref, x, y)}
-            />
-          ))}
-          {!refs.length && (
-            <p className="knowledge-context-empty">粘贴截图或拖入文件，附件会随笔记保存。</p>
-          )}
-        </div>
+        <NoteAttachmentList
+          refs={refs}
+          assets={store.getSnapshot().attachments ?? {}}
+          disabled={locked || !!initialError}
+          onAdd={() => {
+            setView("edit");
+            source.current?.pickAttachment();
+          }}
+          onOpen={openAttachment}
+          onMenu={menuAttachment}
+        />
       }
       onClose={() => onContextOpenChange(false)}
     />
@@ -679,6 +580,7 @@ export function NoteEditor({
         data-reading-size={settings.fontSize}
         data-reading-line={settings.lineHeight}
         data-source={view === "source" ? "on" : undefined}
+        data-file-preview={!!filePreview || undefined}
       >
         <div className="knowledge-editor-head">
           <NoteRename
@@ -691,22 +593,16 @@ export function NoteEditor({
           />
         </div>
         <div className="knowledge-editor-meta">
-          <button
-            type="button"
-            className="knowledge-metadata-summary"
-            aria-label="编辑笔记属性"
-            onClick={() => {
-              setContextView("properties");
+          <NoteMetadata
+            note={draft}
+            collections={collections}
+            characters={characters}
+            attachments={attachmentCount}
+            onOpen={(next) => {
+              setContextView(next);
               onContextOpenChange(true);
             }}
-          >
-            <span>
-              {collections.find((item) => item.id === draft.collectionId)?.name || "未归类"}
-            </span>
-            <span>{draft.tags.length ? draft.tags.slice(0, 3).join(" · ") : "添加标签"}</span>
-            <span>{draft.body.length.toLocaleString()} 字符</span>
-            <ChevronRight size={14} aria-hidden="true" />
-          </button>
+          />
           {saveStatus}
         </div>
         {error && (
@@ -864,6 +760,9 @@ export function NoteEditor({
               <p className="knowledge-hint">开始记录你的第一个想法。</p>
             )}
           </article>
+        )}
+        {filePreview && (
+          <AttachmentDocumentPreview asset={filePreview} storage={store.attachments} />
         )}
       </section>
       {narrow ? (

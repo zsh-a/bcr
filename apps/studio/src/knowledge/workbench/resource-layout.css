@@ -1,4 +1,5 @@
 @import "@bcr/react/tokens.css";
+@import "./refinement.css";
 
 /* One app toolbar, one resource panel, and an optional context panel. */
 .knowledge-app {
@@ -314,7 +315,7 @@
   font-size: var(--text-sm);
   padding-block: var(--space-2);
 }
-.knowledge-context button.is-current {
+.knowledge-context-section > button.is-current {
   background: var(--color-accent-dim);
 }
 .knowledge-context-drawer .ui-dialog-body {

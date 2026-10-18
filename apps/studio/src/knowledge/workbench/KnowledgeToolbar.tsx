@@ -27,7 +27,16 @@ import {
 import { KNOWLEDGE_PATH } from "../../shell/host-manifests";
 import { SyncStatus } from "../sync/syncPopover";
 import { pendingSyncItems } from "../sync/syncFeedback";
-import { closeNote, setContext, setSidebar, toggleFavorite, togglePinned } from "./workbench";
+import {
+  closeNote,
+  openNote,
+  setContext,
+  setSidebar,
+  toggleFavorite,
+  togglePinned,
+} from "./workbench";
+import { adjacentNoteTab, visibleNoteTabs } from "./noteTabsModel";
+import { KnowledgeDocumentBar } from "./KnowledgeDocumentBar";
 import { NoteTabs } from "./NoteTabs";
 import { NoteActionsMenu } from "./NoteActionsMenu";
 import type { KnowledgeWorkbench } from "./useKnowledgeWorkbench";
@@ -55,7 +64,6 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
     setView,
     setSwitcher,
     input,
-    setToolbarSlot,
     setClosedAll,
     note,
     workbench,
@@ -75,259 +83,265 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
     favorite,
   } = controller;
   return (
-    <AppToolbar className="knowledge-toolbar">
-      {installationOpen && (
-        <PwaInstallDialog
-          app={pwaForApp("knowledge")!}
-          open
-          onClose={() => setInstallationOpen(false)}
-          onBackup={exportAll}
+    <>
+      <AppToolbar className="knowledge-toolbar">
+        {installationOpen && (
+          <PwaInstallDialog
+            app={pwaForApp("knowledge")!}
+            open
+            onClose={() => setInstallationOpen(false)}
+            onBackup={exportAll}
+          />
+        )}
+        <IconButton
+          ref={sidebarToggle}
+          label="切换笔记列表"
+          title="笔记列表 · Ctrl/⌘+B"
+          aria-expanded={!focusMode && (mobile ? drawer : sidebar === "expanded")}
+          onClick={() => {
+            setFocusMode(false);
+            if (mobile) setDrawer((open) => focusMode || !open);
+            else
+              workbench.setState((current) =>
+                setSidebar(
+                  current,
+                  !focusMode && current.sidebar === "expanded" ? "rail" : "expanded",
+                ),
+              );
+          }}
+        >
+          {!focusMode && (mobile ? drawer : sidebar === "expanded") ? (
+            <PanelLeftClose size={18} />
+          ) : (
+            <PanelLeftOpen size={18} />
+          )}
+        </IconButton>
+        {mobile ? (
+          <button
+            type="button"
+            className="knowledge-mobile-title"
+            aria-label="搜索与切换笔记"
+            onClick={() => setSwitcher({ query: "" })}
+          >
+            <span>{note?.title || (note ? "未命名笔记" : "知识库")}</span>
+            <ChevronDown size={14} aria-hidden="true" />
+          </button>
+        ) : (
+          <strong className="knowledge-app-identity">知识库</strong>
+        )}
+        <NoteTabs
+          notes={state.notes}
+          ids={workbench.state.tabs}
+          pinned={workbench.state.pinned}
+          activeId={note?.id}
+          onSelect={(id) => go(() => select(id))}
+          onOpen={(id) => workbench.setState((current) => openNote(current, id))}
+          onClose={(id) =>
+            void run(async () => {
+              await flushEditor();
+              const next = adjacentNoteTab(
+                visibleNoteTabs(workbench.state.tabs, state.notes, note?.id),
+                id,
+              );
+              workbench.setState((current) => closeNote(current, id));
+              sessions.delete(id);
+              if (id === note?.id) {
+                if (next) await select(next);
+                else {
+                  setClosedAll(true);
+                  await navigate({ to: KNOWLEDGE_PATH, search: {} });
+                }
+              }
+            })
+          }
+          onTogglePin={(id) =>
+            workbench.setState((current) => togglePinned(openNote(current, id), id))
+          }
         />
-      )}
-      <IconButton
-        ref={sidebarToggle}
-        label="切换笔记列表"
-        title="笔记列表 · Ctrl/⌘+B"
-        aria-expanded={!focusMode && (mobile ? drawer : sidebar === "expanded")}
-        onClick={() => {
-          setFocusMode(false);
-          if (mobile) setDrawer((open) => focusMode || !open);
-          else
+
+        {!mobile && <KnowledgeSaveStatus controller={controller} />}
+        <IconButton
+          className="knowledge-context-action"
+          label={
+            !focusMode && workbench.state.context === "expanded" ? "收起上下文栏" : "展开上下文栏"
+          }
+          title="笔记信息 · 大纲、链接与属性"
+          disabled={!note}
+          aria-pressed={!focusMode && workbench.state.context === "expanded"}
+          onClick={() => {
+            setFocusMode(false);
             workbench.setState((current) =>
-              setSidebar(
+              setContext(
                 current,
-                !focusMode && current.sidebar === "expanded" ? "rail" : "expanded",
+                !focusMode && current.context === "expanded" ? "hidden" : "expanded",
               ),
             );
-        }}
-      >
-        {!focusMode && (mobile ? drawer : sidebar === "expanded") ? (
-          <PanelLeftClose size={18} />
-        ) : (
-          <PanelLeftOpen size={18} />
-        )}
-      </IconButton>
-      {mobile ? (
-        <button
-          type="button"
-          className="knowledge-mobile-title"
-          aria-label="搜索与切换笔记"
-          onClick={() => setSwitcher({ query: "" })}
+          }}
         >
-          <span>{note?.title || (note ? "未命名笔记" : "知识库")}</span>
-          <ChevronDown size={14} aria-hidden="true" />
-        </button>
-      ) : (
-        <strong className="knowledge-app-identity">知识库</strong>
-      )}
-      <NoteTabs
-        notes={state.notes}
-        ids={workbench.state.tabs}
-        pinned={workbench.state.pinned}
-        activeId={note?.id}
-        onSelect={(id) => go(() => select(id))}
-        onClose={(id) =>
-          void run(async () => {
-            await flushEditor();
-            const remaining = workbench.state.tabs.filter(
-              (item) => item !== id && Object.hasOwn(state.notes, item),
-            );
-            workbench.setState((current) => closeNote(current, id));
-            sessions.delete(id);
-            if (id === note?.id) {
-              if (remaining.length) await select(remaining.at(-1)!);
-              else {
-                setClosedAll(true);
-                await navigate({ to: KNOWLEDGE_PATH, search: {} });
-              }
-            }
-          })
-        }
-        onTogglePin={(id) => workbench.setState((current) => togglePinned(current, id))}
-      />
-
-      <div ref={setToolbarSlot} className="knowledge-document-toolbar" />
-      {!mobile && <KnowledgeSaveStatus controller={controller} />}
-      <IconButton
-        className="knowledge-context-action"
-        label={
-          !focusMode && workbench.state.context === "expanded" ? "收起上下文栏" : "展开上下文栏"
-        }
-        title="笔记信息 · 大纲、链接与属性"
-        disabled={!note}
-        aria-pressed={!focusMode && workbench.state.context === "expanded"}
-        onClick={() => {
-          setFocusMode(false);
-          workbench.setState((current) =>
-            setContext(
-              current,
-              !focusMode && current.context === "expanded" ? "hidden" : "expanded",
-            ),
-          );
-        }}
-      >
-        {!focusMode && workbench.state.context === "expanded" ? (
-          <PanelRightClose size={17} />
-        ) : (
-          <PanelRightOpen size={17} />
-        )}
-      </IconButton>
-      <IconButton
-        className="knowledge-focus-action"
-        label={focusMode ? "退出专注模式" : "进入专注模式"}
-        title="专注模式"
-        aria-pressed={focusMode}
-        onClick={() => setFocusMode(!focusMode)}
-      >
-        {focusMode ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
-      </IconButton>
-      <IconButton
-        className="knowledge-ai-action"
-        label="AI 助手"
-        title="AI 助手 · Ctrl/⌘+J"
-        disabled={!openAssistant}
-        onClick={openAssistant}
-      >
-        <Sparkles size={17} />
-      </IconButton>
-      <NoteActionsMenu
-        grouped
-        actions={[
-          {
-            label: "安装与离线",
-            group: "应用设置",
-            icon: <Download size={15} />,
-            run: () => setInstallationOpen(true),
-          },
-          {
-            label: "新建笔记",
-            group: "笔记库管理",
-            icon: <Plus size={15} />,
-            disabled: busy,
-            run: () => void run(create),
-          },
-          {
-            label: "搜索与切换笔记",
-            group: "笔记库管理",
-            icon: <Search size={15} />,
-            run: () => setSwitcher({ query: "" }),
-          },
-          {
-            label: "新建目录",
-            group: "笔记库管理",
-            icon: <FolderPlus size={15} />,
-            run: () => {
-              setFocusMode(false);
-              setQuery("");
-              setView("all");
-              setDrawer(true);
-              workbench.setState((current) => setSidebar(current, "expanded"));
-              setTreeEdit({ kind: "create", parent: "", path: "" });
+          {!focusMode && workbench.state.context === "expanded" ? (
+            <PanelRightClose size={17} />
+          ) : (
+            <PanelRightOpen size={17} />
+          )}
+        </IconButton>
+        <IconButton
+          className="knowledge-focus-action"
+          label={focusMode ? "退出专注模式" : "进入专注模式"}
+          title="专注模式"
+          aria-pressed={focusMode}
+          onClick={() => setFocusMode(!focusMode)}
+        >
+          {focusMode ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+        </IconButton>
+        <IconButton
+          className="knowledge-ai-action"
+          label="AI 助手"
+          title="AI 助手 · Ctrl/⌘+J"
+          disabled={!openAssistant}
+          onClick={openAssistant}
+        >
+          <Sparkles size={17} />
+        </IconButton>
+        <NoteActionsMenu
+          grouped
+          actions={[
+            {
+              label: "安装与离线",
+              group: "应用设置",
+              icon: <Download size={15} />,
+              run: () => setInstallationOpen(true),
             },
-          },
-          {
-            group: "笔记库管理",
-            label: "新建集合",
-            icon: <Plus size={15} />,
-            run: () => setAddingCollection(true),
-          },
-          {
-            label: "导入 Markdown",
-            group: "笔记库管理",
-            icon: <Upload size={15} />,
-            separator: true,
-            run: () => input.current?.click(),
-          },
-          {
-            label: "从资料集合导入",
-            group: "笔记库管理",
-            icon: <BookOpenText size={15} />,
-            disabled: busy,
-            run: () => void run(importResearch),
-          },
-          {
-            label: "导出知识库",
-            group: "笔记库管理",
-            icon: <Download size={15} />,
-            disabled: busy,
-            run: () => void run(exportAll),
-          },
-          {
-            label: "恢复 ZIP 备份",
-            group: "笔记库管理",
-            icon: <Upload size={15} />,
-            disabled: busy || syncing,
-            run: () => setPanel("restore"),
-          },
-          {
-            label: "导出 Markdown 附件包",
-            group: "笔记库管理",
-            icon: <Download size={15} />,
-            disabled: busy,
-            run: () => void run(exportMarkdown),
-          },
-          {
-            label: focusMode ? "退出专注模式" : "专注模式",
-            icon: <Maximize2 size={15} />,
-            separator: true,
-            run: () => setFocusMode(!focusMode),
-          },
-          {
-            label: "AI 助手",
-            hidden: !openAssistant,
-            icon: <Sparkles size={15} />,
-            disabled: !openAssistant,
-            run: () => openAssistant?.(),
-          },
+            {
+              label: "新建笔记",
+              group: "笔记库管理",
+              icon: <Plus size={15} />,
+              disabled: busy,
+              run: () => void run(create),
+            },
+            {
+              label: "搜索与切换笔记",
+              group: "笔记库管理",
+              icon: <Search size={15} />,
+              run: () => setSwitcher({ query: "" }),
+            },
+            {
+              label: "新建目录",
+              group: "笔记库管理",
+              icon: <FolderPlus size={15} />,
+              run: () => {
+                setFocusMode(false);
+                setQuery("");
+                setView("all");
+                setDrawer(true);
+                workbench.setState((current) => setSidebar(current, "expanded"));
+                setTreeEdit({ kind: "create", parent: "", path: "" });
+              },
+            },
+            {
+              group: "笔记库管理",
+              label: "新建集合",
+              icon: <Plus size={15} />,
+              run: () => setAddingCollection(true),
+            },
+            {
+              label: "导入 Markdown",
+              group: "笔记库管理",
+              icon: <Upload size={15} />,
+              separator: true,
+              run: () => input.current?.click(),
+            },
+            {
+              label: "从资料集合导入",
+              group: "笔记库管理",
+              icon: <BookOpenText size={15} />,
+              disabled: busy,
+              run: () => void run(importResearch),
+            },
+            {
+              label: "导出知识库",
+              group: "笔记库管理",
+              icon: <Download size={15} />,
+              disabled: busy,
+              run: () => void run(exportAll),
+            },
+            {
+              label: "恢复 ZIP 备份",
+              group: "笔记库管理",
+              icon: <Upload size={15} />,
+              disabled: busy || syncing,
+              run: () => setPanel("restore"),
+            },
+            {
+              label: "导出 Markdown 附件包",
+              group: "笔记库管理",
+              icon: <Download size={15} />,
+              disabled: busy,
+              run: () => void run(exportMarkdown),
+            },
+            {
+              label: focusMode ? "退出专注模式" : "专注模式",
+              icon: <Maximize2 size={15} />,
+              separator: true,
+              run: () => setFocusMode(!focusMode),
+            },
+            {
+              label: "AI 助手",
+              hidden: !openAssistant,
+              icon: <Sparkles size={15} />,
+              disabled: !openAssistant,
+              run: () => openAssistant?.(),
+            },
 
-          {
-            label: "移动笔记",
-            icon: <Folder size={15} />,
-            disabled: !note || locked,
-            run: () => note && setMoveTarget({ noteId: note.id }),
-          },
-          {
-            label: "导出这篇笔记",
-            icon: <Download size={15} />,
-            disabled: !note || busy,
-            run: () => void run(exportNote),
-          },
-          {
-            label: favorite ? "取消收藏" : "收藏当前笔记",
-            icon: <Star size={15} />,
-            disabled: !note,
-            run: () => note && workbench.setState((current) => toggleFavorite(current, note.id)),
-          },
-          {
-            label: "版本历史",
-            icon: <History size={15} />,
-            run: () => setPanel("history"),
-          },
-          {
-            label: "同步设置",
-            group: "应用设置",
-            icon: <Settings2 size={15} />,
-            separator: true,
-            run: () => setPanel("sync"),
-          },
-          {
-            label: "立即同步",
-            group: "应用设置",
-            icon: <RefreshCw size={15} />,
-            disabled: syncing || busy,
-            run: () => void sync(),
-          },
-          {
-            label: "删除",
-            icon: <Trash2 size={15} />,
-            separator: true,
-            danger: true,
-            disabled: !note || locked,
-            run: () => note && setConfirmDelete(note.id),
-          },
-        ]}
-      />
-    </AppToolbar>
+            {
+              label: "移动笔记",
+              icon: <Folder size={15} />,
+              disabled: !note || locked,
+              run: () => note && setMoveTarget({ noteId: note.id }),
+            },
+            {
+              label: "导出这篇笔记",
+              icon: <Download size={15} />,
+              disabled: !note || busy,
+              run: () => void run(exportNote),
+            },
+            {
+              label: favorite ? "取消收藏" : "收藏当前笔记",
+              icon: <Star size={15} />,
+              disabled: !note,
+              run: () => note && workbench.setState((current) => toggleFavorite(current, note.id)),
+            },
+            {
+              label: "版本历史",
+              icon: <History size={15} />,
+              run: () => setPanel("history"),
+            },
+            {
+              label: "同步设置",
+              group: "应用设置",
+              icon: <Settings2 size={15} />,
+              separator: true,
+              run: () => setPanel("sync"),
+            },
+            {
+              label: "立即同步",
+              group: "应用设置",
+              icon: <RefreshCw size={15} />,
+              disabled: syncing || busy,
+              run: () => void sync(),
+            },
+            {
+              label: "删除",
+              icon: <Trash2 size={15} />,
+              separator: true,
+              danger: true,
+              disabled: !note || locked,
+              run: () => note && setConfirmDelete(note.id),
+            },
+          ]}
+        />
+      </AppToolbar>
+      <KnowledgeDocumentBar controller={controller} />
+    </>
   );
 }
 
@@ -340,6 +354,7 @@ export function KnowledgeSaveStatus({ controller }: { controller: KnowledgeWorkb
   return (
     <div className="knowledge-status" data-testid="knowledge-status">
       <SyncStatus
+        compact={!controller.mobile}
         facts={{
           error: "",
           conflicts: controller.state.conflicts.length,

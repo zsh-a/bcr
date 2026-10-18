@@ -5,8 +5,11 @@ import type { KnowledgeAttachments } from "./attachments";
 import { ATTACHMENT_FILE_LIMIT, isPreviewImage, type KnowledgeAttachment } from "./attachmentModel";
 import "./attachments.css";
 import { AttachmentPdfPreview } from "./AttachmentPdfPreview";
+import { isPlainTextAttachment } from "./attachmentPlainText";
+import { AttachmentTextPreview } from "./AttachmentTextPreview";
 
 export function attachmentSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
   return bytes < 1024 * 1024
     ? `${Math.max(1, Math.round(bytes / 1024))} KB`
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -15,12 +18,14 @@ function useAttachmentUrl(
   asset: KnowledgeAttachment | undefined,
   storage: KnowledgeAttachments,
   preview = false,
+  enabled = true,
 ) {
   const [state, setState] = useState<{ url: string; error: string }>({ url: "", error: "" });
   useEffect(() => {
     let disposed = false,
       url = "";
     setState({ url: "", error: "" });
+    if (!enabled) return;
     if (!asset) {
       setState({ url: "", error: "附件记录缺失，请同步或恢复备份" });
       return;
@@ -40,7 +45,7 @@ function useAttachmentUrl(
       disposed = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [asset, storage, preview]);
+  }, [asset, storage, preview, enabled]);
   return state;
 }
 function attachmentType(asset: KnowledgeAttachment) {
@@ -221,7 +226,8 @@ export function AttachmentDialog({
   ocrLanguage?: "en" | "ja";
   onOcrLanguageChange?: ((language: "en" | "ja") => void) | undefined;
 }) {
-  const { url, error } = useAttachmentUrl(asset, storage);
+  const plainText = isPlainTextAttachment(asset);
+  const { url, error } = useAttachmentUrl(asset, storage, false, !plainText);
   const [downloadError, setDownloadError] = useState("");
   return (
     <Dialog open onClose={onClose} title={asset.name} className="knowledge-attachment-dialog">
@@ -249,7 +255,7 @@ export function AttachmentDialog({
               在 Reader 中打开
             </Button>
           )}
-          {onReadText && (
+          {onReadText && !plainText && (
             <Button variant="ghost" size="sm" disabled={text?.busy} onClick={onReadText}>
               {text?.busy ? "正在提取…" : isPreviewImage(asset.mime) ? "识别图片文字" : "提取文本"}
             </Button>
@@ -257,7 +263,7 @@ export function AttachmentDialog({
           <Button
             variant="ghost"
             size="sm"
-            disabled={!url}
+            disabled={!plainText && !url}
             onClick={() =>
               void storage
                 .require(asset)
@@ -277,7 +283,9 @@ export function AttachmentDialog({
           {downloadError}
         </p>
       )}
-      {error ? (
+      {plainText ? (
+        <AttachmentTextPreview key={`${asset.id}:${asset.hash}`} asset={asset} storage={storage} />
+      ) : error ? (
         <p role="alert" className="knowledge-attachment-error">
           {error}
         </p>
@@ -302,7 +310,7 @@ export function AttachmentDialog({
           )}
         </div>
       )}
-      {text && (text.busy || text.error || text.body) && (
+      {!plainText && text && (text.busy || text.error || text.body) && (
         <section className="knowledge-attachment-text" aria-label="附件提取文本">
           {text.busy && <p role="status">{text.status || "正在提取文本…"}</p>}
           {text.error && <p role="alert">{text.error}</p>}

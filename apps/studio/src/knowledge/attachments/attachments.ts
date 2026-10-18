@@ -8,6 +8,7 @@ import {
   type KnowledgeAttachment,
 } from "./attachmentModel";
 import { processAttachment } from "./attachmentImport";
+import { readPlainTextPage } from "./attachmentPlainText";
 
 /** Binary files are written first. Only a verified file may be referenced by durable metadata. */
 export class KnowledgeAttachments {
@@ -144,6 +145,10 @@ export class KnowledgeAttachments {
     const blob = await this.get(record);
     if (!blob) throw new Error(`缺少附件：${record.name}。请同步或从完整备份恢复。`);
     return blob;
+  }
+  textPage(record: KnowledgeAttachment, page: number, signal?: AbortSignal) {
+    decodeAttachments({ [record.id]: record });
+    return readPlainTextPage(this.storage(), record, page, signal);
   }
   async verify(record: KnowledgeAttachment) {
     const blob = await this.require(record);

@@ -175,6 +175,35 @@
   font-size: var(--text-sm);
   line-height: 1.7;
 }
+.knowledge-text-preview-tools,
+.knowledge-text-preview-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.knowledge-text-preview pre {
+  max-height: 55vh;
+  min-height: 240px;
+  overflow: auto;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  color: var(--color-text);
+  tab-size: 2;
+  overscroll-behavior: contain;
+}
+.knowledge-text-preview pre[data-wrap="true"] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .knowledge-attachments-list {
   display: flex;
   flex-direction: column;
