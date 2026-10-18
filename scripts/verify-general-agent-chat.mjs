@@ -261,12 +261,16 @@ try {
   await page.getByRole("button", { name: "展开 AI 助手", exact: true }).waitFor();
   await page.keyboard.press("Control+j");
   await panel.waitFor();
-  await page.goto(`${origin}/assistant`, { waitUntil: "networkidle" });
+  await page.goto(`${origin}/data`, { waitUntil: "networkidle" });
+  await openTopBar(page);
+  await page.getByRole("button", { name: "打开 AI 助手", exact: true }).click();
   await panel.waitFor();
+  await panel.getByText("记得上一轮。", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, "/data", "reopening preserves the workspace route");
   assert.equal(
     await page.locator(".bcr-chat").count(),
     1,
-    "direct route opens the same global host architecture",
+    "reopening after reload restores one shared assistant with its saved conversation",
   );
   assert.deepEqual(errors, []);
   console.log("Global assistant verification PASSED", { requests: requests.length });
