@@ -10,6 +10,7 @@ import { EditorSessions } from "./editorSessions";
 import { noteEditing, type SlashContext } from "./noteEditing";
 import type { KnowledgeNote } from "../session/model";
 import { livePreview } from "./livePreview";
+import { liveSyntaxNavigation } from "./liveSelection";
 import { attachmentEditing } from "../attachments/attachmentEditing";
 import type { KnowledgeStore } from "../session/store";
 import type { AttachmentReference } from "../attachments/attachmentModel";
@@ -206,6 +207,7 @@ export function MarkdownEditor({
         ),
         ...(files?.extension ?? []),
         typewriterMode(() => latest.current.typewriter),
+        liveSyntaxNavigation(() => latest.current.live),
         presentation.current.of(
           live
             ? livePreview(

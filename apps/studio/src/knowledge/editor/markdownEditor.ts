@@ -13,6 +13,7 @@ import {
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { tags } from "@lezer/highlight";
+import { compositionGuard } from "./liveSelection";
 
 /**
  * Markdown source editing for the knowledge base.
@@ -238,6 +239,7 @@ export function knowledgeEditorExtensions(
     knowledgeMarkdownLanguage,
     syntaxHighlighting(knowledgeMarkdownHighlight),
     knowledgeEditorTheme,
+    ...compositionGuard(),
     // A note body is one logical document; wrap instead of scrolling sideways.
     EditorView.lineWrapping,
     EditorState.allowMultipleSelections.of(false),

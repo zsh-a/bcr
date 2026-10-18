@@ -1,13 +1,11 @@
-import { StateEffect, StateField, type Text } from "@codemirror/state";
+import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import { createRoot, type Root } from "react-dom/client";
 import type { KnowledgeStore } from "../session/store";
-import {
-  attachmentMarkdown,
-  attachmentReferences,
-  type AttachmentReference,
-} from "./attachmentModel";
+import { attachmentMarkdown, type AttachmentReference } from "./attachmentModel";
 import { AttachmentInline } from "./AttachmentView";
+import { liveComposition, touchesSyntax } from "../editor/liveSelection";
+import { editorAttachments } from "../editor/editorAnalysis";
 
 type Anchor = { id: string; from: number; to: number };
 const addAnchor = StateEffect.define<Anchor>(),
@@ -31,15 +29,6 @@ const anchors = StateField.define<Anchor[]>({
     return next;
   },
 });
-const refsMemo = new WeakMap<Text, AttachmentReference[]>();
-function refsFor(doc: Text) {
-  let refs = refsMemo.get(doc);
-  if (!refs) {
-    refs = attachmentReferences(doc.toString());
-    refsMemo.set(doc, refs);
-  }
-  return refs;
-}
 class AttachmentWidget extends WidgetType {
   private root: Root | undefined;
   constructor(
@@ -162,7 +151,13 @@ export function attachmentEditing({
       return decorate(state);
     },
     update(value, tr) {
-      return tr.docChanged || tr.selection || tr.effects.some((effect) => effect.is(refresh))
+      if (!live()) return Decoration.none;
+      if (tr.state.field(liveComposition, false) || tr.isUserEvent("input.type.compose"))
+        return value.map(tr.changes);
+      return tr.docChanged ||
+        tr.selection ||
+        tr.startState.field(liveComposition, false) !== tr.state.field(liveComposition, false) ||
+        tr.effects.some((effect) => effect.is(refresh))
         ? decorate(tr.state)
         : value;
     },
@@ -170,16 +165,11 @@ export function attachmentEditing({
   });
   function decorate(state: import("@codemirror/state").EditorState) {
     if (!live()) return Decoration.none;
-    const ranges = state.selection.ranges.map((range) => ({
-      from: state.doc.lineAt(range.from).from,
-      to: state.doc.lineAt(range.to).to,
-    }));
     let end = -1;
     return Decoration.set(
-      refsFor(state.doc)
+      editorAttachments(state.doc)
         .filter((ref) => {
-          if (ref.from < end || ranges.some((range) => ref.to > range.from && ref.from <= range.to))
-            return false;
+          if (ref.from < end || touchesSyntax(state, ref.from, ref.to)) return false;
           const line = state.doc.lineAt(ref.from);
           if (!ref.image && (line.from !== ref.from || line.to !== ref.to)) return false;
           end = ref.to;

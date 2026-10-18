@@ -1,5 +1,5 @@
 import { syntaxTree } from "@codemirror/language";
-import type { EditorState, Range, Text } from "@codemirror/state";
+import type { Range } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
@@ -8,7 +8,9 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from "@codemirror/view";
-import { editorAnalysis } from "./editorAnalysis";
+import { planLiveMarks, type LiveMark } from "./livePreviewPlan";
+import { liveComposition } from "./liveSelection";
+export { planLiveMarks, listDepth, type LiveMark } from "./livePreviewPlan";
 import { createNoteResolver } from "../notes/markdownAnalysis";
 import type { KnowledgeNote } from "../session/model";
 import { notePath } from "../notes/paths";
@@ -39,170 +41,6 @@ export function linkTip(
   return { main: target };
 }
 
-/** 装饰意图：纯数据，便于在无 DOM 的环境里断言；不接触文档文本。 */
-export type LiveMark =
-  | { kind: "hide"; from: number; to: number }
-  | { kind: "bullet"; from: number; to: number; depth: number }
-  | { kind: "ordinal"; from: number; to: number }
-  | { kind: "task"; from: number; to: number; checked: boolean }
-  | { kind: "chip"; from: number; to: number; label: string; target: string }
-  | { kind: "link-chip"; from: number; to: number; target: string }
-  | { kind: "code"; from: number; to: number }
-  | { kind: "line"; from: number; class: string };
-
-/** 光标/选区触达的行保持原始标记（含跨行选区），其余行退场渲染。 */
-export function revealedLines(doc: Text, ranges: readonly { from: number; to: number }[]) {
-  const lines = new Set<number>();
-  for (const range of ranges) {
-    const first = doc.lineAt(range.from).number;
-    const last = doc.lineAt(range.to).number;
-    for (let number = first; number <= last; number++) lines.add(number);
-  }
-  return lines;
-}
-
-/** 缩进层级：2/4 空格映射层级 1/2，制表符按 2 空格折算。 */
-export function listDepth(line: string, markFrom: number) {
-  const indent = line.slice(0, markFrom).replace(/\t/gu, "  ");
-  return Math.floor(indent.length / 2);
-}
-
-/** 实时预览里退场的语法标记：括号、围栏、强调符、引用符（光标所在行恢复原文）。 */
-const QUIET_MARKS = /^(?:HeaderMark|EmphasisMark|CodeMark|StrikethroughMark|QuoteMark)$/u;
-/** 链接括号、目标与引用尾标：只在链接/图片内部退场（定义、自动链接保留原文）。 */
-const LINK_MARKS = /^(?:LinkMark|LinkLabel|URL|LinkTitle)$/u;
-
-/**
- * Presentation only: never rewrites Markdown, selection, or the undo history.
- * Computes decoration intents for the document state. `focused` enables
- * cursor-line reveal; `ranges` bounds the work to what is on screen.
- */
-export function planLiveMarks(
-  state: EditorState,
-  focused: boolean,
-  ranges?: readonly { from: number; to: number }[],
-): LiveMark[] {
-  const doc = state.doc;
-  const marks: LiveMark[] = [];
-  const analysis = editorAnalysis(state);
-  // [[wiki]] 整段由按钮部件接管，段内任何标记都不能与之重叠。
-  const wiki = analysis.links.filter((link) => link.kind === "wiki");
-  const inWiki = (from: number, to: number) =>
-    wiki.some((link) => from < link.to && to > link.from);
-  const reveal = focused ? revealedLines(doc, state.selection.ranges) : new Set<number>();
-  const raw = (from: number, to: number) => {
-    for (let number = doc.lineAt(from).number; number <= doc.lineAt(to).number; number++)
-      if (reveal.has(number)) return true;
-    return false;
-  };
-  const tree = syntaxTree(state);
-  tree.iterate({
-    ...(ranges && ranges.length ? { from: ranges[0]!.from, to: ranges.at(-1)!.to } : {}),
-    enter(node) {
-      if (node.name === "Blockquote" || node.name === "FencedCode" || node.name === "CodeBlock") {
-        const quote = node.name === "Blockquote";
-        const kind = quote ? "knowledge-live-quote" : "knowledge-live-code";
-        const firstLineFrom = doc.lineAt(node.from).from;
-        for (let pos = node.from; ;) {
-          const line = doc.lineAt(pos);
-          const start = !quote && line.from === firstLineFrom;
-          const end = !quote && line.to >= node.to;
-          marks.push({
-            kind: "line",
-            from: line.from,
-            class: `${kind}${start ? ` ${kind}-start` : ""}${end ? ` ${kind}-end` : ""}`,
-          });
-          if (line.to >= node.to || line.to >= doc.length) break;
-          pos = line.to + 1;
-        }
-        return false;
-      }
-      if (node.name === "ListItem") {
-        const item = node.node;
-        const mark = item.firstChild;
-        if (!mark || mark.name !== "ListMark" || raw(mark.from, mark.to)) return;
-        const next = mark.nextSibling;
-        const task = next && next.name === "Task" ? next.firstChild : null;
-        if (task && task.name === "TaskMarker") {
-          marks.push({
-            kind: "task",
-            from: mark.from,
-            to: task.to,
-            checked: /\[[xX]\]/u.test(doc.sliceString(task.from, task.to)),
-          });
-        } else if (item.parent?.name === "OrderedList") {
-          marks.push({ kind: "ordinal", from: mark.from, to: mark.to });
-        } else {
-          const line = doc.lineAt(mark.from);
-          marks.push({
-            kind: "bullet",
-            from: mark.from,
-            to: mark.to,
-            depth: listDepth(line.text, mark.from - line.from),
-          });
-        }
-        return; // 嵌套列表继续下降，各自按自己的行判定。
-      }
-      if (node.name === "Link") {
-        const link = node.node;
-        // chip 是纯呈现层的稳定包裹（不隐藏文本）：光标行也保留，
-        // 否则按下鼠标的瞬间元素被重建，click 事件丢失（Ctrl+点击跳转失效）。
-        if (inWiki(link.from, link.to)) return;
-        let open = null,
-          close = null,
-          url = null;
-        for (let child = link.firstChild; child; child = child.nextSibling) {
-          if (child.name === "URL") {
-            url = child;
-            continue;
-          }
-          if (child.name !== "LinkMark") continue;
-          if (!open) open = child;
-          else if (!close) close = child;
-        }
-        if (!open || !close || close.from <= open.to) return;
-        const target = url
-          ? doc.sliceString(url.from, url.to).replace(/^<|>$/gu, "")
-          : (analysis.links.find((item) => item.from === link.from)?.target ?? "");
-        if (target) marks.push({ kind: "link-chip", from: open.to, to: close.from, target });
-        return;
-      }
-      if (node.name === "InlineCode") {
-        if (inWiki(node.from, node.to)) return;
-        marks.push({ kind: "code", from: node.from, to: node.to });
-        return;
-      }
-      if (!QUIET_MARKS.test(node.name)) {
-        const parent = node.node.parent;
-        if (!LINK_MARKS.test(node.name) || !parent || !/^(?:Link|Image)$/u.test(parent.name))
-          return;
-        if (inWiki(node.from, node.to) || raw(node.from, node.to)) return;
-        marks.push({ kind: "hide", from: node.from, to: node.to });
-        return;
-      }
-      if (raw(node.from, node.to) || inWiki(node.from, node.to)) return;
-      const end =
-        node.name === "HeaderMark" && doc.sliceString(node.to, node.to + 1) === " "
-          ? node.to + 1
-          : node.to;
-      marks.push({ kind: "hide", from: node.from, to: end });
-    },
-  });
-  // 整链替换排在树遍历之后：wiki 部件优先于段内标记；跨可视区边界的整链不渲染。
-  for (const link of wiki) {
-    if (raw(link.from, link.to)) continue;
-    if (ranges && !ranges.some((range) => link.from >= range.from && link.to <= range.to)) continue;
-    marks.push({
-      kind: "chip",
-      from: link.from,
-      to: link.to,
-      label: link.label,
-      target: link.target,
-    });
-  }
-  return marks;
-}
-
 class BulletWidget extends WidgetType {
   constructor(private depth: number) {
     super();
@@ -224,11 +62,14 @@ class BulletWidget extends WidgetType {
 }
 
 class TaskWidget extends WidgetType {
-  constructor(private checked: boolean) {
+  constructor(
+    private checked: boolean,
+    private marker: number,
+  ) {
     super();
   }
   eq(other: TaskWidget) {
-    return other.checked === this.checked;
+    return other.checked === this.checked && other.marker === this.marker;
   }
   toDOM() {
     const box = document.createElement("button");
@@ -244,11 +85,9 @@ class TaskWidget extends WidgetType {
       if (!view || view.state.readOnly) return;
       const pos = view.posAtDOM(box);
       if (pos === null) return;
-      const line = view.state.doc.lineAt(pos);
       // 唯一的文本写入：仅由用户点击显式触发，翻转 [ ] ↔ [x]。
-      const match = /^(\s*(?:[-*+]|\d{1,9}[.)])\s+)\[[ xX]\]/u.exec(line.text);
-      if (!match) return;
-      const at = line.from + match[1]!.length + 1;
+      const at = pos + this.marker;
+      if (!/^\[[ xX]\]$/u.test(view.state.sliceDoc(at - 1, at + 2))) return;
       view.dispatch({
         changes: { from: at, to: at + 1, insert: this.checked ? " " : "x" },
         userEvent: "input",
@@ -380,7 +219,10 @@ function toDecorations(
         break;
       case "task":
         ranges.push(
-          Decoration.replace({ widget: new TaskWidget(mark.checked) }).range(mark.from, mark.to),
+          Decoration.replace({ widget: new TaskWidget(mark.checked, mark.marker) }).range(
+            mark.from,
+            mark.to,
+          ),
         );
         break;
       case "chip":
@@ -449,6 +291,16 @@ export function livePreview(
         }
         update(update: ViewUpdate) {
           if (
+            update.state.field(liveComposition, false) ||
+            update.view.compositionStarted ||
+            update.transactions.some((tr) => tr.isUserEvent("input.type.compose"))
+          ) {
+            this.decorations = this.decorations.map(update.changes);
+            return;
+          }
+          if (
+            update.startState.field(liveComposition, false) !==
+              update.state.field(liveComposition, false) ||
             update.docChanged ||
             update.selectionSet ||
             update.viewportChanged ||

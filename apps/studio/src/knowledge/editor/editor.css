@@ -331,6 +331,13 @@
   border-radius: var(--radius-md);
 }
 
+.knowledge-body .cm-line.knowledge-live-fence {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  min-height: calc(var(--text-xs) * 1.5);
+}
+
 /* 实时预览装饰：列表圆点/序号/任务复选框（widget 由 livePreview 注入）。
    hover 只做颜色/边框变化，不位移、不发光、不缩放。 */
 .knowledge-list-bullet {
