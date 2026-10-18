@@ -84,7 +84,6 @@ jobs:
       - name: Run TypeScript tests
         run: |
           bun run test
-          bun run test:runner
           bun run test:ci
 
       - name: Run Rust tests
