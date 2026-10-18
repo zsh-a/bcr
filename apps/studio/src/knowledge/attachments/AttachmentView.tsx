@@ -69,6 +69,7 @@ export function AttachmentInline({
   image = false,
   onOpen,
   onMenu,
+  displayWidth,
 }: {
   asset: KnowledgeAttachment | undefined;
   storage: KnowledgeAttachments;
@@ -76,6 +77,7 @@ export function AttachmentInline({
   image?: boolean;
   onOpen: () => void;
   onMenu?: ((x: number, y: number) => void) | undefined;
+  displayWidth?: number | undefined;
 }) {
   const preview = image && !!asset && isPreviewImage(asset.mime);
   const gesture = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(
@@ -136,7 +138,31 @@ export function AttachmentInline({
       }}
     >
       {preview ? (
-        <InlineImage asset={asset!} storage={storage} label={label} onOpen={onOpen} />
+        <>
+          <InlineImage
+            asset={asset!}
+            storage={storage}
+            label={label}
+            onOpen={onOpen}
+            displayWidth={displayWidth}
+          />
+          {label && label !== asset!.name && (
+            <span className="knowledge-image-caption">{label}</span>
+          )}
+          {onMenu && (
+            <button
+              type="button"
+              className="knowledge-image-options"
+              aria-label="图片操作"
+              onClick={(event) => {
+                const box = event.currentTarget.getBoundingClientRect();
+                onMenu(box.left, box.bottom);
+              }}
+            >
+              图片操作
+            </button>
+          )}
+        </>
       ) : (
         <button type="button" className="knowledge-file-link" onClick={onOpen}>
           <FileText size={18} aria-hidden="true" />
@@ -152,18 +178,21 @@ function InlineImage({
   storage,
   label,
   onOpen,
+  displayWidth: requestedWidth,
 }: {
   asset: KnowledgeAttachment;
   storage: KnowledgeAttachments;
   label: string;
   onOpen: () => void;
+  displayWidth?: number | undefined;
 }) {
   const { url, error } = useAttachmentUrl(asset, storage, true);
   const [failed, setFailed] = useState(false);
   const displayWidth =
-    asset.width && asset.height
+    requestedWidth ??
+    (asset.width && asset.height
       ? Math.min(asset.width, (560 * asset.width) / asset.height)
-      : undefined;
+      : undefined);
   if (error || failed)
     return (
       <button type="button" className="knowledge-attachment-missing" onClick={onOpen}>
@@ -178,11 +207,13 @@ function InlineImage({
       aria-label={`查看图片：${label || asset.name}`}
       onClick={onOpen}
       style={
-        asset.width && asset.height
+        displayWidth
           ? {
               width: `${Math.max(32, displayWidth!)}px`,
               maxWidth: "100%",
-              aspectRatio: `${asset.width} / ${asset.height}`,
+              ...(asset.width && asset.height
+                ? { aspectRatio: `${asset.width} / ${asset.height}` }
+                : {}),
             }
           : undefined
       }
@@ -193,6 +224,7 @@ function InlineImage({
           alt={label || asset.name}
           loading="lazy"
           decoding="async"
+          style={requestedWidth ? { width: "100%" } : undefined}
           onError={() => setFailed(true)}
         />
       ) : (

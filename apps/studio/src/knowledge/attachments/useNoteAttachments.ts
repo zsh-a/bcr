@@ -15,6 +15,7 @@ export function useNoteAttachments(controller: NoteDraft, store: KnowledgeStore)
   const [attachmentMenu, setAttachmentMenu] = useState<{
     ref: AttachmentReference;
     expected: string;
+    document: string;
     x: number;
     y: number;
     trigger: HTMLElement;
@@ -99,6 +100,7 @@ export function useNoteAttachments(controller: NoteDraft, store: KnowledgeStore)
       y,
       trigger: target,
       expected: controller.getSnapshot().note.body.slice(ref.from, ref.to),
+      document: controller.getSnapshot().note.body,
     });
   }
 

@@ -1,6 +1,15 @@
 import { ContextMenu, useNavigation } from "@bcr/react";
-import { Download, Eye, Replace, Trash2 } from "lucide-react";
-import type { RefObject } from "react";
+import {
+  Download,
+  Eye,
+  Replace,
+  Trash2,
+  SlidersHorizontal,
+  CornerDownLeft,
+  CornerDownRight,
+} from "lucide-react";
+import { useState, type RefObject } from "react";
+import { flushSync } from "react-dom";
 import { publishDocumentHandoff } from "@bcr/document-core";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import type { KnowledgeStore } from "../session/store";
@@ -8,6 +17,7 @@ import { attachmentPath } from "./attachmentModel";
 import { AttachmentDialog, downloadAttachment } from "./AttachmentView";
 import { canReadAttachmentText } from "./attachmentText";
 import type { useNoteAttachments } from "./useNoteAttachments";
+import { ImageSettingsDialog, type ImageSettingsTarget } from "./ImageSettingsDialog";
 
 export function NoteAttachmentOverlays({
   attachments,
@@ -27,6 +37,7 @@ export function NoteAttachmentOverlays({
   setView: (view: "edit" | "source" | "read") => void;
 }) {
   const navigation = useNavigation();
+  const [imageSettings, setImageSettings] = useState<ImageSettingsTarget | null>(null);
   const {
     setAttachmentStatus,
     setOpenedAttachment,
@@ -42,6 +53,14 @@ export function NoteAttachmentOverlays({
   } = attachments;
   return (
     <>
+      {imageSettings && (
+        <ImageSettingsDialog
+          target={imageSettings}
+          source={source}
+          disabled={locked || !!initialError}
+          onClose={() => setImageSettings(null)}
+        />
+      )}
       {openedAsset && (
         <AttachmentDialog
           key={openedAsset.id}
@@ -102,6 +121,40 @@ export function NoteAttachmentOverlays({
           trigger={attachmentMenu.trigger}
           onClose={() => setAttachmentMenu(null)}
           actions={[
+            ...(attachmentMenu.ref.image
+              ? [
+                  {
+                    id: "image-settings",
+                    label: "图片设置",
+                    icon: <SlidersHorizontal size={15} />,
+                    disabled: locked || !!initialError,
+                    run: () => {
+                      setView("edit");
+                      setImageSettings(attachmentMenu);
+                    },
+                  },
+                  ...([true, false] as const).map((before) => ({
+                    id: before ? "paragraph-before" : "paragraph-after",
+                    label: before ? "在图片前插入段落" : "在图片后插入段落",
+                    icon: before ? <CornerDownLeft size={15} /> : <CornerDownRight size={15} />,
+                    disabled: locked || !!initialError,
+                    run: () => {
+                      // Focus must land in a visible editor before the next native input event.
+                      flushSync(() => setView("edit"));
+                      const at = before ? attachmentMenu.ref.from : attachmentMenu.ref.to;
+                      const editor = source.current;
+                      if (editor?.replaceRange(at, at, "\n\n", "", attachmentMenu.document))
+                        editor.reveal(at + (before ? 0 : 2));
+                      else
+                        setAttachmentStatus({
+                          message: "正文已变化，请重新选择图片",
+                          busy: false,
+                          error: true,
+                        });
+                    },
+                  })),
+                ]
+              : []),
             {
               id: "open",
               label: "查看附件",

@@ -1,5 +1,28 @@
 import { Prec, StateEffect, StateField, type EditorState } from "@codemirror/state";
 import { EditorView, ViewPlugin, keymap } from "@codemirror/view";
+import { syntaxTree } from "@codemirror/language";
+import { isolateHistory } from "@codemirror/commands";
+
+/** At the visible start of a heading/quote, remove one complete prefix in one undo step. */
+export function livePrefixChange(state: EditorState) {
+  const range = state.selection.main;
+  if (!range.empty) return null;
+  const line = state.doc.lineAt(range.head);
+  const prefix = state.sliceDoc(line.from, range.head);
+  const match = /^([ \t]*(?:>[ \t]?)*)((?:#{1,6}[ \t]+)|(?:>[ \t]?))$/u.exec(prefix);
+  if (!match) return null;
+  const from = line.from + match[1]!.length;
+  let found = false;
+  syntaxTree(state).iterate({
+    from,
+    to: range.head,
+    enter(node) {
+      if ((node.name === "HeaderMark" || node.name === "QuoteMark") && node.from === from)
+        found = true;
+    },
+  });
+  return found ? { from, to: range.head } : null;
+}
 
 /** Home reaches the real source prefix even when the visual line starts after a hidden marker. */
 export function liveSyntaxNavigation(enabled: () => boolean) {
@@ -16,6 +39,27 @@ export function liveSyntaxNavigation(enabled: () => boolean) {
   };
   return Prec.high(
     keymap.of([
+      {
+        key: "Backspace",
+        run: (view) => {
+          if (
+            !enabled() ||
+            view.state.readOnly ||
+            view.compositionStarted ||
+            view.state.field(liveComposition, false)
+          )
+            return false;
+          const change = livePrefixChange(view.state);
+          if (!change) return false;
+          view.dispatch({
+            changes: change,
+            selection: { anchor: change.from },
+            userEvent: "delete.backward",
+            annotations: isolateHistory.of("full"),
+          });
+          return true;
+        },
+      },
       { key: "Home", run: (view) => home(view), shift: (view) => home(view, true) },
       { mac: "Mod-ArrowLeft", run: (view) => home(view), shift: (view) => home(view, true) },
     ]),

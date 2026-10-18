@@ -56,7 +56,13 @@ export const knowledgeEditorTheme = EditorView.theme(
       tabSize: "2",
       overflowY: "auto",
     },
-    ".cm-content": { caretColor: accent, padding: "0" },
+    ".cm-content": {
+      caretColor: accent,
+      padding: "0",
+      minWidth: "0",
+      maxWidth: "100%",
+      flexShrink: "1",
+    },
     ".cm-line": { padding: "0" },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: accent, borderLeftWidth: "2px" },
     // Match CodeMirror's focused selector so its fixed dark fill cannot override theme tokens.

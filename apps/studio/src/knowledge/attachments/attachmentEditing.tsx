@@ -44,6 +44,7 @@ class AttachmentWidget extends WidgetType {
       this.ref.id === other.ref.id &&
       this.ref.image === other.ref.image &&
       this.ref.label === other.ref.label &&
+      this.ref.width === other.ref.width &&
       this.ref.from === other.ref.from &&
       this.ref.to === other.ref.to &&
       this.store === other.store
@@ -58,6 +59,7 @@ class AttachmentWidget extends WidgetType {
         storage={this.store.attachments}
         label={this.ref.label}
         image={this.ref.image}
+        displayWidth={this.ref.width}
         onOpen={() => this.open(this.ref.id)}
         onMenu={(x, y) => this.menu(this.ref, x, y)}
       />,

@@ -169,7 +169,10 @@ export function insertBlock(state: EditorState, id: string): TransactionSpec {
   const before =
     id !== "date" && state.sliceDoc(state.doc.lineAt(from).from, from).trim() ? "\n" : "";
   const after = id !== "date" && state.sliceDoc(to, state.doc.lineAt(to).to).trim() ? "\n" : "";
-  const head = from + before.length + (id === "code" ? 4 : text.length);
+  const head =
+    from +
+    before.length +
+    (id === "code" ? 4 : id === "table" ? text.lastIndexOf("\n") + 3 : text.length);
   return {
     changes: { from, to, insert: before + text + after },
     selection: { anchor: head },

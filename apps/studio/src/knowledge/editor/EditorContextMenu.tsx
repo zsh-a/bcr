@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
+import { notePlainText } from "../notes/markdownAnalysis";
 import type { TransactionSpec } from "@codemirror/state";
 import { ContextMenu, Toast, type ContextMenuAction } from "@bcr/react";
 import {
@@ -335,6 +336,20 @@ export function EditorContextMenu({
                 icon: <Copy />,
                 shortcut: `${modifier}C`,
                 run: () => void copy(target),
+              },
+              {
+                id: "copy-plain-text",
+                label: "复制纯文本",
+                icon: <Type />,
+                run: () =>
+                  void copy(
+                    target,
+                    false,
+                    notePlainText(
+                      target.doc.sliceString(target.from, target.to),
+                      target.doc.toString(),
+                    ),
+                  ),
               },
             ]
           : []),

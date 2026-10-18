@@ -68,7 +68,8 @@ try {
     [2, 4],
     "right click inside a selection keeps it",
   );
-  assert.equal(await menu().getByRole("menuitem").count(), 8);
+  assert.equal(await menu().getByRole("menuitem").count(), 9);
+  assert.equal(await item("复制纯文本").count(), 1);
   await item("复制").click();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "文字");
   await right(3);
@@ -340,6 +341,7 @@ try {
   await body().press("Shift+F10");
   assert.deepEqual(await menu().getByRole("menuitem").allTextContents(), [
     "复制Ctrl+C",
+    "复制纯文本",
     "查找正文Ctrl+F",
   ]);
   const box = await menu().boundingBox();

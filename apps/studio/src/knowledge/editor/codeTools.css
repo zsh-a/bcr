@@ -49,6 +49,23 @@
 .knowledge-body .cm-line.knowledge-live-code:not(.knowledge-live-code-start) {
   clear: both;
 }
+@media (hover: hover) and (pointer: fine) {
+  .knowledge-code-tools button {
+    opacity: 0;
+  }
+  .knowledge-live-code-start:hover .knowledge-code-tools button,
+  .knowledge-live-code-active .knowledge-code-tools button,
+  .knowledge-code-tools:focus-within button {
+    opacity: 1;
+  }
+  .knowledge-code-tools select {
+    opacity: 0.7;
+  }
+  .knowledge-live-code-start:hover .knowledge-code-tools select,
+  .knowledge-code-tools:focus-within select {
+    opacity: 1;
+  }
+}
 @media (pointer: coarse) {
   .knowledge-code-tools,
   .knowledge-code-tools select,

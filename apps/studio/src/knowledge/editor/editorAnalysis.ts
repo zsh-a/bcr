@@ -1,24 +1,20 @@
 import type { EditorState, Text } from "@codemirror/state";
-import { analyzeMarkdown, type NoteAnalysis } from "../notes/markdownAnalysis";
-import { attachmentReferences, type AttachmentReference } from "../attachments/attachmentModel";
+import { markdownFacts, type MarkdownFacts } from "../notes/markdownAnalysis";
 
 // Immutable CodeMirror documents share one analysis across editor consumers.
 // Weak keys allow replaced documents to be collected with their editor history.
-const cache = new WeakMap<Text, NoteAnalysis>();
-const attachmentCache = new WeakMap<Text, AttachmentReference[]>();
-export function editorAttachments(doc: Text) {
-  let refs = attachmentCache.get(doc);
-  if (!refs) {
-    refs = attachmentReferences(doc.toString());
-    attachmentCache.set(doc, refs);
+const cache = new WeakMap<Text, MarkdownFacts>();
+export function editorFacts(doc: Text) {
+  let facts = cache.get(doc);
+  if (!facts) {
+    facts = markdownFacts(doc.toString());
+    cache.set(doc, facts);
   }
-  return refs;
+  return facts;
 }
-export function editorAnalysis(state: EditorState): NoteAnalysis {
-  let analysis = cache.get(state.doc);
-  if (!analysis) {
-    analysis = analyzeMarkdown(state.doc.toString());
-    cache.set(state.doc, analysis);
-  }
-  return analysis;
+export function editorAttachments(doc: Text) {
+  return editorFacts(doc).attachments;
+}
+export function editorAnalysis(state: EditorState) {
+  return editorFacts(state.doc).analysis;
 }

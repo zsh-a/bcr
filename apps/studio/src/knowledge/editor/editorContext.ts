@@ -1,15 +1,11 @@
 import type { EditorState, Text } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
-import { analyzeEditorLinks, internalTarget, type EditorLink } from "../notes/markdownAnalysis";
+import { internalTarget, type EditorLink } from "../notes/markdownAnalysis";
+import { editorFacts } from "./editorAnalysis";
 import { attachmentId } from "../attachments/attachmentModel";
 
-const links = new WeakMap<Text, EditorLink[]>();
 export function editorLinkAt(state: EditorState, pos: number) {
-  let index = links.get(state.doc);
-  if (!index) {
-    index = analyzeEditorLinks(state.doc.toString());
-    links.set(state.doc, index);
-  }
+  const index = editorFacts(state.doc).editorLinks;
   return index.find((link) => pos >= link.from && pos < link.to && !attachmentId(link.url));
 }
 
@@ -99,7 +95,7 @@ export function editorContextMenu(open: (target: EditorTarget) => void, close: (
     const excluded = (event: Event) =>
       event.target instanceof Element &&
       !!event.target.closest(
-        ".cm-panels, .cm-tooltip, .knowledge-image-block, .knowledge-attachment-inline, .knowledge-code-tools",
+        ".cm-panels, .cm-tooltip, .knowledge-image-block, .knowledge-attachment-inline, .knowledge-code-tools, .knowledge-table-tools",
       );
     const desktop = () => window.matchMedia("(any-pointer: fine)").matches;
     const point = (event: MouseEvent) => {

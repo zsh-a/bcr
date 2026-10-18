@@ -18,6 +18,8 @@ import { editorContextMenu, type EditorTarget } from "./editorContext";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { inlineLinkTools } from "./inlineLinkTools";
 import { InlineLinkPopover } from "./InlineLinkPopover";
+import { tableEditingKeys } from "./tableCommands";
+import { runEditorEdit } from "./editorCommands";
 
 export interface MarkdownEditorHandle {
   reveal(offset: number): void;
@@ -27,7 +29,13 @@ export interface MarkdownEditorHandle {
   pickAttachment(image?: boolean, range?: { from: number; to: number; expected: string }): void;
   insertFiles(files: File[], range?: { from: number; to: number; expected: string }): void;
   flushAttachments(): Promise<void>;
-  replaceRange(from: number, to: number, text: string, expected: string): boolean;
+  replaceRange(
+    from: number,
+    to: number,
+    text: string,
+    expected: string,
+    expectedDocument?: string,
+  ): boolean;
 }
 
 /**
@@ -163,19 +171,22 @@ export function MarkdownEditor({
       flushAttachments() {
         return attachments.current?.flush() ?? Promise.resolve();
       },
-      replaceRange(from, to, text, expected) {
+      replaceRange(from, to, text, expected, expectedDocument) {
         const current = view.current;
         if (
           !current ||
           current.state.readOnly ||
           from < 0 ||
           to > current.state.doc.length ||
+          (expectedDocument !== undefined && current.state.doc.toString() !== expectedDocument) ||
           current.state.sliceDoc(from, to) !== expected
         )
           return false;
-        current.dispatch({ changes: { from, to, insert: text }, userEvent: "input" });
-        current.focus();
-        return true;
+        const expectedDoc = current.state
+          .changes({ from, to, insert: text })
+          .apply(current.state.doc);
+        runEditorEdit(current, { changes: { from, to, insert: text }, userEvent: "input" });
+        return current.state.doc.eq(expectedDoc);
       },
     }),
     [],
@@ -217,6 +228,7 @@ export function MarkdownEditor({
         ...(files?.extension ?? []),
         typewriterMode(() => latest.current.typewriter),
         liveSyntaxNavigation(() => latest.current.live),
+        tableEditingKeys(() => latest.current.live),
         presentation.current.of(
           live
             ? livePreview(

@@ -11,6 +11,7 @@ import {
 import { planLiveMarks, type LiveMark } from "./livePreviewPlan";
 import { liveComposition } from "./liveSelection";
 import { CodeToolsWidget } from "./CodeToolsWidget";
+import { EmptyTableCellWidget, TableToolsWidget } from "./TableToolsWidget";
 export { planLiveMarks, listDepth, type LiveMark } from "./livePreviewPlan";
 import { createNoteResolver } from "../notes/markdownAnalysis";
 import type { KnowledgeNote } from "../session/model";
@@ -208,6 +209,37 @@ function toDecorations(
   const ranges: Range<Decoration>[] = [];
   for (const mark of marks) {
     switch (mark.kind) {
+      case "table-row":
+        ranges.push(
+          Decoration.line({
+            class: `knowledge-live-table-row${mark.header ? " knowledge-table-header" : ""}`,
+            attributes: { style: `--table-columns:${mark.columns}` },
+          }).range(mark.from),
+        );
+        break;
+      case "table-cell":
+        ranges.push(
+          Decoration.mark({
+            class: "knowledge-table-cell",
+            attributes: { style: `text-align:${mark.align}` },
+          }).range(mark.from, mark.to),
+        );
+        break;
+      case "table-empty":
+        ranges.push(
+          Decoration.widget({
+            widget: new EmptyTableCellWidget(mark.tableFrom, mark.row, mark.column, mark.missing),
+            side: mark.column + 1,
+          }).range(mark.from),
+        );
+        break;
+      case "table-tools":
+        ranges.push(
+          Decoration.replace({
+            widget: new TableToolsWidget(mark.row, mark.column, mark.align, readOnly, mark.columns),
+          }).range(mark.from, mark.to),
+        );
+        break;
       case "code-tools":
         ranges.push(
           Decoration.widget({

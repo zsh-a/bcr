@@ -1,9 +1,14 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
+import { decodeString } from "micromark-util-decode-string";
 import type { Root, RootContent, PhrasingContent, Text, Definition } from "mdast";
 import type { KnowledgeNote } from "../session/model";
 import { notePath, pathKey, relativeNotePath } from "./paths";
+import {
+  attachmentReferencesFromTree,
+  type AttachmentReference,
+} from "../attachments/attachmentReferences";
 
 const parser = unified().use(remarkParse).use(remarkGfm);
 export const linkKey = (value: string) => value.normalize("NFKC").trim().toLowerCase();
@@ -191,12 +196,22 @@ function walk(
     if (!transform || !links.length) continue;
     const replacements: PhrasingContent[] = [];
     let cursor = 0;
+    const raw = source.slice(child.position!.start.offset!, child.position!.end.offset!);
+    const direct = decodeString(raw).replace(/\r\n?/gu, "\n") === child.value;
+    let rawCursor = 0,
+      decodedCursor = 0;
     for (const link of links) {
-      const literal = source.slice(link.from, link.to);
+      const literal = decodeString(source.slice(link.from, link.to));
       // The AST has decoded escapes/entities. Count the rendered prefix rather
       // than replacing an earlier escaped occurrence of the same literal.
       const prefix = source.slice(child.position!.start.offset!, link.from);
-      const at = parser.parse(`x${prefix}x`).children.map(textOf).join("\n").length - 2;
+      const relative = link.from - child.position!.start.offset!;
+      decodedCursor += decodeString(raw.slice(rawCursor, relative)).replace(/\r\n?/gu, "\n").length;
+      const at = direct
+        ? decodedCursor
+        : parser.parse(`x${prefix}x`).children.map(textOf).join("\n").length - 2;
+      rawCursor = link.to - child.position!.start.offset!;
+      decodedCursor += literal.length;
       if (at < cursor || child.value.slice(at, at + literal.length) !== literal) continue;
       if (at > cursor) replacements.push({ type: "text", value: child.value.slice(cursor, at) });
       replacements.push({
@@ -213,17 +228,11 @@ function walk(
 }
 
 export function analyzeMarkdown(source: string): NoteAnalysis {
-  const result: NoteAnalysis = { links: [], headings: [] };
-  const tree = parser.parse(source);
-  walk(tree, source, result, false, definitionsIn(tree));
-  return result;
+  return markdownFacts(source).analysis;
 }
 
 export function analyzeEditorLinks(source: string): EditorLink[] {
-  const links: EditorLink[] = [];
-  const tree = parser.parse(source);
-  walk(tree, source, { links: [], headings: [] }, false, definitionsIn(tree), links);
-  return links;
+  return markdownFacts(source).editorLinks;
 }
 
 /** Shared semantics for reading mode and the relationship index. No raw HTML injection. */
@@ -240,11 +249,15 @@ export function remarkKnowledgeLinks() {
 }
 
 /** Count visible text, excluding attachment references, images and Markdown syntax. */
-export function noteCharacterCount(source: string): number {
-  const tree = parser.parse(source);
-  remarkKnowledgeLinks()(tree, { value: source });
+export function notePlainText(source: string, context?: string): string {
+  const input =
+    context && context !== source
+      ? `${source}\n\n${markdownFacts(context).referenceDefinitions}`
+      : source;
+  const tree = parser.parse(input);
+  remarkKnowledgeLinks()(tree, { value: input });
   const definitions = definitionsIn(tree);
-  function content(node: Root | RootContent): string {
+  function text(node: Root | RootContent): string {
     if (
       node.type === "definition" ||
       node.type === "image" ||
@@ -258,10 +271,94 @@ export function noteCharacterCount(source: string): number {
       definitions.get(node.identifier)?.url.startsWith("attachment:")
     )
       return "";
+    if (node.type === "break") return "\n";
     if ("value" in node) return node.value;
-    return "children" in node ? node.children.map((child) => content(child)).join(" ") : "";
+    if (!("children" in node)) return "";
+    const separator =
+      node.type === "tableRow"
+        ? "\t"
+        : node.type === "root" || node.type === "blockquote"
+          ? "\n\n"
+          : node.type === "list" || node.type === "table"
+            ? "\n"
+            : "";
+    return node.children
+      .map((child) => text(child))
+      .filter((value) => value !== "")
+      .join(separator);
   }
-  return Array.from(content(tree).replace(/\s/gu, "")).length;
+  return text(tree);
+}
+
+export function noteCharacterCount(source: string): number {
+  return markdownFacts(source).characters;
+}
+
+export interface MarkdownFacts {
+  analysis: NoteAnalysis;
+  editorLinks: EditorLink[];
+  attachments: AttachmentReference[];
+  characters: number;
+  referenceDefinitions: string;
+}
+// Two input snapshots cover the editor and deferred React view without retaining mutable ASTs.
+const recentFacts: { source: string; facts: MarkdownFacts }[] = [];
+export function markdownFacts(source: string): MarkdownFacts {
+  const cached = recentFacts.find((entry) => entry.source === source);
+  if (cached) return cached.facts;
+  const tree = parser.parse(source),
+    definitions = definitionsIn(tree);
+  const analysis: NoteAnalysis = { links: [], headings: [] },
+    editorLinks: EditorLink[] = [];
+  walk(tree, source, analysis, false, definitions, editorLinks);
+  const count = (value: string) => Array.from(value.replace(/\s/gu, "")).length;
+  function content(node: Root | RootContent, allowWiki = true): number {
+    if (
+      node.type === "definition" ||
+      node.type === "image" ||
+      node.type === "imageReference" ||
+      node.type === "html"
+    )
+      return 0;
+    if (node.type === "link" && node.url.startsWith("attachment:")) return 0;
+    if (
+      node.type === "linkReference" &&
+      definitions.get(node.identifier)?.url.startsWith("attachment:")
+    )
+      return 0;
+    if (node.type === "text")
+      return (
+        count(node.value) +
+        (allowWiki
+          ? wikiLinks(node, source).reduce(
+              (delta, link) =>
+                delta + count(link.label) - count(decodeString(source.slice(link.from, link.to))),
+              0,
+            )
+          : 0)
+      );
+    if ("value" in node) return count(node.value);
+    return "children" in node
+      ? node.children.reduce(
+          (sum, child) =>
+            sum +
+            content(child, allowWiki && node.type !== "link" && node.type !== "linkReference"),
+          0,
+        )
+      : 0;
+  }
+  const facts: MarkdownFacts = {
+    analysis,
+    editorLinks,
+    attachments: attachmentReferencesFromTree(tree, definitions),
+    characters: content(tree),
+    referenceDefinitions: [...definitions.values()]
+      .map((node) => source.slice(node.position!.start.offset!, node.position!.end.offset!))
+      .join("\n\n"),
+  };
+  recentFacts.unshift({ source, facts });
+  if (recentFacts.length > 2) recentFacts.pop();
+  return facts;
 }
 
 export function splitNoteTarget(target: string) {

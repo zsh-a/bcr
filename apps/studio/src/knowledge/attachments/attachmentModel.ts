@@ -1,7 +1,15 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import type { Root, RootContent, Definition } from "mdast";
+import type { Root, RootContent } from "mdast";
+import { attachmentId, attachmentUrl } from "./attachmentReferences";
+import { markdownFacts } from "../notes/markdownAnalysis";
+export {
+  attachmentId,
+  attachmentUrl,
+  attachmentDisplayWidth,
+  type AttachmentReference,
+} from "./attachmentReferences";
 
 export const ATTACHMENT_FILE_LIMIT = 128 * 1024 * 1024;
 export const ATTACHMENT_TRANSFER_LIMIT = 512 * 1024 * 1024;
@@ -19,11 +27,6 @@ export interface KnowledgeAttachment {
 export type AttachmentRecords = Record<string, KnowledgeAttachment>;
 const identifier = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}$/u;
 const digest = /^[a-f0-9]{64}$/u;
-export function attachmentId(url: string): string | null {
-  const match = /^attachment:([a-zA-Z0-9][a-zA-Z0-9_-]{0,99})$/u.exec(url);
-  return match?.[1] ?? null;
-}
-export const attachmentUrl = (id: string) => `attachment:${id}`;
 export const attachmentPath = (hash: string) => {
   if (!digest.test(hash)) throw new Error("附件内容摘要无效");
   return `${ATTACHMENT_PREFIX}${hash}`;
@@ -106,54 +109,10 @@ export function mergeAttachments(...sources: (AttachmentRecords | undefined)[]) 
   return Object.keys(records).length ? records : undefined;
 }
 
-export interface AttachmentReference {
-  id: string;
-  image: boolean;
-  label: string;
-  from: number;
-  to: number;
-}
 const parser = unified().use(remarkParse).use(remarkGfm);
-/** Inspect Markdown nodes so code samples and escaped text never retain or rewrite files. */
-export function attachmentReferences(body: string): AttachmentReference[] {
-  const root = parser.parse(body),
-    definitions = new Map<string, Definition>();
-  function definitionsIn(node: Root | RootContent) {
-    if (node.type === "definition" && !definitions.has(node.identifier))
-      definitions.set(node.identifier, node);
-    if ("children" in node) for (const child of node.children) definitionsIn(child);
-  }
-  definitionsIn(root);
-  const refs: AttachmentReference[] = [];
-  function walk(node: Root | RootContent) {
-    if (
-      node.type === "image" ||
-      node.type === "link" ||
-      node.type === "imageReference" ||
-      node.type === "linkReference"
-    ) {
-      const url = "url" in node ? node.url : definitions.get(node.identifier)?.url;
-      const id = url ? attachmentId(url) : null;
-      if (id)
-        refs.push({
-          id,
-          image: node.type === "image" || node.type === "imageReference",
-          label: "alt" in node ? (node.alt ?? "") : textOf(node),
-          from: node.position!.start.offset!,
-          to: node.position!.end.offset!,
-        });
-    }
-    if ("children" in node) for (const child of node.children) walk(child);
-  }
-  walk(root);
-  return refs;
-}
-function textOf(node: Root | RootContent): string {
-  return "value" in node
-    ? node.value
-    : "children" in node
-      ? node.children.map(textOf).join("")
-      : "";
+/** Shares one parse with headings, links and visible text statistics. */
+export function attachmentReferences(body: string) {
+  return markdownFacts(body).attachments;
 }
 export function rewriteAttachmentUrls(body: string, resolve: (id: string) => string) {
   return rewriteMarkdownUrls(body, (url) => {

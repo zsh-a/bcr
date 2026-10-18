@@ -1,7 +1,49 @@
 .knowledge-image-block {
+  position: relative;
   display: block;
   margin-block: var(--space-4);
   max-width: 100%;
+}
+.knowledge-image-caption {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--color-muted);
+  font: var(--text-sm) / 1.5 var(--font-sans);
+}
+.knowledge-image-options {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  color: var(--color-muted);
+  padding: var(--space-1) var(--space-2);
+  font: var(--text-xs) / 1.5 var(--font-sans);
+  cursor: pointer;
+  min-height: var(--h-control);
+}
+@media (hover: hover) and (pointer: fine) {
+  .knowledge-image-options {
+    opacity: 0;
+  }
+  .knowledge-image-block:hover .knowledge-image-options,
+  .knowledge-image-block:focus-within .knowledge-image-options {
+    opacity: 1;
+  }
+}
+@media (pointer: coarse) {
+  .knowledge-image-options {
+    min-height: var(--h-hit-target);
+  }
+}
+.knowledge-image-settings {
+  width: min(28rem, calc(100vw - var(--space-6)));
+}
+.knowledge-image-settings-form,
+.knowledge-image-settings-form > label {
+  display: grid;
+  gap: var(--space-2);
+}
+.knowledge-image-settings-form {
+  gap: var(--space-4);
 }
 .knowledge-image-preview {
   display: flex;

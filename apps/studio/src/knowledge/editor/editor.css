@@ -313,6 +313,8 @@
   padding-inline: var(--space-4);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
+  font-style: normal;
+  color: var(--color-text);
 }
 
 .knowledge-body .cm-line.knowledge-live-code-start {
@@ -526,3 +528,4 @@
   }
 }
 @import "./codeTools.css";
+@import "./tableEditing.css";

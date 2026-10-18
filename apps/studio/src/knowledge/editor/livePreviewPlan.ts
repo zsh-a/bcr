@@ -4,6 +4,7 @@ import { editorAnalysis, editorAttachments } from "./editorAnalysis";
 import { touchesSyntax } from "./liveSelection";
 import { IterMode } from "@lezer/common";
 import { editorLinkAt } from "./editorContext";
+import { readTable, tablePosition } from "./markdownTables";
 
 export type LiveMark =
   | { kind: "hide"; from: number; to: number }
@@ -14,6 +15,25 @@ export type LiveMark =
   | { kind: "link-chip"; from: number; to: number; target: string }
   | { kind: "code"; from: number; to: number }
   | { kind: "code-tools"; from: number; language: string }
+  | { kind: "table-row"; from: number; header: boolean; columns: number }
+  | { kind: "table-cell"; from: number; to: number; align: string }
+  | {
+      kind: "table-empty";
+      from: number;
+      tableFrom: number;
+      row: number;
+      column: number;
+      missing: boolean;
+    }
+  | {
+      kind: "table-tools";
+      from: number;
+      to: number;
+      row: number;
+      column: number;
+      align: string;
+      columns: number;
+    }
   | { kind: "line"; from: number; class: string };
 
 export function listDepth(line: string, markFrom: number) {
@@ -66,6 +86,64 @@ export function planLiveMarks(
     to,
     mode: IterMode.IgnoreMounts,
     enter(node) {
+      if (node.name === "Table") {
+        const table = readTable(state, node.node);
+        if (
+          !table ||
+          table.align.length > 20 ||
+          table.rows.some((row) => row.cells.length > table.align.length)
+        )
+          return false;
+        const current = tablePosition(table, state.selection.main.head);
+        if (table.separator.from >= from && table.separator.to <= to)
+          marks.push({
+            kind: "table-tools",
+            ...table.separator,
+            ...current,
+            align: table.align[current.column]!,
+            columns: table.align.length,
+          });
+        for (const [rowIndex, row] of table.rows.entries()) {
+          if (row.to < from || row.from > to) continue;
+          marks.push({
+            kind: "table-row",
+            from: doc.lineAt(row.from).from,
+            header: rowIndex === 0,
+            columns: table.align.length,
+          });
+          let end = row.from;
+          for (const [column, cell] of row.cells.entries()) {
+            hide(end, cell.start);
+            if (cell.start < cell.end)
+              marks.push({
+                kind: "table-cell",
+                from: cell.start,
+                to: cell.end,
+                align: table.align[column]!,
+              });
+            else
+              marks.push({
+                kind: "table-empty",
+                from: cell.start,
+                tableFrom: table.from,
+                row: rowIndex,
+                column,
+                missing: false,
+              });
+            end = cell.end;
+          }
+          hide(end, row.to);
+          for (let column = row.cells.length; column < table.align.length; column++)
+            marks.push({
+              kind: "table-empty",
+              from: row.to,
+              tableFrom: table.from,
+              row: rowIndex,
+              column,
+              missing: true,
+            });
+        }
+      }
       if (node.name === "Blockquote" || node.name === "FencedCode" || node.name === "CodeBlock") {
         const quote = node.name === "Blockquote",
           kind = quote ? "knowledge-live-quote" : "knowledge-live-code";
@@ -78,7 +156,7 @@ export function planLiveMarks(
           const end = !quote && line.to >= node.to;
           lineMark(
             line.from,
-            `${kind}${start ? ` ${kind}-start` : ""}${end ? ` ${kind}-end` : ""}`,
+            `${kind}${start ? ` ${kind}-start` : ""}${end ? ` ${kind}-end` : ""}${start && active(node.from, node.to) ? " knowledge-live-code-active" : ""}`,
           );
           if (line.to >= node.to || line.to >= doc.length) break;
           pos = line.to + 1;

@@ -215,6 +215,7 @@
         "effect": "catalog:",
         "elkjs": "^0.12.0",
         "lucide-react": "catalog:",
+        "micromark-util-decode-string": "2.0.1",
         "misans": "5.0.0",
         "react": "catalog:",
         "react-dom": "catalog:",

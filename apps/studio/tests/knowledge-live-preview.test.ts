@@ -19,8 +19,8 @@ function plan(text: string, focusAt?: { from: number; to?: number }) {
   return planLiveMarks(state, focusAt !== undefined);
 }
 
-const only = (marks: LiveMark[], kind: LiveMark["kind"]) =>
-  marks.filter((mark) => mark.kind === kind);
+const only = <K extends LiveMark["kind"]>(marks: LiveMark[], kind: K) =>
+  marks.filter((mark): mark is Extract<LiveMark, { kind: K }> => mark.kind === kind);
 
 describe("live preview decoration plan", () => {
   it("reveals the active inline element and preserves heading layout while editing its text", () => {
@@ -112,9 +112,7 @@ describe("live preview decoration plan", () => {
     for (const cursor of [bold.from, bold.from + 3, bold.to]) {
       const marks = only(plan(text, { from: cursor }), "hide");
       expect(marks).toEqual(all.filter((mark) => mark.from < bold.from || mark.from >= bold.to));
-      expect(
-        marks.some((mark) => text.slice(mark.from, "to" in mark ? mark.to : mark.from) === "*"),
-      ).toBe(true);
+      expect(marks.some((mark) => text.slice(mark.from, mark.to) === "*")).toBe(true);
     }
     expect(only(plan(text, { from: text.indexOf("文字") }), "hide")).toEqual(all);
   });
@@ -127,8 +125,15 @@ describe("live preview decoration plan", () => {
     expect(only(marks, "link-chip")).toHaveLength(1);
     expect(only(marks, "chip")).toHaveLength(0);
     const code = text.indexOf("**literal**");
-    expect(only(plan(text, { from: text.indexOf("```md") + 1 }), "line")).toEqual(
-      only(marks, "line"),
+    const activeLines = only(plan(text, { from: text.indexOf("```md") + 1 }), "line");
+    expect(
+      activeLines.map((mark) => ({
+        ...mark,
+        class: mark.class.replace(" knowledge-live-code-active", ""),
+      })),
+    ).toEqual(only(marks, "line"));
+    expect(activeLines.some((mark) => mark.class.includes("knowledge-live-code-active"))).toBe(
+      true,
     );
     expect(
       only(marks, "hide").some((mark) => mark.from >= code && mark.from < text.lastIndexOf("```")),

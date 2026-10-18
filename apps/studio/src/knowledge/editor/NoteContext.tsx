@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { IconButton, ResourceViews } from "@bcr/react";
 import { X } from "lucide-react";
 import type { KnowledgeNote } from "../session/model";
 import { resolveNoteLink, type NoteAnalysis } from "../notes/markdownAnalysis";
+import { useOutlineFollow } from "./useOutlineFollow";
 
 /** One optional context panel with outline, links, and editable properties. */
 export function NoteContext({
@@ -19,6 +20,8 @@ export function NoteContext({
   attachments,
   attachmentCount = 0,
   onClose,
+  body,
+  mode,
 }: {
   note: KnowledgeNote;
   notes: readonly KnowledgeNote[];
@@ -34,62 +37,12 @@ export function NoteContext({
   attachments?: ReactNode;
   attachmentCount?: number;
   onClose: () => void;
+  body: string;
+  mode: "edit" | "source" | "read";
 }) {
   const host = useRef<HTMLElement>(null);
-  const [current, setCurrent] = useState<number | null>(null);
   const { headings } = analysis;
-  const body = note.body;
-
-  /**
-   * scrollspy：阅读态用渲染出的标题元素（#note-heading-<offset>），
-   * 编辑态用 CodeMirror 行文本回查标题偏移；只测量当前可见元素。
-   */
-  useEffect(() => {
-    if (!headings.length) {
-      setCurrent(null);
-      return;
-    }
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const scope = host.current?.closest(".knowledge-document");
-      if (!scope) return;
-      const byLine = new Map<string, number>();
-      for (const heading of headings) {
-        const end = body.indexOf("\n", heading.from);
-        byLine.set(body.slice(heading.from, end < 0 ? body.length : end).trim(), heading.from);
-      }
-      const seen: { from: number; top: number }[] = [];
-      for (const node of scope.querySelectorAll('[id^="note-heading-"]')) {
-        if (!node.getClientRects().length) continue;
-        const from = Number(node.id.slice("note-heading-".length));
-        if (Number.isFinite(from)) seen.push({ from, top: node.getBoundingClientRect().top });
-      }
-      for (const line of scope.querySelectorAll(".cm-line")) {
-        if (!line.getClientRects().length) continue;
-        const from = byLine.get((line.textContent ?? "").trim());
-        if (from !== undefined) seen.push({ from, top: line.getBoundingClientRect().top });
-      }
-      if (!seen.length) return;
-      const limit = window.innerHeight * 0.3;
-      const above = seen.filter((item) => item.top <= limit);
-      const active = above.length
-        ? above.reduce((best, item) => (item.top > best.top ? item : best))
-        : seen.reduce((best, item) => (item.top < best.top ? item : best));
-      setCurrent(active.from);
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    update();
-    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      document.removeEventListener("scroll", onScroll, { capture: true });
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [headings, body]);
+  const current = useOutlineFollow(host, headings, body, mode);
 
   return (
     <aside ref={host} className={`knowledge-context ${className}`.trim()} aria-label="笔记上下文">

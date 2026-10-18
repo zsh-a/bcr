@@ -24,7 +24,7 @@ import {
   internalTarget,
   remarkKnowledgeLinks,
   linkKey,
-  noteCharacterCount,
+  markdownFacts,
 } from "../notes/markdownAnalysis";
 import { NoteContext } from "./NoteContext";
 import { NoteProperties, NoteMetadata } from "./NoteProperties";
@@ -52,7 +52,7 @@ import {
   useOpenAssistant,
   useUpdateParticipant,
 } from "@bcr/react";
-import { attachmentId, attachmentReferences } from "../attachments/attachmentModel";
+import { attachmentId } from "../attachments/attachmentModel";
 import { AttachmentInline, RemoteImage } from "../attachments/AttachmentView";
 import { useNoteAttachments } from "../attachments/useNoteAttachments";
 import { NoteAttachmentOverlays } from "../attachments/NoteAttachmentOverlays";
@@ -164,8 +164,8 @@ export function NoteEditor({
   const toolsTrigger = useRef<HTMLButtonElement>(null);
   const rename = useRef<LiveRename>(null);
   const body = useDeferredValue(draft.body);
-  const analysis = useMemo(() => analyzeMarkdown(body), [body]);
-  const refs = useMemo(() => attachmentReferences(body), [body]);
+  const facts = useMemo(() => markdownFacts(body), [body]);
+  const { analysis, attachments: refs, characters } = facts;
   const attachments = useNoteAttachments(controller, store);
   const { attachmentStatus, setAttachmentStatus, openAttachment, menuAttachment } = attachments;
   async function flushForNavigation() {
@@ -244,7 +244,6 @@ export function NoteEditor({
   const templates = notes.filter(
     (item) => item.id !== note.id && item.tags.some((tag) => tag === "模板" || tag === "template"),
   );
-  const characters = useMemo(() => noteCharacterCount(body), [body]);
   const attachmentCount = new Set(refs.map((ref) => ref.id)).size;
   const file =
     attachmentCount === 1 && characters === 0
@@ -264,6 +263,8 @@ export function NoteEditor({
       note={draft}
       notes={notes}
       analysis={analysis}
+      body={body}
+      mode={view}
       backlinks={backlinks}
       onReveal={(offset) => {
         if (narrow) {
@@ -691,6 +692,7 @@ export function NoteEditor({
                         storage={store.attachments}
                         label={alt || ""}
                         image
+                        displayWidth={ref?.width}
                         onOpen={() => openAttachment(id)}
                         onMenu={ref ? (x, y) => menuAttachment(ref, x, y) : undefined}
                       />

@@ -1,0 +1,59 @@
+.knowledge-body .cm-line.knowledge-live-table-row {
+  display: flex;
+  padding: 0;
+  border-bottom: 1px solid var(--color-border);
+  align-items: stretch;
+}
+.knowledge-table-cell {
+  display: inline-block;
+  flex: 1 1 0;
+  min-width: 0;
+  width: calc(100% / var(--table-columns));
+  padding: var(--space-2);
+  border-inline-end: 1px solid var(--color-border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.knowledge-table-cell:first-child {
+  border-inline-start: 1px solid var(--color-border);
+}
+.knowledge-table-header {
+  font-weight: 600;
+  background: var(--color-raised);
+  border-top: 1px solid var(--color-border);
+}
+.knowledge-table-empty {
+  cursor: text;
+}
+.knowledge-table-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  max-width: 100%;
+  font: var(--text-xs) / 1.5 var(--font-sans);
+}
+.knowledge-table-tools :is(button, select) {
+  min-height: var(--h-control);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding-inline: var(--space-2);
+  color: var(--color-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.knowledge-table-tools :is(button, select):hover {
+  color: var(--color-text);
+  background: var(--color-raised);
+}
+.knowledge-table-tools :disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+@media (pointer: coarse) {
+  .knowledge-table-tools :is(button, select) {
+    min-height: var(--h-hit-target);
+    min-width: var(--h-hit-target);
+  }
+}
