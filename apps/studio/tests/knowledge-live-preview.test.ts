@@ -92,6 +92,7 @@ describe("live preview decoration plan", () => {
           mark.kind !== "line" &&
           mark.kind !== "chip" &&
           mark.kind !== "link-chip" &&
+          "to" in mark &&
           mark.from >= wiki &&
           mark.to <= wiki + 12,
       ),
@@ -143,6 +144,12 @@ describe("live preview decoration plan", () => {
     const marks = plan(text);
     expect(only(marks, "hide")).toHaveLength(0);
     expect(only(marks, "link-chip")).toHaveLength(0);
+  });
+  it("renders externally resolved reference links without changing their shared definitions", () => {
+    const source = '[参考][ref]\n\n[ref]: https://example.com "title"';
+    expect(only(plan(source), "link-chip")).toEqual([
+      { kind: "link-chip", from: 1, to: 3, target: "https://example.com" },
+    ]);
   });
 
   it("locates task markers through nested quote and list containers", () => {

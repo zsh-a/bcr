@@ -14,6 +14,7 @@ import {
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { tags } from "@lezer/highlight";
 import { compositionGuard } from "./liveSelection";
+import { codeLanguage } from "./codeLanguages";
 
 /**
  * Markdown source editing for the knowledge base.
@@ -166,6 +167,10 @@ export const knowledgeMarkdownHighlight = HighlightStyle.define(
     { tag: tags.contentSeparator, color: faint },
     { tag: tags.labelName, color: faint },
     { tag: tags.string, color: success },
+    { tag: tags.keyword, color: accent },
+    { tag: [tags.number, tags.bool, tags.null], color: amber },
+    { tag: tags.function(tags.variableName), color: accent },
+    { tag: tags.propertyName, color: text },
     { tag: tags.comment, color: faint, fontStyle: "italic" },
     { tag: tags.processingInstruction, color: faint },
     { tag: tags.escape, color: amber },
@@ -181,6 +186,7 @@ export const knowledgeMarkdownHighlight = HighlightStyle.define(
  */
 export const knowledgeMarkdownLanguage: LanguageSupport = markdown({
   base: markdownLanguage,
+  codeLanguages: codeLanguage,
 });
 
 /**

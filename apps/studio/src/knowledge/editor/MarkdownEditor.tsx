@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExtension } from "@codemirror/view";
 import {
@@ -16,6 +16,8 @@ import type { KnowledgeStore } from "../session/store";
 import type { AttachmentReference } from "../attachments/attachmentModel";
 import { editorContextMenu, type EditorTarget } from "./editorContext";
 import { EditorContextMenu } from "./EditorContextMenu";
+import { inlineLinkTools } from "./inlineLinkTools";
+import { InlineLinkPopover } from "./InlineLinkPopover";
 
 export interface MarkdownEditorHandle {
   reveal(offset: number): void;
@@ -86,6 +88,8 @@ export function MarkdownEditor({
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const [contextTarget, setContextTarget] = useState<EditorTarget | null>(null);
+  const [inlineTarget, setInlineTarget] = useState<EditorTarget | null>(null);
+  const closeInline = useCallback(() => setInlineTarget(null), []);
   // Read the latest callback without rebuilding the view on every render.
   const change = useRef(onChange);
   change.current = onChange;
@@ -199,6 +203,11 @@ export function MarkdownEditor({
           (ranges) => selection.current?.(ranges),
         ),
         editorContextMenu(setContextTarget, () => setContextTarget(null)),
+        inlineLinkTools(
+          () => latest.current.live,
+          setInlineTarget,
+          () => setInlineTarget(null),
+        ),
         ...noteEditing(
           () => latest.current.notes,
           (target) => latest.current.onOpenLink?.(target),
@@ -248,6 +257,7 @@ export function MarkdownEditor({
     selection.current?.(created.state.selection.ranges.map(({ from, to }) => ({ from, to })));
     return () => {
       setContextTarget(null);
+      setInlineTarget(null);
       files?.destroy();
       attachments.current = null;
       sessions?.save(sessionId, created.state, created.scrollDOM.scrollTop);
@@ -269,6 +279,7 @@ export function MarkdownEditor({
   }, [readOnly]);
 
   useEffect(() => {
+    setInlineTarget(null);
     view.current?.dispatch({
       effects: presentation.current.reconfigure(
         live
@@ -298,6 +309,12 @@ export function MarkdownEditor({
   return (
     <>
       <div className="knowledge-body" ref={host} />
+      <InlineLinkPopover
+        key={`inline-${sessionId}`}
+        target={inlineTarget}
+        onClose={closeInline}
+        onOpenLink={onOpenLink}
+      />
       <EditorContextMenu
         key={sessionId}
         target={contextTarget}

@@ -2,6 +2,8 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import { editorAnalysis, editorAttachments } from "./editorAnalysis";
 import { touchesSyntax } from "./liveSelection";
+import { IterMode } from "@lezer/common";
+import { editorLinkAt } from "./editorContext";
 
 export type LiveMark =
   | { kind: "hide"; from: number; to: number }
@@ -11,6 +13,7 @@ export type LiveMark =
   | { kind: "chip"; from: number; to: number; label: string; target: string }
   | { kind: "link-chip"; from: number; to: number; target: string }
   | { kind: "code"; from: number; to: number }
+  | { kind: "code-tools"; from: number; language: string }
   | { kind: "line"; from: number; class: string };
 
 export function listDepth(line: string, markFrom: number) {
@@ -61,6 +64,7 @@ export function planLiveMarks(
   syntaxTree(state).iterate({
     from,
     to,
+    mode: IterMode.IgnoreMounts,
     enter(node) {
       if (node.name === "Blockquote" || node.name === "FencedCode" || node.name === "CodeBlock") {
         const quote = node.name === "Blockquote",
@@ -81,17 +85,30 @@ export function planLiveMarks(
         }
         if (quote) return; // Nested inline syntax remains editable inside quotes.
         if (node.name === "FencedCode") {
-          for (let child = node.node.firstChild; child; child = child.nextSibling) {
-            if (child.name !== "CodeMark") continue;
-            const line = doc.lineAt(child.from);
-            if (line.from < from || line.from > to) continue;
-            lineMark(line.from, "knowledge-live-fence");
-            if (active(line.from, line.to)) continue;
-            // Preserve line breaks: indirect decorations cannot replace block layout.
-            hide(child.from, child.to);
+          const info = node.node.firstChild?.nextSibling;
+          if (node.from >= from && node.from <= to) {
+            marks.push({
+              kind: "code-tools",
+              from: doc.lineAt(node.from).to,
+              language:
+                info?.name === "CodeInfo"
+                  ? doc.sliceString(info.from, info.to).split(/\s/u)[0]!
+                  : "",
+            });
           }
+          return;
         }
         return false; // Code examples must never become links or formatting widgets.
+      }
+      if (node.name === "CodeText") return false;
+      if (
+        (node.name === "CodeMark" || node.name === "CodeInfo") &&
+        node.node.parent?.name === "FencedCode"
+      ) {
+        const line = doc.lineAt(node.from);
+        if (node.name === "CodeMark") lineMark(line.from, "knowledge-live-fence");
+        if (!active(line.from, line.to)) hide(node.from, node.to);
+        return false;
       }
       if (node.name === "ListItem") {
         const item = node.node,
@@ -141,8 +158,7 @@ export function planLiveMarks(
           const delimiters = link.getChildren("LinkMark");
           const open = delimiters[0],
             close = delimiters[1];
-          const resolved =
-            target || editorAnalysis(state).links.find((entry) => entry.from === link.from)?.target;
+          const resolved = target || editorLinkAt(state, link.from)?.url;
           if (open && close && close.from > open.to && resolved)
             marks.push({ kind: "link-chip", from: open.to, to: close.from, target: resolved });
         }

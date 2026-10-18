@@ -15,7 +15,7 @@ import { notePath } from "../notes/paths";
 import type { KnowledgeNote } from "../session/model";
 import { analyzeMarkdown, noteWikiLink } from "../notes/markdownAnalysis";
 import { fillTemplate } from "./format";
-import { editorAnalysis } from "./editorAnalysis";
+import { editorLinkAt, safeEditorLink } from "./editorContext";
 import { editorBlocks, editorFormattingKeys } from "./editorCommands";
 
 /** 当前笔记身份与标题；模板的 {{title}} 变量取实时标题。 */
@@ -201,14 +201,17 @@ export function noteEditing(
     EditorView.domEventHandlers({
       click(event, view) {
         if (!event.ctrlKey && !event.metaKey) return false;
-        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        const chip =
+          event.target instanceof Element ? event.target.closest(".knowledge-inline-chip") : null;
+        const pos = chip
+          ? view.posAtDOM(chip)
+          : view.posAtCoords({ x: event.clientX, y: event.clientY });
         if (pos === null) return false;
-        const link = editorAnalysis(view.state).links.find(
-          (link) => pos >= link.from && pos < link.to,
-        );
+        const link = editorLinkAt(view.state, pos);
         if (link) {
           event.preventDefault();
-          open(link.target);
+          if (link.internal) open(link.target);
+          else if (safeEditorLink(link.url)) window.open(link.url, "_blank", "noopener,noreferrer");
           return true;
         }
         return false;

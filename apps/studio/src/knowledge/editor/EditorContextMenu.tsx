@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 import type { TransactionSpec } from "@codemirror/state";
-import { Button, ContextMenu, Dialog, Input, Toast, type ContextMenuAction } from "@bcr/react";
+import { ContextMenu, Toast, type ContextMenuAction } from "@bcr/react";
 import {
   ArrowLeft,
   Bold,
@@ -37,15 +37,10 @@ import {
   proseContext,
   runEditorEdit,
 } from "./editorCommands";
-import {
-  editorLinkMarkdown,
-  editorUnlink,
-  safeEditorLink,
-  targetValid,
-  type EditorTarget,
-} from "./editorContext";
+import { editorUnlink, safeEditorLink, targetValid, type EditorTarget } from "./editorContext";
 import type { EditorView } from "@codemirror/view";
 import "./editorContext.css";
+import { EditorLinkDialog } from "./EditorLinkDialog";
 
 type MenuPage = "root" | "format" | "insert";
 const formatIcons = { bold: Bold, italic: Italic, strike: Strikethrough, "inline-code": Code };
@@ -76,12 +71,7 @@ export function EditorContextMenu({
   const page = navigation.target === target ? navigation.page : "root";
   const setPage = (page: MenuPage) => setNavigation({ target, page });
   const [notice, setNotice] = useState("");
-  const [editingLink, setEditingLink] = useState<{
-    target: EditorTarget;
-    label: string;
-    url: string;
-    error: string;
-  } | null>(null);
+  const [editingLink, setEditingLink] = useState<EditorTarget | null>(null);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -154,12 +144,7 @@ export function EditorContextMenu({
   }
   function linkDialog(current: EditorTarget) {
     if (!valid(current)) return;
-    setEditingLink({
-      target: current,
-      label: current.link?.label ?? current.doc.sliceString(current.from, current.to),
-      url: current.link?.url ?? "",
-      error: "",
-    });
+    setEditingLink(current);
   }
 
   let actions: ContextMenuAction[] = [];
@@ -415,84 +400,7 @@ export function EditorContextMenu({
         />
       )}
       {editingLink && (
-        <Dialog
-          open
-          title={editingLink.target.link ? "编辑链接" : "插入链接"}
-          onClose={() => setEditingLink(null)}
-          className="knowledge-link-dialog"
-        >
-          <form
-            className="knowledge-link-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const { target: current, label, url } = editingLink;
-              const error = !targetValid(current)
-                ? stale
-                : !safeEditorLink(url)
-                  ? "请输入有效的网址、笔记名称或路径。网址支持 http、https 和 mailto。"
-                  : "";
-              if (error) {
-                setEditingLink({ ...editingLink, error });
-                return;
-              }
-              try {
-                const markdown = editorLinkMarkdown(current, label.trim(), url.trim());
-                const from = current.link?.from ?? current.from,
-                  to = current.link?.to ?? current.to;
-                runEditorEdit(current.view, {
-                  changes: { from, to, insert: markdown },
-                  selection: { anchor: from + markdown.length },
-                  userEvent: "input",
-                  scrollIntoView: true,
-                });
-                setEditingLink(null);
-              } catch (reason) {
-                setEditingLink({
-                  ...editingLink,
-                  error: reason instanceof Error ? reason.message : String(reason),
-                });
-              }
-            }}
-          >
-            <label>
-              显示文字
-              <Input
-                aria-label="链接显示文字"
-                autoFocus
-                value={editingLink.label}
-                onChange={(event) =>
-                  setEditingLink({ ...editingLink, label: event.target.value, error: "" })
-                }
-              />
-            </label>
-            <label>
-              链接目标
-              <Input
-                aria-label="链接目标"
-                required
-                placeholder="https://… 或笔记名称、路径"
-                value={editingLink.url}
-                onChange={(event) =>
-                  setEditingLink({ ...editingLink, url: event.target.value, error: "" })
-                }
-              />
-            </label>
-            <p className="knowledge-hint">笔记名称和路径会作为知识库内部链接打开。</p>
-            {editingLink.error && (
-              <p role="alert" className="knowledge-alert">
-                {editingLink.error}
-              </p>
-            )}
-            <div className="knowledge-dialog-actions">
-              <Button type="button" onClick={() => setEditingLink(null)}>
-                取消
-              </Button>
-              <Button type="submit" variant="primary">
-                {editingLink.target.link ? "保存链接" : "插入链接"}
-              </Button>
-            </div>
-          </form>
-        </Dialog>
+        <EditorLinkDialog target={editingLink} onClose={() => setEditingLink(null)} />
       )}
       <Toast
         notice={notice ? { message: notice, tone: "warning" } : null}

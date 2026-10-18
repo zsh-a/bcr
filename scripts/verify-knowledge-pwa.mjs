@@ -194,6 +194,16 @@ try {
     titleFonts.some((font) => font.isCustomFont && /MiSans/u.test(font.postScriptName)),
     "visited MiSans subsets render offline with the HTTP cache disabled",
   );
+  await page.getByRole("button", { name: "编辑", exact: true }).click();
+  await page.getByLabel("笔记正文", { exact: true }).fill("```text\nconst offlineValue = 42;\n```");
+  await page.getByLabel("代码块语言", { exact: true }).selectOption("javascript");
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll(".knowledge-live-code span")].some(
+      (span) =>
+        span.textContent === "const" &&
+        getComputedStyle(span).color !== getComputedStyle(span.parentElement).color,
+    ),
+  );
   await context.setOffline(false);
 
   // An incomplete release cannot replace the working notes shell cache.

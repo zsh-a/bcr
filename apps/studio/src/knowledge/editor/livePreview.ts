@@ -10,6 +10,7 @@ import {
 } from "@codemirror/view";
 import { planLiveMarks, type LiveMark } from "./livePreviewPlan";
 import { liveComposition } from "./liveSelection";
+import { CodeToolsWidget } from "./CodeToolsWidget";
 export { planLiveMarks, listDepth, type LiveMark } from "./livePreviewPlan";
 import { createNoteResolver } from "../notes/markdownAnalysis";
 import type { KnowledgeNote } from "../session/model";
@@ -202,10 +203,19 @@ function toDecorations(
   marks: LiveMark[],
   tipOf: (target: string) => LinkTip,
   open: (target: string) => void,
+  readOnly: boolean,
 ) {
   const ranges: Range<Decoration>[] = [];
   for (const mark of marks) {
     switch (mark.kind) {
+      case "code-tools":
+        ranges.push(
+          Decoration.widget({
+            widget: new CodeToolsWidget(mark.language, readOnly),
+            side: 1,
+          }).range(mark.from),
+        );
+        break;
       case "hide":
         ranges.push(Decoration.replace({}).range(mark.from, mark.to));
         break;
@@ -279,7 +289,12 @@ export function livePreview(
     return linkTip(resolve, target);
   };
   function decorate(view: EditorView) {
-    return toDecorations(planLiveMarks(view.state, view.hasFocus, view.visibleRanges), tipOf, open);
+    return toDecorations(
+      planLiveMarks(view.state, view.hasFocus, view.visibleRanges),
+      tipOf,
+      open,
+      view.state.readOnly,
+    );
   }
   return [
     chipTips,
@@ -290,6 +305,10 @@ export function livePreview(
           this.decorations = decorate(view);
         }
         update(update: ViewUpdate) {
+          if (update.docChanged)
+            update.view.dom.querySelectorAll(".knowledge-code-status").forEach((status) => {
+              status.textContent = "";
+            });
           if (
             update.state.field(liveComposition, false) ||
             update.view.compositionStarted ||
@@ -305,6 +324,7 @@ export function livePreview(
             update.selectionSet ||
             update.viewportChanged ||
             update.focusChanged ||
+            update.startState.readOnly !== update.state.readOnly ||
             syntaxTree(update.startState) !== syntaxTree(update.state)
           )
             this.decorations = decorate(update.view);

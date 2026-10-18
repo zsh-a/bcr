@@ -22,6 +22,7 @@ export interface EditorTarget {
   link?: EditorLink | undefined;
   x: number;
   y: number;
+  keyboard?: boolean;
 }
 
 /** Async clipboard/dialog actions must never write into a different document or selection. */
@@ -98,7 +99,7 @@ export function editorContextMenu(open: (target: EditorTarget) => void, close: (
     const excluded = (event: Event) =>
       event.target instanceof Element &&
       !!event.target.closest(
-        ".cm-panels, .cm-tooltip, .knowledge-image-block, .knowledge-attachment-inline",
+        ".cm-panels, .cm-tooltip, .knowledge-image-block, .knowledge-attachment-inline, .knowledge-code-tools",
       );
     const desktop = () => window.matchMedia("(any-pointer: fine)").matches;
     const point = (event: MouseEvent) => {
