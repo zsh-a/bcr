@@ -502,17 +502,18 @@ export function useKnowledgeWorkbench() {
     },
     [store],
   );
-  const { sync, syncing } = useKnowledgeSync({
-    store,
-    ready,
-    token,
-    auto: auto && panel !== "sync",
-    active,
-    flush: flushEditor,
-    setError,
-    setMessage,
-    setPanel: openSyncPanel,
-  });
+  const { sync, syncing, syncFeedback, onConnected, onSyncFailure, onSyncProgress } =
+    useKnowledgeSync({
+      store,
+      ready,
+      token,
+      auto,
+      paused: panel === "sync",
+      active,
+      flush: flushEditor,
+      setMessage,
+      setPanel: openSyncPanel,
+    });
   async function importResearch() {
     const count = await actions.importResearch();
     setMessage(`已导入资料集合中的 ${count} 条摘录；已有条目保留原笔记`);
@@ -664,6 +665,10 @@ export function useKnowledgeWorkbench() {
     openLink,
     sync,
     syncing,
+    syncFeedback,
+    onConnected,
+    onSyncFailure,
+    onSyncProgress,
     importResearch,
     exportAll,
     exportNote,

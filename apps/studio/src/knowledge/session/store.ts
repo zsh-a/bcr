@@ -3,6 +3,8 @@ import type { BinaryStore } from "@bcr/storage-opfs";
 import { KnowledgeAttachments } from "../attachments/attachments";
 import { mergeAttachments } from "../attachments/attachmentModel";
 import { mergeContent } from "../sync/merge";
+import { resolveConflictState } from "./conflictResolution";
+import { withKnowledgeHistory, integrateSyncState } from "./stateTransitions";
 import { noteRevision } from "../notes/noteRevision";
 import { preserveRenamedLinks } from "../notes/renameLinks";
 import {
@@ -13,26 +15,17 @@ import {
   type NoteChangePlan,
 } from "../notes/changePlan";
 import { countRewrittenLinks } from "../notes/moveSummary";
-import {
-  assertUniquePaths,
-  availableCopyPath,
-  normalizeFolderPath,
-  notePath,
-  pathKey,
-} from "../notes/paths";
+import { assertUniquePaths, normalizeFolderPath, notePath, pathKey } from "../notes/paths";
 import { KnowledgePersistence } from "../storage/persistence";
 export { KNOWLEDGE_KEY } from "../storage/persistence";
 import {
   contentOf,
-  copyName,
   decodeNote,
   decodeContent,
   decodeStateChanges,
   decodeTarget,
   emptyKnowledge,
   same,
-  COLLECTION_NAME_MAX,
-  NOTE_TITLE_MAX,
   type GitTarget,
   type KnowledgeContent,
   type KnowledgeState,
@@ -160,7 +153,7 @@ export class KnowledgeStore {
         this.assertNoteWritable(change.before.id);
         notes[change.after.id] = decodeNote(change.after);
       }
-      return this.withHistory(
+      return withKnowledgeHistory(
         state,
         { notes, collections: state.collections, folders: state.folders },
         plan.kind === "move" ? "移动与引用更新前版本" : "重命名与引用更新前版本",
@@ -209,7 +202,7 @@ export class KnowledgeStore {
       }
       if (revision !== null && (!current || noteRevision(current) !== revision))
         throw new Error("笔记版本已变化或已删除，请重新读取并确认修改");
-      return this.withHistory(
+      return withKnowledgeHistory(
         state,
         {
           notes: { ...state.notes, [valid.id]: valid },
@@ -375,16 +368,6 @@ export class KnowledgeStore {
     this.tail = operation;
     return operation;
   }
-  private withHistory(
-    state: KnowledgeState,
-    next: KnowledgeContent,
-    reason: string,
-  ): KnowledgeState {
-    const revisions = Object.values(state.notes)
-      .filter((note) => !same(note, next.notes[note.id]))
-      .map((note) => ({ id: crypto.randomUUID(), note, at: Date.now(), reason }));
-    return { ...state, ...next, history: [...revisions, ...state.history].slice(0, 100) };
-  }
   /** The editor supplies its original snapshot; concurrent sync never silently replaces a draft. */
   saveNote(note: KnowledgeNote, base: KnowledgeNote | null): Promise<void> {
     const valid = decodeNote(note);
@@ -422,7 +405,7 @@ export class KnowledgeStore {
           throw new Error("重命名会修改其他笔记，请预览并确认修改计划");
       }
       return {
-        ...this.withHistory(
+        ...withKnowledgeHistory(
           state,
           { notes, collections: state.collections, folders: state.folders },
           "编辑前版本",
@@ -438,7 +421,7 @@ export class KnowledgeStore {
       if (!state.notes[id]) return state;
       const notes = { ...state.notes };
       delete notes[id];
-      return this.withHistory(
+      return withKnowledgeHistory(
         state,
         { notes, collections: state.collections, folders: state.folders },
         "删除前版本",
@@ -484,78 +467,15 @@ export class KnowledgeStore {
     return this.update((s) => ({ ...s, sync: { ...s.sync, pending: { head, content } } }));
   }
   integrate(remote: KnowledgeContent, head: string, base: KnowledgeContent): Promise<void> {
-    return this.update((state) => {
-      const merged = mergeContent(base, contentOf(state), remote);
-      return {
-        ...this.withHistory(state, merged.content, "同步前版本"),
-        conflicts: merged.conflicts,
-        sync: {
-          ...state.sync,
-          base: remote,
-          head,
-          pending: null,
-          lastSyncedAt: Date.now(),
-        },
-      };
-    });
+    return this.update((state) => integrateSyncState(state, remote, head, base));
   }
-  /** 解决冲突：取本机 / 取远端 / 保留双方（远端另存为副本，注意与恢复的 RestoreMode 各表其事）。 */
-  resolve(conflict: KnowledgeConflict, choice: "local" | "remote" | "keep-both"): Promise<void> {
-    return this.update((state) => {
-      const current = state.conflicts.find(
-        (c) => c.kind === conflict.kind && c.key === conflict.key,
-      );
-      if (!current || !same(current, conflict)) throw new Error("冲突已变化，请重新打开");
-      const notes = { ...state.notes },
-        collections = { ...state.collections };
-      const selected = choice === "remote" ? current.remote : current.local;
-      const map = current.kind === "note" ? notes : collections;
-      if (selected) Object.assign(map, { [current.key]: selected });
-      else delete map[current.key];
-      if (choice === "keep-both" && current.remote) {
-        const id = crypto.randomUUID();
-        if (current.kind === "note")
-          notes[id] = {
-            ...(current.remote as KnowledgeNote),
-            id,
-            title: copyName(
-              (current.remote as KnowledgeNote).title,
-              NOTE_TITLE_MAX,
-              "（远端副本）",
-            ),
-            ...((current.remote as KnowledgeNote).path === undefined
-              ? {}
-              : { path: availableCopyPath((current.remote as KnowledgeNote).path!, notes) }),
-            updatedAt: Date.now(),
-          };
-        else
-          collections[id] = {
-            id,
-            name: copyName(
-              "name" in current.remote ? current.remote.name : "集合",
-              COLLECTION_NAME_MAX,
-              "（远端副本）",
-            ),
-          };
-      }
-      const next = this.withHistory(
-        state,
-        { notes, collections, folders: state.folders },
-        "解决冲突前版本",
-      );
-      // Also retain the unselected remote note in history, including delete/edit conflicts.
-      if (current.kind === "note" && current.remote && !same(current.remote, selected))
-        next.history = [
-          {
-            id: crypto.randomUUID(),
-            note: current.remote as KnowledgeNote,
-            at: Date.now(),
-            reason: "冲突远端版本",
-          },
-          ...next.history,
-        ].slice(0, 100);
-      return { ...next, conflicts: state.conflicts.filter((c) => c !== current) };
-    });
+  /** The note, history and conflict removal share one durable update. */
+  resolve(
+    conflict: KnowledgeConflict,
+    choice: "local" | "remote" | "keep-both" | "merge",
+    merged?: KnowledgeNote | null,
+  ): Promise<void> {
+    return this.update((state) => resolveConflictState(state, conflict, choice, merged));
   }
   restore(note: KnowledgeNote): Promise<void> {
     return this.saveNote({ ...note, updatedAt: Date.now() }, this.value.notes[note.id] ?? null);
@@ -568,7 +488,7 @@ export class KnowledgeStore {
         throw new Error("请先完成同步或解决冲突，再恢复备份");
       if (!same(contentOf(state), base))
         throw new Error("预览后知识库已变化，请重新选择备份并确认");
-      return this.withHistory(state, restored, "备份恢复前版本");
+      return withKnowledgeHistory(state, restored, "备份恢复前版本");
     });
   }
 }

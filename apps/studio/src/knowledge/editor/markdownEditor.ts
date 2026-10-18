@@ -57,9 +57,11 @@ export const knowledgeEditorTheme = EditorView.theme(
     ".cm-content": { caretColor: accent, padding: "0" },
     ".cm-line": { padding: "0" },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: accent, borderLeftWidth: "2px" },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: "color-mix(in srgb, var(--color-selection) 50%, transparent)",
-    },
+    // Match CodeMirror's focused selector so its fixed dark fill cannot override theme tokens.
+    "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground":
+      {
+        backgroundColor: "color-mix(in srgb, var(--color-selection) 50%, transparent)",
+      },
     /* 活动行只在聚焦时提示，且压到很淡：行宽 600px+ 时高亮会变成一条横贯色带。 */
     ".cm-activeLine": {
       backgroundColor: "color-mix(in srgb, var(--color-selection) 18%, transparent)",

@@ -80,6 +80,29 @@ async function edit(store: KnowledgeStore, body: string) {
 }
 
 describe("portable knowledge format", () => {
+  it("keeps publishing and durable integration independent of feedback observers", async () => {
+    const { store } = device(),
+      { api, fixture } = remote();
+    await store.configure(target);
+    await store.saveNote(note(), null);
+    const phases: string[] = [];
+    expect(
+      await syncKnowledge(store, api, undefined, {
+        onProgress: (phase) => {
+          phases.push(phase);
+          throw new Error("detached view");
+        },
+        onComplete: () => {
+          throw new Error("detached view");
+        },
+      }),
+    ).toBe("synced");
+    expect(phases).toEqual(["saving", "reading", "merging", "uploading", "confirming"]);
+    expect(fixture.files()["knowledge/notes/note-one.md"]).toContain("first");
+    expect(store.getSnapshot().sync.pending).toBeNull();
+    expect(pendingCount(store.getSnapshot())).toBe(0);
+    await store.close();
+  });
   it("roundtrips Unicode Markdown, YAML-sensitive titles, collections and citations", () => {
     const n = {
       ...note("# 手写\n\n---\n```ts\nconst a = 1;\n```\n"),

@@ -47,7 +47,7 @@
   border-radius: var(--radius-sm);
 }
 .knowledge-toolbar .knowledge-status-line {
-  max-width: 130px;
+  max-width: 240px;
 }
 .knowledge-document-toolbar {
   display: flex;

@@ -143,7 +143,7 @@ async function runAndWait(page, button, idleText, trustStoreIdle = false) {
   await button.click();
   for (let attempt = 0; attempt < 300; attempt++) {
     const label = await button.textContent({ timeout: 1000 }).catch(() => null);
-    if (label?.trim() === idleText) {
+    if (label?.trim() === idleText || (trustStoreIdle && label?.trim() === "查看冲突")) {
       const notice = await page
         .locator(".knowledge-notice")
         .textContent({ timeout: 250 })
@@ -354,9 +354,11 @@ try {
   await b.page.getByText("这篇笔记存在同步冲突，双方内容已保留。").waitFor();
   await b.page.getByRole("button", { name: "处理冲突", exact: true }).click();
   assert.equal(await b.page.locator("article.knowledge-conflict-row").count(), 1);
-  await b.page.getByText("合并保留本机的标题与路径，正文改动双方保留。").waitFor();
+  await b.page
+    .getByText("合并保留本机标题与路径，双方原文会存入历史。合并后仍需同步到仓库。")
+    .waitFor();
   await b.page.getByRole("button", { name: "合并", exact: true }).click();
-  await b.page.getByText("已合并双方正文改动；标题与路径保留本机，远端版本已存入历史").waitFor();
+  await b.page.getByText("合并结果已保存；标题与路径保留本机，双方原文已存入历史").waitFor();
   await b.page.locator("article.knowledge-conflict-row").waitFor({ state: "hidden" });
   await b.page.getByRole("button", { name: "关闭处理冲突", exact: true }).click();
   await b.page
@@ -547,10 +549,7 @@ try {
     requests: fixture.state.requests.map(({ method, path }) => ({ method, path })),
   });
   await mkdir("scripts/shots", { recursive: true });
-  for (const [name, d] of [
-    ["a", a],
-    ["b", b],
-  ])
+  for (const [name, d] of Object.entries({ a, b }))
     if (d && !d.page.isClosed())
       await d.page.screenshot({
         path: `scripts/shots/knowledge-failure-${name}.png`,

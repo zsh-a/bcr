@@ -614,7 +614,7 @@ export function NoteEditor({
                       aria-pressed={settings.font === "sans"}
                       onClick={() => updateSettings({ font: "sans" })}
                     >
-                      无衬线
+                      MiSans
                     </button>
                     <button
                       type="button"

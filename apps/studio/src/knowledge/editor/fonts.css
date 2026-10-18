@@ -1,0 +1,4 @@
+/* Static weights use the standard CSS scale; Unicode slices load only visible glyphs. */
+@import "misans/lib/Normal/MiSans-Regular.min.css";
+@import "misans/lib/Normal/MiSans-Medium.min.css";
+@import "misans/lib/Normal/MiSans-Demibold.min.css";

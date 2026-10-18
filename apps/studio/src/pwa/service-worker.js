@@ -23,7 +23,7 @@ function isRequiredAppAsset(url) {
   // Reader includes PDF resources for first-time offline imports. Other apps
   // defer PDF and local-model resources; Chinese fonts remain cached on demand.
   return (
-    !/onnxruntime|transformers|IBMPlexSansSC-|noto-serif-sc-/u.test(url) &&
+    !/onnxruntime|transformers|MiSans-|noto-serif-sc-/u.test(url) &&
     (app.key === "reader" || !/pdf\.worker/u.test(url))
   );
 }

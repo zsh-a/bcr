@@ -8,9 +8,9 @@
 
 /* ---------- 外壳与侧栏 ---------- */
 
-/* 知识库使用完整的中西文 Plex 字体；排版设置只作用于文档正文。 */
+/* 知识库使用 MiSans 中西文字体；排版设置只作用于文档正文。 */
 .knowledge-app {
-  --font-sans: "IBM Plex Sans", "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-sans: "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-reading: "Noto Serif SC Variable", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
   --prose-title: clamp(28px, 2.2vw, 32px);
   --prose-row: var(--text-base);

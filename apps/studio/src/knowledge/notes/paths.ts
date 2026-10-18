@@ -73,10 +73,15 @@ export function assertUniquePaths(
   }
 }
 
-export function availableCopyPath(path: string, notes: Readonly<Record<string, KnowledgeNote>>) {
-  const occupied = new Set(
-    Object.values(notes).flatMap((note) => [pathKey(notePath(note)), pathKey(`${note.id}.md`)]),
-  );
+export function availableCopyPath(
+  path: string,
+  notes: Readonly<Record<string, KnowledgeNote>>,
+  folders: readonly string[] = [],
+) {
+  const occupied = new Set([
+    ...Object.values(notes).flatMap((note) => [pathKey(notePath(note)), pathKey(`${note.id}.md`)]),
+    ...folders.map(pathKey),
+  ]);
   const free = (candidate: string) =>
     !occupied.has(pathKey(candidate)) &&
     ![...occupied].some((key) => key.startsWith(`${pathKey(candidate)}/`));

@@ -7,8 +7,8 @@ import { assessExcerpt } from "../../research";
 import { NoteEditor } from "../editor/NoteEditor";
 import { KnowledgeSyncPanel } from "../sync/KnowledgeSyncPanel";
 import { KnowledgeHistory } from "../storage/KnowledgeHistory";
-import { ConflictList, type ConflictChoice } from "../sync/conflicts";
-import "../editor/fonts.scss";
+import { ConflictList, resolveKnowledgeConflict } from "../sync/conflicts";
+import "../editor/fonts.css";
 import "../knowledge.css";
 import "./workbench.css";
 import { noteSearchHit } from "../search/retrieval";
@@ -49,9 +49,6 @@ export function KnowledgeApp() {
     setDrawer,
     focusMode,
     setFocusMode,
-    token,
-    auto,
-    setAuto,
     collectionName,
     setCollectionName,
     addingCollection,
@@ -324,13 +321,17 @@ export function KnowledgeApp() {
               <KnowledgeSyncPanel
                 state={state}
                 store={store}
-                token={token}
-                auto={auto}
-                setAuto={setAuto}
+                token={controller.token}
+                auto={controller.auto}
+                setAuto={controller.setAuto}
                 syncing={syncing}
                 onError={setError}
                 flush={flushEditor}
                 onViewConflicts={() => setPanel("conflicts")}
+                onConnected={controller.onConnected}
+                onSyncFailure={controller.onSyncFailure}
+                onSyncProgress={controller.onSyncProgress}
+                onClose={() => setPanel(null)}
               />
             </KnowledgeDialog>
             <KnowledgeDialog
@@ -342,23 +343,10 @@ export function KnowledgeApp() {
               <ConflictList
                 conflicts={state.conflicts}
                 busy={busy || syncing}
-                onResolve={(conflict, choice: ConflictChoice, merged) =>
-                  void run(async () => {
-                    if (choice === "merge" && merged) {
-                      // 「合并」是两步组合：正文取合并结果（restore 走历史可回滚），
-                      // 标题与路径必须保留本机（改名/移动要走修改计划），故先 resolve 本机。
-                      await store.resolve(conflict, "local");
-                      await store.restore(merged);
-                      setMessage("已合并双方正文改动；标题与路径保留本机，远端版本已存入历史");
-                    } else {
-                      await store.resolve(conflict, choice === "remote" ? "remote" : "local");
-                      setMessage(
-                        choice === "remote"
-                          ? "已采用远端版本；本机版本已存入历史"
-                          : "已采用本机版本；远端版本已存入历史",
-                      );
-                    }
-                  })
+                onResolve={(conflict, choice, merged) =>
+                  void run(async () =>
+                    setMessage(await resolveKnowledgeConflict(store, conflict, choice, merged)),
+                  )
                 }
               />
             </KnowledgeDialog>
@@ -369,9 +357,7 @@ export function KnowledgeApp() {
             >
               <KnowledgeRestorePanel
                 store={store}
-                flush={async () => {
-                  await editor.current?.flush();
-                }}
+                flush={flushEditor}
                 onClose={() => setPanel(null)}
                 onRestored={() => {
                   setPanel(null);
@@ -389,7 +375,7 @@ export function KnowledgeApp() {
                 key={note?.id ?? "all"}
                 state={state}
                 note={note ?? null}
-                token={token}
+                token={controller.token}
                 onRestore={(n) =>
                   run(async () => {
                     await editor.current?.flush();

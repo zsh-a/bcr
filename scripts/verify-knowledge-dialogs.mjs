@@ -82,16 +82,14 @@ try {
   await advanced.locator("summary").click();
   await panel.getByLabel("GitHub 分支").waitFor();
   const manage = dialog.locator("div.knowledge-sync-manage");
-  await manage.getByRole("button", { name: "清除 Token", exact: true }).waitFor();
-  // 未连接同步仓库时不应出现「断开连接」。
-  assert.equal(await manage.getByRole("button", { name: "断开连接", exact: true }).count(), 0);
-  // 管理块的一步确认：清除 Token 弹出确认块，「继续保留」不改任何配置。
-  await manage.getByRole("button", { name: "清除 Token", exact: true }).click();
-  const confirm = manage.locator('div[role="alert"].knowledge-sync-confirm');
-  await confirm.waitFor();
-  assert.match(await confirm.textContent(), /清除 Token？仓库配置会保留。/u);
-  await confirm.getByRole("button", { name: "继续保留", exact: true }).click();
-  await confirm.waitFor({ state: "hidden" });
+  assert.equal(
+    await manage.count(),
+    0,
+    "first connection shows setup help without credential-management actions",
+  );
+  assert.equal(await panel.getByRole("link", { name: "创建私有仓库 ↗", exact: true }).count(), 1);
+  assert.equal(await panel.getByRole("link", { name: "创建专用 Token ↗", exact: true }).count(), 1);
+  assert.match(await panel.textContent(), /刷新或关闭页面后需重新输入/u);
 
   // --- 定位：1440x1000 下居中
   await page.waitForTimeout(220);

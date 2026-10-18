@@ -345,9 +345,12 @@ export function newNote(title = "未命名笔记", collectionId: string | null =
 }
 export function pendingCount(state: KnowledgeState): number {
   let count = 0;
-  for (const field of ["notes", "collections"] as const) {
-    const ids = new Set([...Object.keys(state[field]), ...Object.keys(state.sync.base[field])]);
-    for (const id of ids) if (!same(state[field][id], state.sync.base[field][id])) count++;
+  for (const field of ["notes", "collections", "attachments"] as const) {
+    const local = state[field] ?? {},
+      base = state.sync.base[field] ?? {};
+    const ids = new Set([...Object.keys(local), ...Object.keys(base)]);
+    for (const id of ids) if (!same(local[id], base[id])) count++;
   }
+  if (!same(state.folders, state.sync.base.folders)) count++;
   return count;
 }

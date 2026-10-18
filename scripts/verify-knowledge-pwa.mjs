@@ -29,7 +29,7 @@ const fontRequests = new Set();
 const server = createServer(async (request, response) => {
   try {
     const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
-    if (/IBMPlexSansSC-|noto-serif-sc-/u.test(pathname)) fontRequests.add(pathname);
+    if (/MiSans-|noto-serif-sc-/u.test(pathname)) fontRequests.add(pathname);
     response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
     response.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
     response.setHeader("Cache-Control", "no-store");
@@ -142,7 +142,7 @@ try {
   await page.waitForFunction(async () => {
     const fonts = performance
       .getEntriesByType("resource")
-      .filter((entry) => /noto-serif-sc-.*\.woff2/u.test(entry.name));
+      .filter((entry) => /(?:MiSans-|noto-serif-sc-).*\.woff2/u.test(entry.name));
     return (
       fonts.length > 0 &&
       (await Promise.all(fonts.map((entry) => caches.match(entry.name)))).every(Boolean)
@@ -182,6 +182,17 @@ try {
   assert.ok(
     fonts.some((font) => font.isCustomFont && /NotoSerifSC/u.test(font.postScriptName)),
     "visited Chinese serif subsets render offline with the HTTP cache disabled",
+  );
+  const { nodeId: titleNodeId } = await fontSession.send("DOM.querySelector", {
+    nodeId: documentRoot.nodeId,
+    selector: ".knowledge-title",
+  });
+  const { fonts: titleFonts } = await fontSession.send("CSS.getPlatformFontsForNode", {
+    nodeId: titleNodeId,
+  });
+  assert.ok(
+    titleFonts.some((font) => font.isCustomFont && /MiSans/u.test(font.postScriptName)),
+    "visited MiSans subsets render offline with the HTTP cache disabled",
   );
   await context.setOffline(false);
 

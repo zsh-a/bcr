@@ -29,7 +29,8 @@ import {
   writeMarkdownArchive,
 } from "../src/knowledge/storage/backup";
 import { contentFiles } from "../src/knowledge/storage/files";
-import { GitHubKnowledge } from "../src/knowledge/sync/github";
+import { GitHubKnowledge, GitHubNetworkError } from "../src/knowledge/sync/github";
+import { syncFailure } from "../src/knowledge/sync/syncFeedback";
 import { syncKnowledge } from "../src/knowledge/sync/sync";
 import { createKnowledgeGitHub } from "../../../scripts/fixtures/knowledge-github.mjs";
 import { knowledgeCapability } from "../src/knowledge/agent/agent";
@@ -272,6 +273,33 @@ describe("knowledge attachments", () => {
     fixture.advance({ [attachmentArchivePath(a.asset.hash)]: null });
     await expect(syncKnowledge(b.store, remote)).rejects.toThrow("远端缺少附件");
     expect(b.store.getSnapshot().notes[a.note.id]?.body).toBe(a.note.body);
+  });
+  it("pauses local attachment write errors instead of repeatedly retrying the network", async () => {
+    const a = await attached(),
+      b = device(),
+      fixture = createKnowledgeGitHub();
+    const target = { owner: "alice", repo: "notes", branch: "main" };
+    const remote = new GitHubKnowledge(target, "test-token", fixture.fetch as typeof fetch);
+    await a.store.configure(target);
+    await b.store.configure(target);
+    await syncKnowledge(a.store, remote);
+    const failure = new TypeError("local stream unavailable");
+    b.binary.putStream = async (_path, stream) => {
+      await stream.cancel(failure);
+      throw failure;
+    };
+    let caught: unknown;
+    try {
+      await syncKnowledge(b.store, remote);
+    } catch (reason) {
+      caught = reason;
+    }
+    expect(caught).toBe(failure);
+    expect(caught).not.toBeInstanceOf(GitHubNetworkError);
+    expect(syncFailure(caught).retryable).toBe(false);
+    expect(b.store.getSnapshot().sync.pending).toBeNull();
+    await a.store.close();
+    await b.store.close();
   });
   it("avoids portable asset directory collisions and preserves note metadata", async () => {
     const d = await attached();

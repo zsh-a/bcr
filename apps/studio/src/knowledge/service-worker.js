@@ -19,7 +19,7 @@ function isRequiredNotesAsset(url) {
   // 不在知识库启动图里，留给运行时缓存。
   // 中文字库按可见字符分片请求，再由 fetch handler 缓存；预缓存全部
   // 分片会下载整套字库，抵消 unicode-range 与按需衬线字体的作用。
-  return !/pdf\.worker|onnxruntime|transformers|IBMPlexSansSC-|noto-serif-sc-/u.test(url);
+  return !/pdf\.worker|onnxruntime|transformers|MiSans-|noto-serif-sc-/u.test(url);
 }
 
 function addAsset(urls, value) {

@@ -30,19 +30,63 @@ export interface KnowledgeRemote {
   useAttachments?(storage: KnowledgeAttachments): void;
 }
 export class GitHubError extends Error {
-  constructor(readonly status: number) {
+  readonly retryAfterMs: number | undefined;
+  readonly retryable: boolean;
+  constructor(
+    readonly status: number,
+    headers?: Headers,
+  ) {
     super(
       status === 401
         ? "GitHub Token 无效或已过期"
         : status === 403
           ? "GitHub 拒绝访问：请检查 Contents 读写权限或请求额度"
-          : status === 404
-            ? "找不到仓库或分支，请检查名称与 Token 授权范围"
-            : status === 409 || status === 422
-              ? "远端发生变化或分支不允许直接写入，请重试或检查分支保护"
-              : `GitHub 请求失败（${status}），本地内容已保留`,
+          : status === 429
+            ? "GitHub 请求额度暂时受限，请稍后重试"
+            : status === 404
+              ? "找不到仓库或分支，请检查名称与 Token 授权范围"
+              : status === 409 || status === 422
+                ? "远端发生变化或分支不允许直接写入，请重试或检查分支保护"
+                : `GitHub 请求失败（${status}），本地内容已保留`,
+    );
+    const retryAfter = headers?.get("retry-after");
+    const reset = headers?.get("x-ratelimit-reset");
+    const limited =
+      status === 429 ||
+      (status === 403 &&
+        (headers?.get("x-ratelimit-remaining") === "0" ||
+          (retryAfter !== null && retryAfter !== undefined)));
+    const seconds = retryAfter ? Number(retryAfter) : Number.NaN;
+    const retryAt = retryAfter && !Number.isFinite(seconds) ? Date.parse(retryAfter) : Number.NaN;
+    const resetAt = reset ? Number(reset) * 1_000 : Number.NaN;
+    const delay = Number.isFinite(seconds)
+      ? seconds * 1_000
+      : Number.isFinite(retryAt)
+        ? retryAt - Date.now()
+        : limited && Number.isFinite(resetAt)
+          ? resetAt - Date.now()
+          : limited
+            ? 60_000
+            : 0;
+    this.retryAfterMs = delay > 0 ? delay : undefined;
+    this.retryable = limited || status === 408 || status >= 500;
+    if (limited) this.message = "GitHub 请求额度暂时受限，请稍后重试";
+  }
+}
+export class GitHubNetworkError extends Error {
+  constructor(timeout = false) {
+    super(
+      timeout
+        ? "GitHub 请求超时；重试时会先核对远端结果，本机内容已保留"
+        : "暂时无法连接 GitHub，本机内容已保留",
     );
   }
+}
+function networkError(reason: unknown) {
+  if (reason instanceof TypeError) return new GitHubNetworkError();
+  if (reason instanceof Error && ["AbortError", "TimeoutError"].includes(reason.name))
+    return new GitHubNetworkError(true);
+  return reason;
 }
 function sha(value: unknown): string {
   if (typeof value !== "string" || !/^[a-f0-9]{40}$/u.test(value))
@@ -106,16 +150,15 @@ export class GitHubKnowledge implements KnowledgeRemote {
         redirect: "error",
         cache: "no-store",
       });
-      if (!response.ok) throw new GitHubError(response.status);
+      if (!response.ok) throw new GitHubError(response.status, response.headers);
       const text = await response.text();
       if (text.length > 12 * 1024 * 1024) throw new Error("GitHub 响应超过容量限制");
       return JSON.parse(text);
     } catch (error) {
       if (error instanceof GitHubError) throw error;
-      if (error instanceof Error && error.name === "AbortError")
-        throw new Error("GitHub 请求超时；下次同步将核对远端是否已接受提交");
+      if (error instanceof Error && error.name === "AbortError") throw new GitHubNetworkError(true);
       // Never include response bodies, headers or credentials in errors.
-      if (error instanceof TypeError) throw new Error("无法连接 GitHub，请检查网络后重试");
+      if (error instanceof TypeError) throw new GitHubNetworkError();
       throw error;
     } finally {
       clearTimeout(timeout);
@@ -221,20 +264,39 @@ export class GitHubKnowledge implements KnowledgeRemote {
     };
   }
   private async readAttachment(asset: KnowledgeAttachment, id: string) {
-    const response = await this.fetcher(`${this.root}/git/blobs/${sha(id)}`, {
-      headers: {
-        Accept: "application/vnd.github.raw+json",
-        Authorization: `Bearer ${this.token.trim()}`,
-        "X-GitHub-Api-Version": "2026-03-10",
-      },
-      signal: AbortSignal.timeout(120_000),
-      credentials: "omit",
-      redirect: "error",
-      cache: "no-store",
-    });
-    if (!response.ok) throw new GitHubError(response.status);
+    let response: Response;
+    try {
+      response = await this.fetcher(`${this.root}/git/blobs/${sha(id)}`, {
+        headers: {
+          Accept: "application/vnd.github.raw+json",
+          Authorization: `Bearer ${this.token.trim()}`,
+          "X-GitHub-Api-Version": "2026-03-10",
+        },
+        signal: AbortSignal.timeout(120_000),
+        credentials: "omit",
+        redirect: "error",
+        cache: "no-store",
+      });
+    } catch (reason) {
+      throw networkError(reason);
+    }
+    if (!response.ok) throw new GitHubError(response.status, response.headers);
     if (!response.body) throw new Error("GitHub 附件响应为空");
-    await this.attachments!.extract(asset, (sink) => response.body!.pipeTo(sink));
+    const reader = response.body.getReader();
+    const incoming = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          const next = await reader.read();
+          if (next.done) controller.close();
+          else controller.enqueue(next.value);
+        } catch (reason) {
+          controller.error(networkError(reason));
+        }
+      },
+      cancel: (reason) => reader.cancel(reason),
+    });
+    // Convert only network-source errors; local extraction and storage errors must pause retries.
+    await this.attachments!.extract(asset, (sink) => incoming.pipeTo(sink));
   }
   async isAncestor(base: string, head: string): Promise<boolean> {
     if (base === head) return true;

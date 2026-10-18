@@ -9,7 +9,7 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 const fontRequests = new Set();
 page.on("request", (request) => {
-  if (/IBMPlexSansSC-|noto-serif-sc-/u.test(request.url())) fontRequests.add(request.url());
+  if (/MiSans-|noto-serif-sc-/u.test(request.url())) fontRequests.add(request.url());
 });
 const titleText = "中文排版 Typography";
 const bodyText =
@@ -71,16 +71,17 @@ try {
   const titleFonts = await fonts(".knowledge-title");
   const bodyFonts = await fonts(".knowledge-prose p");
   assert.ok(
-    titleFonts.some((font) => font.isCustomFont && /IBMPlexSansSC/u.test(font.postScriptName)),
-    "Chinese title uses the supplied Plex face",
+    titleFonts.some((font) => font.isCustomFont && font.postScriptName === "MiSans-Demibold"),
+    "Chinese title uses the supplied MiSans Demibold face",
   );
   assert.ok(
-    bodyFonts.some((font) => font.isCustomFont && /IBMPlexSansSC/u.test(font.postScriptName)),
-    "Chinese prose uses the supplied Plex face",
+    bodyFonts.length > 0 &&
+      bodyFonts.every((font) => font.isCustomFont && font.postScriptName === "MiSans-Regular"),
+    "Chinese and Latin prose use the supplied MiSans Regular face",
   );
   assert.ok(
-    bodyFonts.some((font) => font.isCustomFont && font.postScriptName === "IBMPlexSans-Regular"),
-    "Latin prose keeps Plex Sans",
+    titleFonts.every((font) => font.isCustomFont && font.postScriptName === "MiSans-Demibold"),
+    "Chinese and Latin title use MiSans without synthetic bold",
   );
   assert.ok(
     ![...fontRequests].some((url) => /noto-serif-sc-/u.test(url)),

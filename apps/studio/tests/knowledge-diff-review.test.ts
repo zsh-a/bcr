@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { diffSpans, excerptSpans } from "../src/knowledge/editor/diffView";
-import { mergeConflictNote } from "../src/knowledge/sync/conflicts";
+import { mergeConflictNote, resolveKnowledgeConflict } from "../src/knowledge/sync/conflicts";
 import { countRewrittenLinks } from "../src/knowledge/notes/moveSummary";
 import { newNote, type KnowledgeNote } from "../src/knowledge/session/model";
 import { planNoteMove } from "../src/knowledge/notes/changePlan";
@@ -88,6 +88,41 @@ describe("conflict merge candidate", () => {
 });
 
 describe("conflict merge application", () => {
+  it("keeps both notes and allocates a copy path around existing folders", async () => {
+    const data = new Map<string, string>();
+    const metadata = {
+      get: async (key: string) => data.get(key),
+      set: async (key: string, value: string) => {
+        data.set(key, value);
+      },
+    };
+    const store = new KnowledgeStore(metadata);
+    const base = note("both", "共同正文", { path: "Note.md" });
+    const local = { ...base, body: "本机改写" };
+    const remote = { ...base, body: "远端改写" };
+    await store.saveFolder("Note (2).md");
+    await store.saveNote(local, null);
+    await store.integrate(
+      { notes: { both: remote }, collections: {}, folders: ["Note (2).md"] },
+      "a".repeat(40),
+      { notes: { both: base }, collections: {}, folders: ["Note (2).md"] },
+    );
+    await store.resolve(store.getSnapshot().conflicts[0]!, "keep-both");
+    const notes = Object.values(store.getSnapshot().notes);
+    expect(notes.map((item) => item.body).sort()).toEqual(["本机改写", "远端改写"].sort());
+    expect(notes.find((item) => item.id !== "both")?.path).toBe("Note (3).md");
+    expect(store.getSnapshot().folders).toEqual(["Note (2).md"]);
+    expect(store.getSnapshot().conflicts).toEqual([]);
+    await store.close();
+    const reopened = new KnowledgeStore(metadata);
+    await reopened.ready;
+    expect(
+      Object.values(reopened.getSnapshot().notes)
+        .map((item) => item.body)
+        .sort(),
+    ).toEqual(["本机改写", "远端改写"].sort());
+    await reopened.close();
+  });
   it("applies the merge result without dropping either side and keeps local title/path", async () => {
     const data = new Map<string, string>();
     const store = new KnowledgeStore({
@@ -120,11 +155,10 @@ describe("conflict merge application", () => {
     );
     const conflict = store.getSnapshot().conflicts[0]!;
     expect(conflict.kind).toBe("note");
-    // 与冲突面板相同的落地次序：采用本机清冲突，再写入合并结果。
+    // 与冲突面板相同：合并结果与冲突解除一次持久化。
     const merged = mergeConflictNote(conflict.base as KnowledgeNote, local, remote)!;
     expect(merged.title).toBe("本机标题");
-    await store.resolve(conflict, "local");
-    await store.restore(merged);
+    await resolveKnowledgeConflict(store, conflict, "merge", merged);
     const saved = store.getSnapshot().notes.alpha!;
     expect(saved.title).toBe("本机标题");
     expect(saved.path).toBe("旧/笔记.md");

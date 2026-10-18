@@ -33,6 +33,7 @@ const coreChecks = new Set([
   "knowledge-tree",
   "knowledge-attachments",
   "knowledge-change-plan",
+  "knowledge-sync-ux",
   "resource-layout",
 ]);
 
@@ -128,6 +129,7 @@ const groups = {
     "knowledge-restore",
     "knowledge-attachments",
     "knowledge-editor-context",
+    "knowledge-sync-ux",
   ],
 };
 

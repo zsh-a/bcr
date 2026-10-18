@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PwaInstallDialog } from "../../pwa/InstallControl";
 import { pwaForApp } from "../../pwa/apps";
 import { AppToolbar, IconButton } from "@bcr/react";
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { KNOWLEDGE_PATH } from "../../shell/host-manifests";
 import { SyncStatus } from "../sync/syncPopover";
+import { pendingSyncItems } from "../sync/syncFeedback";
 import { closeNote, setContext, setSidebar, toggleFavorite, togglePinned } from "./workbench";
 import { NoteTabs } from "./NoteTabs";
 import { NoteActionsMenu } from "./NoteActionsMenu";
@@ -331,6 +332,7 @@ export function KnowledgeToolbar({ controller }: { controller: KnowledgeWorkbenc
 }
 
 export function KnowledgeSaveStatus({ controller }: { controller: KnowledgeWorkbench }) {
+  const pendingItems = useMemo(() => pendingSyncItems(controller.state), [controller.state]);
   const local =
     controller.draftStatus?.noteId === controller.note?.id
       ? (controller.draftStatus ?? undefined)
@@ -339,15 +341,19 @@ export function KnowledgeSaveStatus({ controller }: { controller: KnowledgeWorkb
     <div className="knowledge-status" data-testid="knowledge-status">
       <SyncStatus
         facts={{
-          error: controller.error,
+          error: "",
           conflicts: controller.state.conflicts.length,
           hasTarget: !!controller.state.sync.target,
           pending: controller.pending,
           lastSyncedAt: controller.state.sync.lastSyncedAt,
           syncing: controller.syncing,
+          hasToken: !!controller.token.trim(),
+          feedback: controller.syncFeedback,
           ...(local ? { local } : {}),
         }}
         auto={controller.auto}
+        target={controller.state.sync.target}
+        pendingItems={pendingItems}
         onToggleAuto={controller.setAuto}
         onSync={() => void controller.sync()}
         onRetrySave={() => void controller.run(controller.flushEditor)}

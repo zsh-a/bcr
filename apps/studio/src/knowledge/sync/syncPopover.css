@@ -103,6 +103,48 @@
 .knowledge-sync-facts dd {
   margin: 0;
   color: var(--color-text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.knowledge-sync-help,
+.knowledge-sync-error p,
+.knowledge-sync-changes {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.knowledge-sync-help {
+  color: var(--color-muted);
+}
+.knowledge-sync-error {
+  color: var(--color-danger);
+  display: grid;
+  gap: var(--space-2);
+}
+.knowledge-sync-changes summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+.knowledge-sync-changes ul {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+.knowledge-sync-changes li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.knowledge-sync-changes li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.knowledge-sync-changes small {
+  color: var(--color-muted);
+  flex-shrink: 0;
 }
 
 .knowledge-sync-popover .knowledge-checkbox {
