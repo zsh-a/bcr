@@ -187,9 +187,7 @@ try {
     .filter({ has: page.locator(`[data-note-tab="${clash}"]`) })
     .hover();
   await tabs().getByRole("button", { name: "关闭标签 clash", exact: true }).click();
-  await sidebar()
-    .getByRole("button", { name: /^clash/u })
-    .click();
+  await sidebar().getByRole("treeitem", { name: "clash", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("note") === clash);
   assert.equal(await tabs().locator(".knowledge-tab.active").getAttribute("data-preview"), "true");
   assert.ok(
