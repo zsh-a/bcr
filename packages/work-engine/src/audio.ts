@@ -5,6 +5,7 @@ import type { VoiceSettings } from './audio/content';
 import { contentHash, readContent } from './audio/content';
 import { dramaSettings } from './audio/drama';
 import { AUDIO, audioEnvironmentPath, ensureAudio } from './audio/environment';
+import { musicInputFiles } from './audio/music';
 import { requireVoice } from './audio/standard';
 import { type AudioTimeline, type AudioTrack, isAudioTrack } from './audio/types';
 import {
@@ -43,6 +44,13 @@ function rawFiles(p: Project, aligned = false) {
   return plan.groups.map((g) =>
     inside(p.root, aligned ? g.raw.replace(/\.wav$/, '.alignment.json') : g.raw),
   );
+}
+function musicStem(p: Project) {
+  const cfg = p.config.audio!;
+  const voice = cfg.voice ? json<VoiceSettings>(inside(p.root, cfg.voice)) : undefined;
+  return cfg.driver === 'standard' && voice?.music
+    ? [inside(p.root, `${cfg.directory ?? '.bcr/narration'}/music-ducked.wav`)]
+    : [];
 }
 function tracks(p: Project): (AudioTrack & { id: string })[] {
   if (!existsSync(join(p.root, p.config.audio!.timeline))) {
@@ -102,11 +110,15 @@ function inputs(p: Project, stage: Stage) {
   if (['soundtrack', 'master', 'check'].includes(stage)) {
     add(cfg.timeline);
   }
+  if (cfg.driver === 'standard' && stage === 'soundtrack') {
+    files.push(...musicInputFiles(p.root, json<VoiceSettings>(inside(p.root, cfg.voice!))));
+  }
   if (['master', 'check'].includes(stage)) {
     files.push(...narrationFiles(p));
     add(cfg.score);
   }
   if (stage === 'check') {
+    files.push(...musicStem(p));
     add(cfg.mastering, 'work.json');
     files.push(...tracks(p).map((t) => inside(p.root, `public/${t.audioFile}`)));
   }
@@ -120,6 +132,7 @@ function inputs(p: Project, stage: Stage) {
           'src/audio/recorded.ts',
           'src/audio/align.ts',
           'src/audio/drama.ts',
+          'src/audio/music.ts',
         ].map((file) => join(TOOLS, file))
       : sourceGraph(TOOLS, 'src/audio.ts');
   toolFiles.push(join(AUDIO, 'uv.lock'));
@@ -183,7 +196,11 @@ function outputs(p: Project, stage: Stage): string[] {
     return [path(cfg.score)];
   }
   if (stage === 'master') {
-    return [path(cfg.mastering), ...tracks(p).map((t) => path(`public/${t.audioFile}`))];
+    return [
+      path(cfg.mastering),
+      ...tracks(p).map((t) => path(`public/${t.audioFile}`)),
+      ...musicStem(p),
+    ];
   }
   return [path(cfg.quality)];
 }

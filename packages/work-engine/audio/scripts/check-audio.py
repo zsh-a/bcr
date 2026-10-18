@@ -209,7 +209,35 @@ for variant in variants:
                 }
             )
         assert len(bridges) == len(track['segments']) - len(track['groups'])
+    music = voice.get('music')
+    music_report = 'disabled'
+    if music:
+        record = mastering[variant]['music']
+        assert isinstance(record, dict), 'Music is configured but the master has no music record'
+        stem, stem_sr = sf.read(ROOT / record['duckedStem'], dtype='float32')
+        assert stem_sr == rate and stem.ndim == 2
+        bed = stem.mean(axis=1)
+        spans = [
+            (round(cue['speechStart'] * rate), round(cue['speechEnd'] * rate))
+            for cue in track['segments']
+        ]
+
+        def energy(signal):
+            return float(np.mean(np.concatenate([signal[a:b] for a, b in spans]) ** 2))
+
+        # Voice and bed share the premix scale, so their ratio survives loudness normalization.
+        ratio = 10 * np.log10(energy(pcm) / max(energy(bed), 1e-20)) if pcm is not None else None
+        if ratio is not None:
+            assert ratio >= music['minVoiceToMusicDb'], (
+                f'{variant}: music too close to speech ({ratio:.1f} dB)'
+            )
+        music_report = {
+            'scoreSha256': record['scoreSha256'],
+            'bedGainDb': record['bedGainDb'],
+            'voiceToMusicInSpeechDb': None if ratio is None else round(ratio, 1),
+        }
     report['checks'][variant] = {
+        'music': music_report,
         'durationSeconds': track['durationInFrames'] / timeline['fps'],
         'independentCaptions': len(track['segments']),
         'exactSourcePreservedGroups': exact_groups,

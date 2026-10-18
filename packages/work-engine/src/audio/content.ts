@@ -10,6 +10,8 @@ export interface NarrationLine {
 
 export interface Paragraph {
   id: string;
+  /** Optional editorial role of the idea unit, e.g. question, explain, conclude. */
+  role?: string;
   gapAfter: number;
   holdReason?: string;
   lines: NarrationLine[];
@@ -56,6 +58,14 @@ export interface VoiceSettings {
     options?: Record<string, string | number | boolean | number[]>;
   };
   mastering: { loudnessLUFS: number; truePeakDBTP: number };
+  /** Optional original score rendered by the Work and ducked under the narration. */
+  music?: {
+    script: string;
+    inputs?: string[];
+    bedBelowVoiceLU: number;
+    duck: { threshold: number; ratio: number; attackMs: number; releaseMs: number };
+    minVoiceToMusicDb: number;
+  };
   quality: {
     maxCaptionWidth: number;
     maxCaptionCharactersPerSecond: number;

@@ -7,6 +7,7 @@ import { nativeAlignment } from './align';
 import { audioCppSettings, nativeWav, paragraphRequest, runNativeTask } from './audiocpp';
 import { contentHash, readContent, type VoiceSettings } from './content';
 import { dramaRequest, dramaSettings, startDrama } from './drama';
+import { musicPremix, musicSettings, renderScore } from './music';
 import { recordedSource } from './recorded';
 
 interface MeasuredTrack {
@@ -250,8 +251,13 @@ function measured(p: Project) {
   return timeline;
 }
 
-async function soundtrack(p: Project) {
+export async function soundtrack(p: Project) {
   const timeline = measured(p);
+  const music = musicSettings(voiceSettings(p));
+  if (music) {
+    await renderScore(p, music, timeline.main.samples);
+    return;
+  }
   // No music is selected by a scaffold. Keep the stage contract explicit with a zero track.
   await command(
     [
@@ -312,7 +318,7 @@ async function ffmpeg(p: Project, args: string[]) {
   return { output: Buffer.from(output), stderr };
 }
 
-async function master(p: Project) {
+export async function master(p: Project) {
   const timeline = measured(p);
   const { loudnessLUFS, truePeakDBTP } = voiceSettings(p).mastering;
   if (
@@ -330,9 +336,15 @@ async function master(p: Project) {
     p.root,
     `${p.config.audio!.directory ?? '.bcr/narration'}/${track.narrationFile}`,
   );
-  const filter = `pan=stereo|c0=c0|c1=c0,loudnorm=I=${loudnessLUFS}:TP=${truePeakDBTP}:LRA=11`;
+  const music = musicSettings(voiceSettings(p));
+  const mixed = music
+    ? await musicPremix(p, music, source, track.samples, (args) => ffmpeg(p, args), loudnessStats)
+    : undefined;
+  // A music premix is already stereo; narration-only masters pan the mono voice.
+  const input = mixed?.premix ?? source;
+  const filter = `${mixed ? '' : 'pan=stereo|c0=c0|c1=c0,'}loudnorm=I=${loudnessLUFS}:TP=${truePeakDBTP}:LRA=11`;
   const measuredStats = loudnessStats(
-    (await ffmpeg(p, ['-i', source, '-af', `${filter}:print_format=json`, '-f', 'null', '-']))
+    (await ffmpeg(p, ['-i', input, '-af', `${filter}:print_format=json`, '-f', 'null', '-']))
       .stderr,
   );
   const temporary = inside(
@@ -346,7 +358,7 @@ async function master(p: Project) {
       (
         await ffmpeg(p, [
           '-i',
-          source,
+          input,
           '-af',
           normalization,
           '-ar',
@@ -389,12 +401,15 @@ async function master(p: Project) {
         applied,
         verified,
         sha256: hashFile(destination),
-        music: 'disabled',
+        music: mixed?.record ?? 'disabled',
         losslessMaster: { decodedSamplesMatchWav: true, decodedBytes: flac.output.length },
       },
     });
   } finally {
     rmSync(temporary, { force: true });
+    if (mixed) {
+      rmSync(mixed.premix, { force: true });
+    }
   }
 }
 
