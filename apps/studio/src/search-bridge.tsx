@@ -1,10 +1,10 @@
 import type { SearchDocument } from "@bcr/core";
-import { listKnownInstruments } from "@bcr/market-data";
 import type { RuntimeServices } from "@bcr/react";
 import { useEffect } from "react";
 import { MANIFESTS as APPS } from "./shell/registry";
-import { type FileRecord, type TaskRecord } from "./store";
+import { studio, type FileRecord, type TaskRecord } from "./store";
 import { useStudio } from "./useStudio";
+import { prepareMarketSearch } from "./search/marketSearch";
 
 function appDocuments(): ReadonlyArray<SearchDocument> {
   return APPS.map((app) => ({
@@ -50,20 +50,6 @@ function studioDocuments(
   ];
 }
 
-function marketDocuments(): ReadonlyArray<SearchDocument> {
-  return listKnownInstruments().map(({ instrument, aliases, providerType }) => ({
-    id: `market:${instrument.id}`,
-    source: "market",
-    kind: "market-instrument",
-    title: instrument.name,
-    subtitle: `${instrument.symbol} · ${instrument.market} · ${instrument.venue}`,
-    body: `${instrument.shortName} ${instrument.sourceSymbol} ${instrument.assetClass} ${providerType} ${aliases ?? ""}`,
-    tags: ["market", instrument.market, instrument.assetClass, providerType],
-    route: `/markets?instrument=${encodeURIComponent(instrument.id)}`,
-    updatedAt: 0,
-  }));
-}
-
 /**
  * Projects each mounted domain store into the host's shared search index.
  * Lazy apps can still contribute later; persisted documents remain available
@@ -77,8 +63,15 @@ export function SearchBridge(props: { readonly services: RuntimeServices }) {
     const search = props.services.search;
     if (search === undefined) return;
     search.replaceSource("workspace", appDocuments());
+    void prepareMarketSearch(search).catch((reason) => {
+      studio.log("warn", `market search unavailable · ${String(reason)}`);
+    });
+  }, [props.services.search]);
+
+  useEffect(() => {
+    const search = props.services.search;
+    if (search === undefined) return;
     search.replaceSource("studio", studioDocuments(files, tasks));
-    search.replaceSource("market", marketDocuments());
   }, [props.services.search, files, tasks]);
 
   return null;

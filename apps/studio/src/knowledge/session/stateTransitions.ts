@@ -1,5 +1,6 @@
+import { sameRecord } from "./comparison";
 import { mergeContent } from "../sync/merge";
-import { contentOf, same, type KnowledgeState, type KnowledgeContent } from "./model";
+import { contentOf, type KnowledgeState, type KnowledgeContent } from "./model";
 
 export function withKnowledgeHistory(
   state: KnowledgeState,
@@ -7,7 +8,7 @@ export function withKnowledgeHistory(
   reason: string,
 ): KnowledgeState {
   const revisions = Object.values(state.notes)
-    .filter((note) => !same(note, next.notes[note.id]))
+    .filter((note) => !sameRecord(note, next.notes[note.id]))
     .map((note) => ({ id: crypto.randomUUID(), note, at: Date.now(), reason }));
   return { ...state, ...next, history: [...revisions, ...state.history].slice(0, 100) };
 }

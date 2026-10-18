@@ -20,6 +20,7 @@ import { inlineLinkTools } from "./inlineLinkTools";
 import { InlineLinkPopover } from "./InlineLinkPopover";
 import { tableEditingKeys } from "./tableCommands";
 import { runEditorEdit } from "./editorCommands";
+import { liveAnalysis } from "./liveAnalysis";
 
 export interface MarkdownEditorHandle {
   reveal(offset: number): void;
@@ -209,6 +210,7 @@ export function MarkdownEditor({
     const config = {
       doc: value,
       extensions: [
+        ...liveAnalysis(),
         ...knowledgeEditorExtensions(
           (next) => change.current(next),
           (ranges) => selection.current?.(ranges),

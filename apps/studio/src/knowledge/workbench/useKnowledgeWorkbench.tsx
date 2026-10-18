@@ -41,7 +41,8 @@ import { type EditorHandle } from "../editor/NoteEditor";
 import type { LocalSaveStatus } from "../sync/syncPopover";
 import { searchKnowledge, noteSearchHit } from "../search/retrieval";
 import { EditorSessions } from "../editor/editorSessions";
-import { KnowledgeLinkIndex, resolveNoteLink, splitNoteTarget } from "../notes/markdownAnalysis";
+import { resolveNoteLink, splitNoteTarget } from "../notes/markdownAnalysis";
+import { useKnowledgeBacklinks } from "./useKnowledgeBacklinks";
 import { useWorkbench } from "./useWorkbench";
 import { openNote, revealFolder, setSidebar, toggleFavorite } from "./workbench";
 import { knowledgePaletteActions } from "./knowledgePalette";
@@ -96,7 +97,6 @@ export function useKnowledgeWorkbench() {
   const [folderDelete, setFolderDelete] = useState<string | null>(null);
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [sessions] = useState(() => new EditorSessions());
-  const [linkIndex] = useState(() => new KnowledgeLinkIndex());
   const [view, setView] = useState<"all" | "favorites" | "recent">("all");
   const [switcher, setSwitcher] = useState<{ query: string; heading?: string } | null>(null);
   const [target, setTarget] = useState<{
@@ -258,27 +258,31 @@ export function useKnowledgeWorkbench() {
     window.addEventListener("keydown", key, { capture: true });
     return () => window.removeEventListener("keydown", key, { capture: true });
   }, [active, ready, focusMode, mobile, drawer, treeEdit, treeMenu]);
-  const backlinks = useMemo(() => {
-    const all = Object.values(state.notes);
-    linkIndex.update(all);
-    return note ? linkIndex.backlinks(all, note.id) : [];
-  }, [state.notes, note?.id, linkIndex]);
-  const listed =
-    view === "favorites"
-      ? notes.filter((n) => workbench.state.favorites.includes(n.id))
-      : view === "recent"
-        ? workbench.state.recent.flatMap((id) =>
-            Object.hasOwn(state.notes, id) ? [state.notes[id]!] : [],
-          )
-        : notes;
-  const filtered = searchKnowledge(listed, query, {
-    collectionId: collection,
-    limit: notes.length,
-  }).hits.map(({ note }) => note);
-  if (view === "recent" && !query.trim())
-    filtered.sort(
-      (a, b) => workbench.state.recent.indexOf(a.id) - workbench.state.recent.indexOf(b.id),
-    );
+  const backlinks = useKnowledgeBacklinks(state.notes, note?.id);
+  const listed = useMemo(() => {
+    if (view === "favorites") {
+      const favorites = new Set(workbench.state.favorites);
+      return notes.filter((note) => favorites.has(note.id));
+    }
+    if (view === "recent")
+      return workbench.state.recent.flatMap((id) =>
+        Object.hasOwn(state.notes, id) ? [state.notes[id]!] : [],
+      );
+    return notes;
+  }, [notes, state.notes, view, workbench.state.favorites, workbench.state.recent]);
+  const filtered = useMemo(() => {
+    // The unfiltered tree needs no retrieval scan, score allocation or sort on saves.
+    if (!query.trim() && !collection) return listed;
+    const matches = searchKnowledge(listed, query, {
+      collectionId: collection,
+      limit: notes.length,
+    }).hits.map(({ note }) => note);
+    if (view === "recent" && !query.trim()) {
+      const positions = new Map(workbench.state.recent.map((id, index) => [id, index]));
+      matches.sort((a, b) => (positions.get(a.id) ?? 0) - (positions.get(b.id) ?? 0));
+    }
+    return matches;
+  }, [listed, query, collection, notes.length, view, workbench.state.recent]);
   const pending = pendingCount(state);
   const run = async (action: () => Promise<void>) => {
     if (busy || !ready) return;

@@ -13,7 +13,8 @@ import { Prec } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { notePath } from "../notes/paths";
 import type { KnowledgeNote } from "../session/model";
-import { analyzeMarkdown, noteWikiLink } from "../notes/markdownAnalysis";
+import { noteWikiLink } from "../notes/markdownAnalysis";
+import { analyzeMarkdownAsync } from "../notes/markdownAnalysisClient";
 import { fillTemplate } from "./format";
 import { editorLinkAt, safeEditorLink } from "./editorContext";
 import { editorBlocks, editorFormattingKeys } from "./editorCommands";
@@ -124,30 +125,38 @@ export function noteEditing(
               context.state.sliceDoc(0, context.pos) +
               "__completion__]]" +
               context.state.sliceDoc(context.pos);
-            if (
-              !analyzeMarkdown(candidate).links.some(
-                (link) => link.kind === "wiki" && link.from === wiki.from,
-              )
-            )
-              return null;
-            recent = { from: wiki.from, to: context.pos };
-            return {
-              from: wiki.from,
-              filter: false,
-              options: notes()
-                .filter((note) =>
-                  [note.title, notePath(note)].some((value) =>
-                    value.toLocaleLowerCase().includes(wiki.text.slice(2).toLocaleLowerCase()),
-                  ),
+            const controller = new AbortController();
+            context.addEventListener("abort", () => controller.abort(), { onDocChange: true });
+            return analyzeMarkdownAsync(candidate, controller.signal).then(
+              (facts) => {
+                if (
+                  context.aborted ||
+                  !facts.analysis.links.some(
+                    (link) => link.kind === "wiki" && link.from === wiki.from,
+                  )
                 )
-                .slice(0, 40)
-                .map((note) => ({
-                  label: note.title || "未命名笔记",
-                  detail: notePath(note),
-                  type: "text",
-                  apply: noteWikiLink(note),
-                })),
-            };
+                  return null;
+                recent = { from: wiki.from, to: context.pos };
+                return {
+                  from: wiki.from,
+                  filter: false,
+                  options: notes()
+                    .filter((note) =>
+                      [note.title, notePath(note)].some((value) =>
+                        value.toLocaleLowerCase().includes(wiki.text.slice(2).toLocaleLowerCase()),
+                      ),
+                    )
+                    .slice(0, 40)
+                    .map((note) => ({
+                      label: note.title || "未命名笔记",
+                      detail: notePath(note),
+                      type: "text",
+                      apply: noteWikiLink(note),
+                    })),
+                };
+              },
+              () => null,
+            );
           }
           if (inCode(context)) return null;
           // 查询可含空格（“标题 2”）；“/” 前必须是行首或空白，避免 2024/05 之类误触发。

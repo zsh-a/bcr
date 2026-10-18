@@ -113,7 +113,10 @@ try {
     `dragged note lands in the folder: ${await notePaths().then(String)}`,
   );
   await undo();
-  assert.deepEqual((await notePaths()).toSorted(), [`${a}.md`, `${b}.md`].toSorted());
+  assert.deepEqual(
+    (await notePaths()).toSorted((x, y) => x.localeCompare(y)),
+    [`${a}.md`, `${b}.md`].toSorted((x, y) => x.localeCompare(y)),
+  );
 
   // 拖放目录到另一个目录：整棵前缀搬家（含显式子目录登记），撤销还原。
   await createFolder("外部");
@@ -204,7 +207,9 @@ try {
     const id = new URL(page.url()).searchParams.get("note");
     assert.ok((await notePaths()).includes(`${path}/${id}.md`));
     assert.equal(await folderOpen(name), true);
-    assert.equal(await folderOpen("子目录"), false);
+    if (name === "外部")
+      assert.equal(await folderRow("子目录").count(), 0, "collapsed descendants stay unmounted");
+    else assert.equal(await folderOpen("子目录"), false);
     assert.equal(await folderOpen("保持收起"), false);
     await title().fill(`${name}中新建的笔记`);
     await body().fill("直接创建在指定目录。");

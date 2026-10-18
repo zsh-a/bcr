@@ -9,6 +9,7 @@ import {
 } from "./attachmentModel";
 import { processAttachment } from "./attachmentImport";
 import { readPlainTextPage } from "./attachmentPlainText";
+import { queuePreviewWork } from "./previewWork";
 
 /** Binary files are written first. Only a verified file may be referenced by durable metadata. */
 export class KnowledgeAttachments {
@@ -168,20 +169,25 @@ export class KnowledgeAttachments {
         path = this.previewPath(record.hash);
       const stored = storage.getBlob ? await storage.getBlob(path) : undefined;
       if (stored) return stored.slice(0, stored.size, "image/webp");
-      const original = await this.require(record);
-      if (original.size < 2 * 1024 * 1024 && (record.width ?? 0) <= 1600) return original;
-      const result = await processAttachment(
-        new File([original], record.name, { type: record.mime }),
-        true,
-        false,
-      );
-      if (!result.thumbnail) return original;
-      try {
-        await storage.putStream(path, result.thumbnail.stream());
-      } catch {
-        /* The current preview remains usable. */
-      }
-      return result.thumbnail;
+      return queuePreviewWork(async () => {
+        // Another instance may have generated this hash while it waited in the queue.
+        const cached = storage.getBlob ? await storage.getBlob(path) : undefined;
+        if (cached) return cached.slice(0, cached.size, "image/webp");
+        const original = await this.require(record);
+        if (original.size < 2 * 1024 * 1024 && (record.width ?? 0) <= 1600) return original;
+        const result = await processAttachment(
+          new File([original], record.name, { type: record.mime }),
+          true,
+          false,
+        );
+        if (!result.thumbnail) return original;
+        try {
+          await storage.putStream(path, result.thumbnail.stream());
+        } catch {
+          /* The current preview remains usable. */
+        }
+        return result.thumbnail;
+      });
     })();
     this.previews.set(record.hash, operation);
     void operation.finally(() => this.previews.delete(record.hash)).catch(() => undefined);

@@ -178,7 +178,7 @@ try {
   );
   await a.page
     .getByRole("navigation", { name: "笔记列表", exact: true })
-    .getByRole("button", { name: "附件回归", exact: true })
+    .getByRole("treeitem", { name: "附件回归", exact: true })
     .click();
   await a.page.waitForFunction(
     () => document.querySelector('input[aria-label="笔记标题"]')?.value === "附件回归",
@@ -275,7 +275,7 @@ try {
   await b.page.getByRole("button", { name: "确认恢复", exact: true }).click();
   await b.page
     .getByRole("navigation", { name: "笔记列表", exact: true })
-    .getByRole("button", { name: "附件回归", exact: true })
+    .getByRole("treeitem", { name: "附件回归", exact: true })
     .click();
   await b.page.getByRole("button", { name: "阅读", exact: true }).click();
   await b.page.locator(".knowledge-prose .knowledge-image-preview img").first().waitFor();
@@ -284,7 +284,7 @@ try {
   await connect(c.page);
   await c.page
     .getByRole("navigation", { name: "笔记列表", exact: true })
-    .getByRole("button", { name: "附件回归", exact: true })
+    .getByRole("treeitem", { name: "附件回归", exact: true })
     .click();
   await c.page.getByRole("button", { name: "阅读", exact: true }).click();
   // The retained editor contains the same lazy image. Only the visible reading

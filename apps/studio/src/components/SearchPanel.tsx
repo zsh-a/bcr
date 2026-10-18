@@ -35,6 +35,7 @@ import { workspaceServices } from "../workspace";
 import { EMPTY_RESEARCH } from "../research/model";
 import { MANIFESTS, LAUNCH_PAD_APPS } from "../shell/registry";
 import { recentWorkspaceDocument, type RecentWorkspace } from "../shell/recent-workspaces";
+import { prepareMarketSearch } from "../search/marketSearch";
 
 const emptyLibrary = () => EMPTY_RESEARCH;
 const noSubscription = () => () => {};
@@ -204,6 +205,18 @@ export function SearchPanel(props: {
     if (search === undefined) return;
     return search.subscribe(() => setRevision((value) => value + 1));
   }, [search]);
+
+  useEffect(() => {
+    if (!props.open || !search) return;
+    let live = true;
+    // Retry a transient catalog load failure when search is opened again.
+    void prepareMarketSearch(search).catch(() => {
+      if (live) setMessage("市场搜索暂时不可用，请重新打开搜索重试。");
+    });
+    return () => {
+      live = false;
+    };
+  }, [props.open, search]);
 
   // 打开时重置搜索态。必须走 layout effect：与「打开」同一次提交内、绘制前完成。
   // 曾用 useEffect——它在绘制后才跑，打开后立刻输入/填充会与它赛跑并被 setQuery("")

@@ -5,12 +5,21 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type ProxyOptions } from "vite-plus";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+// Micromark's browser entity decoder uses document.createElement. Resolve its
+// DOM-free implementation for both page and Worker so their semantics agree.
+const entityDecoder = createRequire(require.resolve("micromark-util-decode-string")).resolve(
+  "decode-named-character-reference",
+);
 
 // Keep the build timestamp in the service-worker source itself. A deployment
 // with unchanged application chunks must still produce different sw.js bytes,
 // otherwise an installed PWA has no signal that a new release is available.
 const buildId = String(Date.now());
 const readerWorkerAssets = new Set<string>();
+const knowledgeWorkerAssets = new Set<string>();
 
 // Explicit opt-in: never turn a static/public deployment into an open LLM proxy.
 const localGateway = process.env.BCR_LOCAL_LLM === "1";
@@ -43,7 +52,13 @@ const gatewayProxy: Record<string, ProxyOptions> = localGateway
   : {};
 
 export default defineConfig({
-  plugins: [tailwindcss(), react(), pwaBuildManifest(readerWorkerAssets), diagramAssets()],
+  resolve: { alias: { "decode-named-character-reference": entityDecoder } },
+  plugins: [
+    tailwindcss(),
+    react(),
+    pwaBuildManifest(readerWorkerAssets, knowledgeWorkerAssets),
+    diagramAssets(),
+  ],
   preview: { proxy: gatewayProxy },
   define: {
     __BCR_APP_VERSION__: JSON.stringify(
@@ -103,6 +118,13 @@ export default defineConfig({
               /reader-(parse|index|txt)\.worker\.ts$/u.test(entry.facadeModuleId ?? ""),
           );
           if (reader) for (const name of Object.keys(bundle)) readerWorkerAssets.add(name);
+          const knowledge = Object.values(bundle).some(
+            (entry) =>
+              entry.type === "chunk" &&
+              entry.isEntry &&
+              (entry.facadeModuleId ?? "").endsWith("/knowledge/notes/markdownAnalysis.worker.ts"),
+          );
+          if (knowledge) for (const name of Object.keys(bundle)) knowledgeWorkerAssets.add(name);
         },
       },
     ],

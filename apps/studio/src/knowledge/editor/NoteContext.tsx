@@ -86,6 +86,7 @@ export function NoteContext({
                 <button
                   type="button"
                   key={heading.from}
+                  disabled={body !== note.body}
                   data-depth={heading.depth}
                   title={heading.text}
                   className={current === heading.from ? "is-current" : undefined}

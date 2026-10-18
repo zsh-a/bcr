@@ -107,7 +107,13 @@ async function shellUrls() {
   const visited = new Set();
   // 只预缓存 App 独立入口的模块图；宿主 Studio 的其余应用保持按需加载。
   addManifestEntry(manifest, `pwa/${app.key}/index.html`, urls, visited);
-  if (app.key !== "reader") addManifestEntry(manifest, "src/studio-main.tsx", urls, visited);
+  if (app.key !== "reader") {
+    addManifestEntry(manifest, "src/studio-main.tsx", urls, visited);
+    addManifestEntry(manifest, "knowledge-analysis-workers", urls, visited);
+    addManifestEntry(manifest, "src/search/marketDocuments.ts", urls, visited);
+    if (app.boot === "workspace")
+      addManifestEntry(manifest, "src/workbench/Dock.tsx", urls, visited);
+  }
   addManifestEntry(manifest, app.entry, urls, visited);
   if (app.precacheDynamicImports) addManifestEntry(manifest, app.entry, urls, new Set(), true);
   if (app.key === "reader") {

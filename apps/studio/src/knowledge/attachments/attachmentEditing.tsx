@@ -1,11 +1,13 @@
 import { StateEffect, StateField } from "@codemirror/state";
+import { syntaxTree } from "@codemirror/language";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import { createRoot, type Root } from "react-dom/client";
 import type { KnowledgeStore } from "../session/store";
 import { attachmentMarkdown, type AttachmentReference } from "./attachmentModel";
 import { AttachmentInline } from "./AttachmentView";
 import { liveComposition, touchesSyntax } from "../editor/liveSelection";
-import { editorAttachments } from "../editor/editorAnalysis";
+import { liveEditorFacts } from "../editor/editorAnalysis";
+import { analyzedDocument } from "../editor/liveAnalysis";
 
 type Anchor = { id: string; from: number; to: number };
 const addAnchor = StateEffect.define<Anchor>(),
@@ -158,8 +160,9 @@ export function attachmentEditing({
         return value.map(tr.changes);
       return tr.docChanged ||
         tr.selection ||
+        syntaxTree(tr.startState) !== syntaxTree(tr.state) ||
         tr.startState.field(liveComposition, false) !== tr.state.field(liveComposition, false) ||
-        tr.effects.some((effect) => effect.is(refresh))
+        tr.effects.some((effect) => effect.is(refresh) || effect.is(analyzedDocument))
         ? decorate(tr.state)
         : value;
     },
@@ -169,8 +172,8 @@ export function attachmentEditing({
     if (!live()) return Decoration.none;
     let end = -1;
     return Decoration.set(
-      editorAttachments(state.doc)
-        .filter((ref) => {
+      liveEditorFacts(state)
+        .attachments.filter((ref) => {
           if (ref.from < end || touchesSyntax(state, ref.from, ref.to)) return false;
           const line = state.doc.lineAt(ref.from);
           if (!ref.image && (line.from !== ref.from || line.to !== ref.to)) return false;

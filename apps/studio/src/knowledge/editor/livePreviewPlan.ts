@@ -1,9 +1,8 @@
 import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
-import { editorAnalysis, editorAttachments } from "./editorAnalysis";
+import { editorAnalysis, liveEditorFacts } from "./editorAnalysis";
 import { touchesSyntax } from "./liveSelection";
 import { IterMode } from "@lezer/common";
-import { editorLinkAt } from "./editorContext";
 import { readTable, tablePosition } from "./markdownTables";
 
 export type LiveMark =
@@ -225,7 +224,7 @@ export function planLiveMarks(
         if (
           (target.startsWith("attachment:") ||
             (!url &&
-              editorAttachments(doc).some(
+              liveEditorFacts(state).attachments.some(
                 (ref) => ref.from === link.from && ref.to === link.to,
               ))) &&
           (node.name === "Image" ||
@@ -236,7 +235,9 @@ export function planLiveMarks(
           const delimiters = link.getChildren("LinkMark");
           const open = delimiters[0],
             close = delimiters[1];
-          const resolved = target || editorLinkAt(state, link.from)?.url;
+          const resolved =
+            target ||
+            liveEditorFacts(state).editorLinks.find((item) => item.from === link.from)?.url;
           if (open && close && close.from > open.to && resolved)
             marks.push({ kind: "link-chip", from: open.to, to: close.from, target: resolved });
         }

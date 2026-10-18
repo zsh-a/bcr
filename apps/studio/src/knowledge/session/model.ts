@@ -1,3 +1,5 @@
+import { contentChanges } from "./contentChanges";
+export { same } from "./comparison";
 import { decodeResearch, type ResearchExcerpt } from "../../research";
 import { normalizeFolderPath, normalizeNotePath, assertUniquePaths } from "../notes/paths";
 import { decodeAttachments, type AttachmentRecords } from "../attachments/attachmentModel";
@@ -84,7 +86,6 @@ export const validId = (value: unknown): value is string =>
   /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}$/u.test(value) &&
   !Object.hasOwn(Object.prototype, value) &&
   value !== "prototype";
-export const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 export function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("知识库数据格式无效");
@@ -253,33 +254,50 @@ export function decodeStateChanges(next: KnowledgeState, previous: KnowledgeStat
   if (next.version !== 1 && next.version !== 2) throw new Error("知识库版本不支持，原数据已保留");
   const pending = next.sync.pending;
   if (pending && decodeSha(pending.head) === null) throw new Error("待确认提交无效");
+  const knownHistory = new Set(previous.history);
+  const knownConflicts = new Set(previous.conflicts);
   return {
     version: next.version,
     ...decodeContentChanges(next, previous),
-    // 历史 ≤100 条、冲突有界，照旧全量解码，换取与 decodeState 完全一致的校验面。
-    history: next.history.map((entry) => ({
-      id: string(entry.id, 100),
-      note: decodeNote(entry.note),
-      at: time(entry.at),
-      reason: string(entry.reason, 200),
-    })),
-    conflicts: next.conflicts.map((entry): KnowledgeConflict => {
-      if (!validId(entry.key) || (entry.kind !== "note" && entry.kind !== "collection"))
-        throw new Error("冲突记录无效");
-      const decode = (value: KnowledgeNote | KnowledgeCollection | null) => {
-        if (value === null) return null;
-        const entity = entry.kind === "note" ? decodeNote(value) : decodeCollection(value);
-        if (entity.id !== entry.key) throw new Error("冲突身份不一致");
-        return entity;
-      };
-      return {
-        key: entry.key,
-        kind: entry.kind,
-        base: decode(entry.base),
-        local: decode(entry.local),
-        remote: decode(entry.remote),
-      };
-    }),
+    // Validated records are immutable snapshots. Retain their identity so both validation
+    // and partitioned persistence skip unchanged revision bodies on subsequent saves.
+    history:
+      next.history === previous.history
+        ? previous.history
+        : next.history.map((entry) =>
+            knownHistory.has(entry)
+              ? entry
+              : {
+                  id: string(entry.id, 100),
+                  note:
+                    previous.notes[entry.note.id] === entry.note
+                      ? entry.note
+                      : decodeNote(entry.note),
+                  at: time(entry.at),
+                  reason: string(entry.reason, 200),
+                },
+          ),
+    conflicts:
+      next.conflicts === previous.conflicts
+        ? previous.conflicts
+        : next.conflicts.map((entry): KnowledgeConflict => {
+            if (knownConflicts.has(entry)) return entry;
+            if (!validId(entry.key) || (entry.kind !== "note" && entry.kind !== "collection"))
+              throw new Error("冲突记录无效");
+            const decode = (value: KnowledgeNote | KnowledgeCollection | null) => {
+              if (value === null) return null;
+              const entity = entry.kind === "note" ? decodeNote(value) : decodeCollection(value);
+              if (entity.id !== entry.key) throw new Error("冲突身份不一致");
+              return entity;
+            };
+            return {
+              key: entry.key,
+              kind: entry.kind,
+              base: decode(entry.base),
+              local: decode(entry.local),
+              remote: decode(entry.remote),
+            };
+          }),
     sync: {
       target: next.sync.target === null ? null : decodeTarget(next.sync.target),
       head: decodeSha(next.sync.head),
@@ -299,11 +317,13 @@ function decodeContentChanges(
   next: KnowledgeContent,
   previous: KnowledgeContent | undefined,
 ): KnowledgeContent {
-  const notes: KnowledgeContent["notes"] = {},
-    collections: KnowledgeContent["collections"] = {};
+  if (next === previous) return previous;
+  const notes: KnowledgeContent["notes"] = next.notes === previous?.notes ? next.notes : {},
+    collections: KnowledgeContent["collections"] =
+      next.collections === previous?.collections ? next.collections : {};
   if (Object.keys(next.notes).length > 5_000 || Object.keys(next.collections).length > 1_000)
     throw new Error("知识库超过首期容量限制");
-  for (const [id, note] of Object.entries(next.notes)) {
+  for (const [id, note] of next.notes === previous?.notes ? [] : Object.entries(next.notes)) {
     if (previous?.notes[id] === note) {
       notes[id] = note;
       continue;
@@ -312,7 +332,9 @@ function decodeContentChanges(
     if (decoded.id !== id) throw new Error("笔记身份不一致");
     notes[id] = decoded;
   }
-  for (const [id, collection] of Object.entries(next.collections)) {
+  for (const [id, collection] of next.collections === previous?.collections
+    ? []
+    : Object.entries(next.collections)) {
     if (previous?.collections[id] === collection) {
       collections[id] = collection;
       continue;
@@ -322,8 +344,11 @@ function decodeContentChanges(
     collections[id] = decoded;
   }
   if (next.folders.length > 2_000) throw new Error("知识库目录清单无效");
-  const folders = [...new Set(next.folders.map((folder) => normalizeFolderPath(folder)))];
-  assertUniquePaths(notes, folders);
+  const folders =
+    next.folders === previous?.folders
+      ? next.folders
+      : [...new Set(next.folders.map((folder) => normalizeFolderPath(folder)))];
+  if (notes !== previous?.notes || folders !== previous?.folders) assertUniquePaths(notes, folders);
   const attachments =
     next.attachments === previous?.attachments
       ? next.attachments
@@ -344,13 +369,5 @@ export function newNote(title = "未命名笔记", collectionId: string | null =
   };
 }
 export function pendingCount(state: KnowledgeState): number {
-  let count = 0;
-  for (const field of ["notes", "collections", "attachments"] as const) {
-    const local = state[field] ?? {},
-      base = state.sync.base[field] ?? {};
-    const ids = new Set([...Object.keys(local), ...Object.keys(base)]);
-    for (const id of ids) if (!same(local[id], base[id])) count++;
-  }
-  if (!same(state.folders, state.sync.base.folders)) count++;
-  return count;
+  return contentChanges(state, state.sync.base).length;
 }

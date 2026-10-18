@@ -7,6 +7,7 @@ import "./attachments.css";
 import { AttachmentPdfPreview } from "./AttachmentPdfPreview";
 import { isPlainTextAttachment } from "./attachmentPlainText";
 import { AttachmentTextPreview } from "./AttachmentTextPreview";
+import { observePreviewVisibility } from "./previewVisibility";
 
 export function attachmentSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -186,7 +187,12 @@ function InlineImage({
   onOpen: () => void;
   displayWidth?: number | undefined;
 }) {
-  const { url, error } = useAttachmentUrl(asset, storage, true);
+  const preview = useRef<HTMLButtonElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (preview.current) return observePreviewVisibility(preview.current, () => setVisible(true));
+  }, []);
+  const { url, error } = useAttachmentUrl(asset, storage, true, visible);
   const [failed, setFailed] = useState(false);
   const displayWidth =
     requestedWidth ??
@@ -202,6 +208,7 @@ function InlineImage({
     );
   return (
     <button
+      ref={preview}
       type="button"
       className="knowledge-image-preview"
       aria-label={`查看图片：${label || asset.name}`}
@@ -230,7 +237,7 @@ function InlineImage({
       ) : (
         <span className="knowledge-attachment-loading">
           <LoaderCircle size={18} />
-          正在载入图片
+          {visible ? "正在载入图片" : "图片预览"}
         </span>
       )}
     </button>

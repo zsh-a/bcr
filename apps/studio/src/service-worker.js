@@ -97,6 +97,10 @@ async function shellUrls() {
   addManifestEntry(manifest, "index.html", urls, visited);
   addManifestEntry(manifest, "src/reader-main.tsx", urls, visited);
   addManifestEntry(manifest, "src/studio-main.tsx", urls, visited);
+  addManifestEntry(manifest, "knowledge-analysis-workers", urls, visited);
+  // These features leave the static entry graph but retain first-use offline support.
+  addManifestEntry(manifest, "src/workbench/Dock.tsx", urls, visited);
+  addManifestEntry(manifest, "src/search/marketDocuments.ts", urls, visited);
   return [...urls];
 }
 

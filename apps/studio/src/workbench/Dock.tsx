@@ -17,14 +17,13 @@ import { ProjectPanel } from "./ProjectPanel";
 import { StoragePanel } from "./StoragePanel";
 import { TasksPanel } from "./TasksPanel";
 import { WorkspacePanel } from "./WorkspacePanel";
+import { LAYOUT_KEY } from "./layout";
 
 /**
  * Dockview 工作台（§12 Workspace Layout）：
  * dock / tabs / split / drag / floating / popout 全部交给 dockview，
  * 布局 JSON 持久化到 localStorage（SQLite 持久化留待 storage-sqlite 包）。
  */
-
-const LAYOUT_KEY = "bcr.studio.layout.v2";
 
 /** 面板最小宽高（dockview 约束）：窄容器下不塌缩，放不下的内容以溢出滚动让位。
  *  取值贴着默认布局的 initial 尺寸之下，不改变默认形态。 */
@@ -162,11 +161,6 @@ function withMinSizes<T>(layout: T): T {
       }
   }
   return layout;
-}
-
-export function resetLayout(): void {
-  localStorage.removeItem(LAYOUT_KEY);
-  window.location.reload();
 }
 
 export function Dock() {

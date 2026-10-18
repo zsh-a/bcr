@@ -21,9 +21,13 @@ export interface RemoteKnowledge {
   files: Record<string, string>;
   binaryFiles?: Record<string, { sha: string; size: number }>;
 }
+export interface RemoteReadOptions {
+  /** Background checks may reuse a recently verified immutable Git snapshot. */
+  background?: boolean;
+}
 export interface KnowledgeRemote {
   readonly target: GitTarget;
-  read(base?: KnowledgeContent): Promise<RemoteKnowledge>;
+  read(base?: KnowledgeContent, options?: RemoteReadOptions): Promise<RemoteKnowledge>;
   isAncestor(base: string, head: string): Promise<boolean>;
   prepare(remote: RemoteKnowledge, content: KnowledgeContent): Promise<string>;
   publish(expected: string, commit: string): Promise<void>;
@@ -120,7 +124,9 @@ export class GitHubKnowledge implements KnowledgeRemote {
   readonly target: GitTarget;
   private root: string;
   private attachments: KnowledgeAttachments | undefined;
+  private checked: { value: RemoteKnowledge; at: number } | undefined;
   useAttachments(storage: KnowledgeAttachments) {
+    if (this.attachments !== storage) this.checked = undefined;
     this.attachments = storage;
   }
   constructor(
@@ -190,7 +196,7 @@ export class GitHubKnowledge implements KnowledgeRemote {
     if (bytes.length !== result.size) throw new Error("远端文件长度校验失败");
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   }
-  async read(base?: KnowledgeContent): Promise<RemoteKnowledge> {
+  async read(base?: KnowledgeContent, options: RemoteReadOptions = {}): Promise<RemoteKnowledge> {
     const repository = object(await this.request(""));
     if (repository.private !== true) throw new Error("请使用私有仓库；当前连接未上传任何笔记");
     let reference;
@@ -204,6 +210,14 @@ export class GitHubKnowledge implements KnowledgeRemote {
       throw error;
     }
     const head = sha(object(reference.object).sha);
+    const checked = this.checked,
+      age = checked ? Date.now() - checked.at : -1;
+    // Git objects are immutable, but local bytes may disappear or become corrupt.
+    // Manual checks always reverify them; background checks do so at least every
+    // five minutes. Do not extend this deadline on a cache hit.
+    if (options.background && checked?.value.head === head && age >= 0 && age < 5 * 60_000)
+      return checked.value;
+    this.checked = undefined;
     const { tree, entries } = await this.treeAt(head);
     const managed = entries.filter(
       (entry) => typeof entry.path === "string" && isManagedPath(entry.path),
@@ -255,13 +269,15 @@ export class GitHubKnowledge implements KnowledgeRemote {
       if (await this.attachments.get(asset)) await this.attachments.verify(asset);
       else await this.readAttachment(asset, sha(entry.sha));
     }
-    return {
+    const value = {
       head,
       tree,
       files,
       content,
       ...(Object.keys(binaryFiles).length ? { binaryFiles } : {}),
     };
+    this.checked = { value, at: Date.now() };
+    return value;
   }
   private async readAttachment(asset: KnowledgeAttachment, id: string) {
     let response: Response;

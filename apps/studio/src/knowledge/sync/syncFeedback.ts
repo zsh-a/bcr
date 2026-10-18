@@ -1,5 +1,6 @@
 import { GitHubError, GitHubNetworkError } from "./github";
-import { same, type KnowledgeState } from "../session/model";
+import type { KnowledgeState } from "../session/model";
+import { contentChanges } from "../session/contentChanges";
 import type { SyncSummary } from "./sync";
 
 export type SyncPhase = "saving" | "reading" | "merging" | "uploading" | "confirming";
@@ -72,21 +73,5 @@ export function syncRetryDelay(attempt: number, retryAfterMs = 0) {
 }
 
 export function pendingSyncItems(state: KnowledgeState) {
-  const items: { label: string; change: string }[] = [];
-  for (const field of ["notes", "collections", "attachments"] as const) {
-    const local = state[field] ?? {},
-      base = state.sync.base[field] ?? {};
-    for (const id of new Set([...Object.keys(local), ...Object.keys(base)])) {
-      if (same(local[id], base[id])) continue;
-      const value = local[id] ?? base[id];
-      if (!value) continue;
-      items.push({
-        label: "title" in value ? value.title || "未命名笔记" : value.name,
-        change: !local[id] ? "删除" : !base[id] ? "新增" : "修改",
-      });
-    }
-  }
-  if (!same(state.folders, state.sync.base.folders))
-    items.push({ label: "文件夹结构", change: "修改" });
-  return items;
+  return contentChanges(state, state.sync.base).map(({ label, change }) => ({ label, change }));
 }

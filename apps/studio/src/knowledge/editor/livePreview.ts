@@ -10,6 +10,7 @@ import {
 } from "@codemirror/view";
 import { planLiveMarks, type LiveMark } from "./livePreviewPlan";
 import { liveComposition } from "./liveSelection";
+import { analyzedDocument } from "./liveAnalysis";
 import { CodeToolsWidget } from "./CodeToolsWidget";
 import { EmptyTableCellWidget, TableToolsWidget } from "./TableToolsWidget";
 export { planLiveMarks, listDepth, type LiveMark } from "./livePreviewPlan";
@@ -357,6 +358,9 @@ export function livePreview(
             update.viewportChanged ||
             update.focusChanged ||
             update.startState.readOnly !== update.state.readOnly ||
+            update.transactions.some((tr) =>
+              tr.effects.some((effect) => effect.is(analyzedDocument)),
+            ) ||
             syntaxTree(update.startState) !== syntaxTree(update.state)
           )
             this.decorations = decorate(update.view);

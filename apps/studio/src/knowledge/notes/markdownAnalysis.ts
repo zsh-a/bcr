@@ -300,12 +300,32 @@ export interface MarkdownFacts {
   attachments: AttachmentReference[];
   characters: number;
   referenceDefinitions: string;
+  definitionRanges: { from: number; to: number }[];
 }
 // Two input snapshots cover the editor and deferred React view without retaining mutable ASTs.
 const recentFacts: { source: string; facts: MarkdownFacts }[] = [];
+export const emptyMarkdownFacts: MarkdownFacts = {
+  analysis: { links: [], headings: [] },
+  editorLinks: [],
+  attachments: [],
+  characters: 0,
+  referenceDefinitions: "",
+  definitionRanges: [],
+};
+export function cachedMarkdownFacts(source: string) {
+  return recentFacts.find((entry) => entry.source === source)?.facts;
+}
+/** Worker results share the action/index cache without reparsing on the UI thread. */
+export function rememberMarkdownFacts(source: string, facts: MarkdownFacts) {
+  const index = recentFacts.findIndex((entry) => entry.source === source);
+  if (index >= 0) recentFacts.splice(index, 1);
+  recentFacts.unshift({ source, facts });
+  if (recentFacts.length > 2) recentFacts.pop();
+  return facts;
+}
 export function markdownFacts(source: string): MarkdownFacts {
-  const cached = recentFacts.find((entry) => entry.source === source);
-  if (cached) return cached.facts;
+  const cached = cachedMarkdownFacts(source);
+  if (cached) return cached;
   const tree = parser.parse(source),
     definitions = definitionsIn(tree);
   const analysis: NoteAnalysis = { links: [], headings: [] },
@@ -355,10 +375,12 @@ export function markdownFacts(source: string): MarkdownFacts {
     referenceDefinitions: [...definitions.values()]
       .map((node) => source.slice(node.position!.start.offset!, node.position!.end.offset!))
       .join("\n\n"),
+    definitionRanges: [...definitions.values()].map((node) => ({
+      from: node.position!.start.offset!,
+      to: node.position!.end.offset!,
+    })),
   };
-  recentFacts.unshift({ source, facts });
-  if (recentFacts.length > 2) recentFacts.pop();
-  return facts;
+  return rememberMarkdownFacts(source, facts);
 }
 
 export function splitNoteTarget(target: string) {

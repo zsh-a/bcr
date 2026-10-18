@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LAUNCH_PAD_APPS, MANIFESTS, PANELS, launchShortcut } from "../shell/registry";
-import { resetLayout } from "../workbench/Dock";
+import { resetLayout } from "../workbench/layout";
 import { StorageMaintenanceDialogs } from "../workbench/StorageMaintenanceDialogs";
 import { useStorageMaintenance } from "../workbench/useStorageMaintenance";
 import { importFile, runTask } from "../runtime";

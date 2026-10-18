@@ -4,7 +4,6 @@ import {
   useLayoutEffect,
   useId,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -12,20 +11,12 @@ import {
   type Ref,
   type ReactNode,
 } from "react";
-import Markdown, { defaultUrlTransform } from "react-markdown";
 import { createPortal } from "react-dom";
 import { Info, Paperclip, SlidersHorizontal, X } from "lucide-react";
-import remarkGfm from "remark-gfm";
 import { type KnowledgeNote, type KnowledgeCollection } from "../session/model";
 import { MarkdownEditor, type MarkdownEditorHandle } from "./MarkdownEditor";
 import type { EditorSessions } from "./editorSessions";
-import {
-  analyzeMarkdown,
-  internalTarget,
-  remarkKnowledgeLinks,
-  linkKey,
-  markdownFacts,
-} from "../notes/markdownAnalysis";
+import { analyzeMarkdown, linkKey } from "../notes/markdownAnalysis";
 import { NoteContext } from "./NoteContext";
 import { NoteProperties, NoteMetadata } from "./NoteProperties";
 import { PanelResizer } from "../workbench/PanelResizer";
@@ -52,8 +43,6 @@ import {
   useOpenAssistant,
   useUpdateParticipant,
 } from "@bcr/react";
-import { attachmentId } from "../attachments/attachmentModel";
-import { AttachmentInline, RemoteImage } from "../attachments/AttachmentView";
 import { useNoteAttachments } from "../attachments/useNoteAttachments";
 import { NoteAttachmentOverlays } from "../attachments/NoteAttachmentOverlays";
 import { NoteAttachmentList } from "../attachments/NoteAttachmentList";
@@ -61,6 +50,8 @@ import { AttachmentDocumentPreview } from "../attachments/AttachmentDocumentPrev
 import { isPlainTextAttachment } from "../attachments/attachmentPlainText";
 import type { LocalSaveStatus } from "../sync/syncPopover";
 import { themeStore } from "../../theme/browser";
+import { useMarkdownFacts } from "./useMarkdownFacts";
+import { NoteReadingView } from "./NoteReadingView";
 
 export interface EditorHandle {
   flush(): Promise<void>;
@@ -164,7 +155,7 @@ export function NoteEditor({
   const toolsTrigger = useRef<HTMLButtonElement>(null);
   const rename = useRef<LiveRename>(null);
   const body = useDeferredValue(draft.body);
-  const facts = useMemo(() => markdownFacts(body), [body]);
+  const { source: analyzedBody, facts } = useMarkdownFacts(body);
   const { analysis, attachments: refs, characters } = facts;
   const attachments = useNoteAttachments(controller, store);
   const { attachmentStatus, setAttachmentStatus, openAttachment, menuAttachment } = attachments;
@@ -249,7 +240,8 @@ export function NoteEditor({
     attachmentCount === 1 && characters === 0
       ? store.getSnapshot().attachments?.[refs[0]!.id]
       : undefined;
-  const filePreview = file && isPlainTextAttachment(file) && view !== "source" ? file : null;
+  const filePreview =
+    file && analyzedBody === body && isPlainTextAttachment(file) && view !== "source" ? file : null;
   const properties = (
     <NoteProperties
       controller={controller}
@@ -263,10 +255,11 @@ export function NoteEditor({
       note={draft}
       notes={notes}
       analysis={analysis}
-      body={body}
+      body={analyzedBody}
       mode={view}
       backlinks={backlinks}
       onReveal={(offset) => {
+        if (analyzedBody !== controller.getSnapshot().note.body) return;
         if (narrow) {
           onContextOpenChange(false);
           // Reveal after the drawer restores its trigger focus.
@@ -676,91 +669,19 @@ export function NoteEditor({
         </div>
         {view === "read" && (
           <article ref={reading} className="knowledge-prose">
-            {body ? (
-              <Markdown
-                remarkPlugins={[remarkGfm, remarkKnowledgeLinks]}
-                urlTransform={(url) => (attachmentId(url) ? url : defaultUrlTransform(url))}
-                components={{
-                  img: ({ alt, src, node: imageNode }) => {
-                    const id = attachmentId(typeof src === "string" ? src : "");
-                    const ref = refs.find(
-                      (item) => item.id === id && item.from === imageNode?.position?.start.offset,
-                    );
-                    return id ? (
-                      <AttachmentInline
-                        asset={store.getSnapshot().attachments?.[id]}
-                        storage={store.attachments}
-                        label={alt || ""}
-                        image
-                        displayWidth={ref?.width}
-                        onOpen={() => openAttachment(id)}
-                        onMenu={ref ? (x, y) => menuAttachment(ref, x, y) : undefined}
-                      />
-                    ) : (
-                      <RemoteImage
-                        src={typeof src === "string" ? src : ""}
-                        alt={alt || "外部图片"}
-                        onSave={
-                          locked
-                            ? undefined
-                            : async (file) => {
-                                const start = imageNode?.position?.start.offset,
-                                  end = imageNode?.position?.end.offset;
-                                if (start === undefined || end === undefined) return;
-                                setView("edit");
-                                source.current?.insertFiles([file], {
-                                  from: start,
-                                  to: end,
-                                  expected: body.slice(start, end),
-                                });
-                              }
-                        }
-                      />
-                    );
-                  },
-                  a: ({ children, href, node: linkNode }) => {
-                    const id = attachmentId(href ?? "");
-                    if (id) {
-                      const ref = refs.find(
-                        (item) => item.id === id && item.from === linkNode?.position?.start.offset,
-                      );
-                      return (
-                        <AttachmentInline
-                          asset={store.getSnapshot().attachments?.[id]}
-                          storage={store.attachments}
-                          label={ref?.label || ""}
-                          onOpen={() => openAttachment(id)}
-                          onMenu={ref ? (x, y) => menuAttachment(ref, x, y) : undefined}
-                        />
-                      );
-                    }
-                    const prefix = "#knowledge-link=";
-                    const target = href?.startsWith(prefix)
-                      ? decodeURIComponent(href.slice(prefix.length))
-                      : internalTarget(href ?? "");
-                    return target !== null ? (
-                      <a
-                        href={href}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          onOpenLink(target);
-                        }}
-                      >
-                        {children}
-                      </a>
-                    ) : (
-                      <a href={href} target="_blank" rel="noreferrer noopener">
-                        {children}
-                      </a>
-                    );
-                  },
-                }}
-              >
-                {body}
-              </Markdown>
-            ) : (
-              <p className="knowledge-hint">开始记录你的第一个想法。</p>
-            )}
+            <NoteReadingView
+              body={body}
+              refs={refs}
+              store={store}
+              locked={locked}
+              onOpenAttachment={openAttachment}
+              onMenuAttachment={menuAttachment}
+              onOpenLink={onOpenLink}
+              onSaveImage={(file, range) => {
+                setView("edit");
+                source.current?.insertFiles([file], range);
+              }}
+            />
           </article>
         )}
         {filePreview && (
@@ -775,10 +696,10 @@ export function NoteEditor({
           placement={mobile ? "sheet" : "drawer"}
           className="knowledge-context-drawer"
         >
-          {context}
+          {contextOpen && !focusMode && context}
         </Dialog>
       ) : (
-        context
+        contextOpen && !focusMode && context
       )}
       {/* 右栏宽度手柄：贴在上下文栏左缘，宽度变量随拖拽写在本容器上。 */}
       <PanelResizer

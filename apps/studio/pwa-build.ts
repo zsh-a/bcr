@@ -3,7 +3,10 @@ import { PWA_APPS } from "./src/pwa/apps";
 
 /** Rolldown coalesces HTML entries with identical scripts. Keep each offline
  * document's bootstrap discoverable even when it only has a shared chunk. */
-export function pwaBuildManifest(readerWorkerAssets: ReadonlySet<string>): Plugin {
+export function pwaBuildManifest(
+  readerWorkerAssets: ReadonlySet<string>,
+  knowledgeWorkerAssets: ReadonlySet<string>,
+): Plugin {
   return {
     name: "bcr-pwa-entry-manifests",
     generateBundle: {
@@ -15,7 +18,11 @@ export function pwaBuildManifest(readerWorkerAssets: ReadonlySet<string>): Plugi
         // Vite worker bundles have their own module graph and are absent from
         // the page manifest. Include every emitted dependency of Reader's workers.
         if (readerWorkerAssets.size === 0) throw new Error("Missing Reader offline workers");
+        if (knowledgeWorkerAssets.size === 0) throw new Error("Missing Knowledge analysis worker");
         Object.assign(manifest, {
+          "knowledge-analysis-workers": {
+            assets: [...knowledgeWorkerAssets].filter((name) => name in bundle).sort(),
+          },
           "reader-offline-workers": {
             assets: [...readerWorkerAssets]
               .filter((name) => name in bundle)

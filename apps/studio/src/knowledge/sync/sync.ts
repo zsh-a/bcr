@@ -1,6 +1,6 @@
-import { contentOf, same } from "../session/model";
+import { contentOf, pendingCount, same } from "../session/model";
 import { mergeContent } from "./merge";
-import { GitHubError, type KnowledgeRemote } from "./github";
+import { GitHubError, type KnowledgeRemote, type RemoteReadOptions } from "./github";
 import type { KnowledgeStore } from "../session/store";
 import type { SyncPhase } from "./syncFeedback";
 
@@ -41,6 +41,7 @@ export async function syncKnowledge(
   remote: KnowledgeRemote,
   beforeSync?: () => Promise<void>,
   observer: SyncObserver = {},
+  options: RemoteReadOptions = {},
 ): Promise<"synced" | "conflicts"> {
   return store.runSync(async () => {
     notify(observer.onProgress, "saving");
@@ -54,7 +55,19 @@ export async function syncKnowledge(
       const state = store.getSnapshot(),
         captured = contentOf(state);
       notify(observer.onProgress, "reading");
-      const fetched = await remote.read(state.sync.base);
+      const fetched = await remote.read(state.sync.base, options);
+      // This durable baseline already names the same immutable commit. A quiet
+      // background poll needs no merge, Git serialization or local disk write.
+      // Edits saved while read() was in flight remain pending in the Store.
+      if (
+        options.background &&
+        fetched.head === state.sync.head &&
+        !state.sync.pending &&
+        pendingCount(state) === 0
+      ) {
+        notify(observer.onComplete, { uploaded: 0, downloaded: 0 });
+        return store.getSnapshot().conflicts.length ? "conflicts" : "synced";
+      }
       let base = state.sync.base,
         baseHead = state.sync.head;
       if (state.sync.pending && (await remote.isAncestor(state.sync.pending.head, fetched.head))) {

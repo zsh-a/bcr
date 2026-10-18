@@ -132,7 +132,7 @@ try {
   const b = await create("Beta");
   // Clicking a note row in the picker selects its parent folder as destination.
   dialog = await openMove();
-  await dialog.getByRole("button", { name: "Alpha", exact: true }).click();
+  await dialog.getByRole("treeitem", { name: "Alpha", exact: true }).click();
   assert.ok((await destLine(dialog)).includes(`将移动到：old/${b}.md`));
   await dialog.getByRole("button", { name: "移动笔记", exact: true }).click();
   await dialog.locator('p[role="status"]').waitFor();
@@ -342,7 +342,7 @@ try {
   );
   await page
     .getByRole("navigation", { name: "笔记列表" })
-    .getByRole("button", { name: "Alpha", exact: true })
+    .getByRole("treeitem", { name: "Alpha", exact: true })
     .click();
   await page.screenshot({ path: "scripts/shots/knowledge-file-tree.png" });
   await page.reload({ waitUntil: "networkidle" });

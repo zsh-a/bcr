@@ -158,11 +158,23 @@ try {
   await context.setOffline(true);
   page = await context.newPage();
   monitor(page);
+  const offlineAnalysisWorker = page.waitForEvent("worker", {
+    predicate: (worker) => worker.url().includes("markdownAnalysis.worker"),
+  });
   const fontSession = await context.newCDPSession(page);
   await fontSession.send("Network.enable");
   await fontSession.send("Network.setCacheDisabled", { cacheDisabled: true });
   await page.goto(`${origin}/notes/knowledge/`);
   await page.locator(".knowledge-app").waitFor();
+  const analysisWorker = await offlineAnalysisWorker;
+  await analysisWorker.evaluate(() => {
+    const send = self.postMessage.bind(self);
+    self.postMessage = (message, ...args) => {
+      if (message.facts?.analysis.links.some((link) => link.target === "offline-worker"))
+        self.__offlineAnalysisSeen = true;
+      return send(message, ...args);
+    };
+  });
   await page.getByLabel("笔记标题", { exact: true }).waitFor();
   assert.equal(
     await page.getByLabel("笔记标题", { exact: true }).inputValue(),
@@ -203,6 +215,16 @@ try {
         span.textContent === "const" &&
         getComputedStyle(span).color !== getComputedStyle(span.parentElement).color,
     ),
+  );
+  await page
+    .getByLabel("笔记正文", { exact: true })
+    .fill("```js\nconst offlineValue = 42;\n```\n\n[[offline-worker|离线分析]]");
+  await page.getByLabel("笔记正文", { exact: true }).press("Control+Home");
+  await page.locator(".knowledge-inline-link").filter({ hasText: "离线分析" }).waitFor();
+  assert.equal(
+    await analysisWorker.evaluate(() => self.__offlineAnalysisSeen),
+    true,
+    "a fresh analysis Worker must return results while completely offline",
   );
   await context.setOffline(false);
 

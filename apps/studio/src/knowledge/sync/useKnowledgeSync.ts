@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { contentOf, pendingCount, same } from "../session/model";
+import { pendingCount } from "../session/model";
 import { GitHubKnowledge } from "./github";
 import { syncKnowledge, type SyncSummary } from "./sync";
 import {
@@ -51,6 +51,7 @@ export function useKnowledgeSync({
   });
   latest.current = { ready, token, auto, active, paused, flush, setMessage, setPanel, targetKey };
   const gate = useRef({ attempts: 0, retryAt: 0, blocked: false, lastStartedAt: 0 });
+  const remote = useRef<{ token: string; targetKey: string; client: GitHubKnowledge } | null>(null);
   const [feedback, setFeedback] = useState<SyncFeedback>({
     online: navigator.onLine,
     phase: null,
@@ -82,6 +83,7 @@ export function useKnowledgeSync({
     setFeedback((previous) => ({ ...previous, phase: null, failure, retryAt }));
   }, []);
   useEffect(() => {
+    remote.current = null;
     gate.current = { attempts: 0, retryAt: 0, blocked: false, lastStartedAt: 0 };
     setFeedback((previous) => ({
       ...previous,
@@ -143,9 +145,15 @@ export function useKnowledgeSync({
       setFeedback((previous) => ({ ...previous, phase: "saving", failure: null, retryAt: null }));
       let summary: SyncSummary = { uploaded: 0, downloaded: 0 };
       try {
+        if (remote.current?.token !== config.token || remote.current.targetKey !== config.targetKey)
+          remote.current = {
+            token: config.token,
+            targetKey: config.targetKey,
+            client: new GitHubKnowledge(target, config.token),
+          };
         const result = await syncKnowledge(
           store,
-          new GitHubKnowledge(target, config.token),
+          remote.current.client,
           config.flush,
           {
             onProgress: (phase) => {
@@ -155,6 +163,7 @@ export function useKnowledgeSync({
               summary = value;
             },
           },
+          { background: !manual },
         );
         if (!current()) return;
         onConnected(summary);
@@ -212,7 +221,7 @@ export function useKnowledgeSync({
       syncing ||
       !token ||
       !state.sync.target ||
-      same(contentOf(state), state.sync.base)
+      pendingCount(state) === 0
     )
       return;
     const timer = setTimeout(() => {
