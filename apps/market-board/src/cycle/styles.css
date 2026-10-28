@@ -1,0 +1,267 @@
+.cycle-country-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: var(--space-3);
+}
+.cycle-country-card {
+  min-width: 0;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top-width: 2px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  color: var(--color-text);
+  transition: background var(--duration-fast);
+}
+.cycle-country-card:hover,
+.cycle-country-card[aria-pressed="true"] {
+  background: var(--color-overlay);
+}
+.cycle-country-card[aria-pressed="true"] {
+  outline: 1px solid var(--color-muted);
+  outline-offset: 2px;
+}
+.cycle-country-card > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.cycle-country-card i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+}
+.cycle-country-card small {
+  color: var(--color-faint);
+  font: var(--text-xs) var(--font-mono);
+  margin-left: auto;
+}
+.cycle-country-card > strong {
+  display: block;
+  margin-block: var(--space-4) var(--space-2);
+  font: 500 var(--text-2xl) var(--font-mono);
+  letter-spacing: -0.055em;
+}
+.cycle-card-phase {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.cycle-card-momentum {
+  display: block;
+  margin-top: var(--space-3);
+  font: var(--text-xs) var(--font-mono);
+}
+.cycle-card-momentum small {
+  display: block;
+  margin-top: var(--space-1);
+}
+.cycle-phase-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+}
+.cycle-phase-toolbar label,
+.cycle-metric-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+}
+.cycle-phase-toolbar .ui-select {
+  width: 138px;
+}
+.cycle-metric-label .ui-select {
+  max-width: min(100%, 250px);
+}
+.cycle-chart {
+  width: 100%;
+  min-width: 0;
+}
+.cycle-chart-phase {
+  height: 370px;
+}
+.cycle-chart-trend {
+  height: 300px;
+}
+.cycle-space-loading {
+  height: 410px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--color-faint);
+}
+.cycle-playback .ui-select {
+  width: 120px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.cycle-phase-key {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+}
+.cycle-section-heading h2 {
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+.cycle-section-heading {
+  margin-top: var(--space-3);
+}
+.cycle-pillars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid var(--color-border);
+}
+.cycle-pillars article {
+  padding: var(--space-4);
+  border-right: 1px solid var(--color-border);
+  min-width: 0;
+}
+.cycle-pillars article:last-child {
+  border-right: 0;
+}
+.cycle-pillars article > span {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.cycle-pillars strong {
+  display: block;
+  margin-top: var(--space-3);
+  font: 500 var(--text-xl) var(--font-mono);
+  letter-spacing: -0.04em;
+}
+.cycle-pillars p {
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  margin-top: var(--space-2);
+  min-height: 2.8em;
+}
+.cycle-pillars small {
+  color: var(--color-faint);
+  font: var(--text-xs) var(--font-mono);
+}
+.cycle-description,
+.cycle-method-note {
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  line-height: 1.8;
+  margin-top: var(--space-3);
+}
+.cycle-readouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.cycle-readouts > div {
+  min-width: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.cycle-readouts span {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.cycle-readouts strong {
+  display: block;
+  margin-top: var(--space-1);
+  font: 500 var(--text-lg) var(--font-mono);
+}
+.cycle-readouts small {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+}
+.cycle-coverage-scroll {
+  overflow-x: auto;
+  margin-top: var(--space-5);
+}
+.cycle-source-item {
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.cycle-source-item header {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.cycle-source-item strong {
+  font-size: var(--text-sm);
+}
+.cycle-source-item span,
+.cycle-source-item small {
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+}
+.cycle-source-item small {
+  display: block;
+  margin-top: var(--space-2);
+}
+.cycle-source-item p {
+  font-size: var(--text-xs);
+  line-height: 1.8;
+  color: var(--color-muted);
+  margin-top: var(--space-2);
+}
+.cycle-source-item a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+  margin-right: var(--space-3);
+  overflow-wrap: anywhere;
+}
+.cycle-native-table h3 {
+  margin-block: var(--space-5) var(--space-2);
+  font-size: var(--text-sm);
+}
+@container macro-main (width < 650px) {
+  .cycle-country-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cycle-pillars {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cycle-pillars article:nth-child(2) {
+    border-right: 0;
+  }
+  .cycle-pillars article:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--color-border);
+  }
+  .cycle-chart-phase {
+    height: 330px;
+  }
+  .cycle-chart-trend {
+    height: 270px;
+  }
+}
+@container macro-main (width < 350px) {
+  .cycle-playback .ui-select {
+    width: 100%;
+  }
+  .cycle-pillars article {
+    padding-inline: var(--space-2);
+  }
+  .cycle-readouts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

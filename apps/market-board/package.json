@@ -17,14 +17,17 @@
     "@fontsource-variable/newsreader": "^5.2.8",
     "@fontsource/ibm-plex-mono": "catalog:",
     "@fontsource/ibm-plex-sans": "catalog:",
+    "echarts": "^6.1.0",
     "lucide-react": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "catalog:"
   }
 }

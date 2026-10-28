@@ -1,0 +1,814 @@
+{
+  "version": 1,
+  "fetchedAt": "2026-10-25T09:55:03.526Z",
+  "series": [
+    {
+      "country": "CHN",
+      "indicator": "governmentInterestBurden",
+      "frequency": "A",
+      "unit": "percentRevenue",
+      "currency": null,
+      "seasonalAdjustment": "notApplicable",
+      "valuation": "notApplicable",
+      "source": {
+        "name": "IMF GFS · World Bank WDI",
+        "url": "https://data.worldbank.org/indicator/GC.XPN.INTP.RV.ZS",
+        "seriesCode": "GC.XPN.INTP.RV.ZS",
+        "licenseUrl": "https://datacatalog.worldbank.org/public-licenses#cc-by"
+      },
+      "fetchedAt": "2026-10-25T09:55:03.526Z",
+      "sourceUpdatedAt": "2026-10-08",
+      "note": "GFS 利息支出占财政收入，不是扣除利息收入后的净利息负担；包含对境内外居民的政府债务利息。收入定义及预算覆盖范围因国而异。 来源为 IMF Government Finance Statistics，经世界银行 WDI 提供。通常覆盖中央政府：多数国家为合并中央政府，部分仅预算中央政府，可能不含社保基金；各国覆盖、收入分母和会计基础并不完全统一，不等同 BIS 一般政府，也不代表全国各级政府。年度报告值可能滞后多年；各观测原始 obs_status 如有则保留，未自行认定审定状态。未使用 WEO/财政监测的 staff estimate 或预测补齐。 口径资料：https://databank.worldbank.org/metadataglossary/world-development-indicators/series/GC.XPN.INTP.RV.ZS",
+      "observations": [
+        {
+          "period": "2005",
+          "value": 4.34870323920915
+        },
+        {
+          "period": "2006",
+          "value": 4.35064201201436
+        },
+        {
+          "period": "2007",
+          "value": 2.19738712829215
+        },
+        {
+          "period": "2008",
+          "value": 3.43066332280543
+        },
+        {
+          "period": "2009",
+          "value": 3.24870806618044
+        },
+        {
+          "period": "2010",
+          "value": 3.25995431737838
+        },
+        {
+          "period": "2011",
+          "value": 3.31877780221327
+        },
+        {
+          "period": "2012",
+          "value": 3.43446314687576
+        },
+        {
+          "period": "2013",
+          "value": 3.5640025905739
+        },
+        {
+          "period": "2014",
+          "value": 2.55756756730206
+        },
+        {
+          "period": "2015",
+          "value": 3.23796955299514
+        },
+        {
+          "period": "2016",
+          "value": 2.92095458128791
+        },
+        {
+          "period": "2017",
+          "value": 3.40209957331909
+        },
+        {
+          "period": "2018",
+          "value": 2.76221448223877
+        },
+        {
+          "period": "2019",
+          "value": 2.90342194803221
+        },
+        {
+          "period": "2020",
+          "value": 3.91615191754211
+        },
+        {
+          "period": "2021",
+          "value": 3.4419404251668
+        }
+      ]
+    },
+    {
+      "country": "DEU",
+      "indicator": "governmentInterestBurden",
+      "frequency": "A",
+      "unit": "percentRevenue",
+      "currency": null,
+      "seasonalAdjustment": "notApplicable",
+      "valuation": "notApplicable",
+      "source": {
+        "name": "IMF GFS · World Bank WDI",
+        "url": "https://data.worldbank.org/indicator/GC.XPN.INTP.RV.ZS",
+        "seriesCode": "GC.XPN.INTP.RV.ZS",
+        "licenseUrl": "https://datacatalog.worldbank.org/public-licenses#cc-by"
+      },
+      "fetchedAt": "2026-10-25T09:55:03.526Z",
+      "sourceUpdatedAt": "2026-10-08",
+      "note": "GFS 利息支出占财政收入，不是扣除利息收入后的净利息负担；包含对境内外居民的政府债务利息。收入定义及预算覆盖范围因国而异。 来源为 IMF Government Finance Statistics，经世界银行 WDI 提供。通常覆盖中央政府：多数国家为合并中央政府，部分仅预算中央政府，可能不含社保基金；各国覆盖、收入分母和会计基础并不完全统一，不等同 BIS 一般政府，也不代表全国各级政府。年度报告值可能滞后多年；各观测原始 obs_status 如有则保留，未自行认定审定状态。未使用 WEO/财政监测的 staff estimate 或预测补齐。 口径资料：https://databank.worldbank.org/metadataglossary/world-development-indicators/series/GC.XPN.INTP.RV.ZS",
+      "observations": [
+        {
+          "period": "2000",
+          "value": 6.92865419429
+        },
+        {
+          "period": "2001",
+          "value": 6.6237308124643
+        },
+        {
+          "period": "2002",
+          "value": 6.50774216341995
+        },
+        {
+          "period": "2003",
+          "value": 5.97429914123967
+        },
+        {
+          "period": "2004",
+          "value": 5.98463331423708
+        },
+        {
+          "period": "2005",
+          "value": 5.84786279881413
+        },
+        {
+          "period": "2006",
+          "value": 5.69998954849498
+        },
+        {
+          "period": "2007",
+          "value": 5.73031994729325
+        },
+        {
+          "period": "2008",
+          "value": 5.71539017508232
+        },
+        {
+          "period": "2009",
+          "value": 5.4164587032355
+        },
+        {
+          "period": "2010",
+          "value": 5.07359921157608
+        },
+        {
+          "period": "2011",
+          "value": 5.27398957655871
+        },
+        {
+          "period": "2012",
+          "value": 4.71991561615138
+        },
+        {
+          "period": "2013",
+          "value": 3.45772577435928
+        },
+        {
+          "period": "2014",
+          "value": 3.07570194322783
+        },
+        {
+          "period": "2015",
+          "value": 2.66365124026745
+        },
+        {
+          "period": "2016",
+          "value": 2.22569671916529
+        },
+        {
+          "period": "2017",
+          "value": 1.8827682952478
+        },
+        {
+          "period": "2018",
+          "value": 1.69301686936053
+        },
+        {
+          "period": "2019",
+          "value": 1.4360093895827
+        },
+        {
+          "period": "2020",
+          "value": 1.04773577927648
+        },
+        {
+          "period": "2021",
+          "value": 0.968275088782061
+        },
+        {
+          "period": "2022",
+          "value": 1.45773373315771
+        },
+        {
+          "period": "2023",
+          "value": 2.04817590091326
+        },
+        {
+          "period": "2024",
+          "value": 2.47958940598133
+        }
+      ]
+    },
+    {
+      "country": "GBR",
+      "indicator": "governmentInterestBurden",
+      "frequency": "A",
+      "unit": "percentRevenue",
+      "currency": null,
+      "seasonalAdjustment": "notApplicable",
+      "valuation": "notApplicable",
+      "source": {
+        "name": "IMF GFS · World Bank WDI",
+        "url": "https://data.worldbank.org/indicator/GC.XPN.INTP.RV.ZS",
+        "seriesCode": "GC.XPN.INTP.RV.ZS",
+        "licenseUrl": "https://datacatalog.worldbank.org/public-licenses#cc-by"
+      },
+      "fetchedAt": "2026-10-25T09:55:03.526Z",
+      "sourceUpdatedAt": "2026-10-08",
+      "note": "GFS 利息支出占财政收入，不是扣除利息收入后的净利息负担；包含对境内外居民的政府债务利息。收入定义及预算覆盖范围因国而异。 来源为 IMF Government Finance Statistics，经世界银行 WDI 提供。通常覆盖中央政府：多数国家为合并中央政府，部分仅预算中央政府，可能不含社保基金；各国覆盖、收入分母和会计基础并不完全统一，不等同 BIS 一般政府，也不代表全国各级政府。年度报告值可能滞后多年；各观测原始 obs_status 如有则保留，未自行认定审定状态。未使用 WEO/财政监测的 staff estimate 或预测补齐。 口径资料：https://databank.worldbank.org/metadataglossary/world-development-indicators/series/GC.XPN.INTP.RV.ZS",
+      "observations": [
+        {
+          "period": "2000",
+          "value": 7.4624648172146
+        },
+        {
+          "period": "2001",
+          "value": 6.58148003988291
+        },
+        {
+          "period": "2002",
+          "value": 5.97460415163221
+        },
+        {
+          "period": "2003",
+          "value": 5.98880120236526
+        },
+        {
+          "period": "2004",
+          "value": 5.89458216676246
+        },
+        {
+          "period": "2005",
+          "value": 6.07465909477335
+        },
+        {
+          "period": "2006",
+          "value": 6.15511541095403
+        },
+        {
+          "period": "2007",
+          "value": 6.71246820313953
+        },
+        {
+          "period": "2008",
+          "value": 6.60706609251933
+        },
+        {
+          "period": "2009",
+          "value": 6.23440594954458
+        },
+        {
+          "period": "2010",
+          "value": 7.84040844628993
+        },
+        {
+          "period": "2011",
+          "value": 9.88146050986155
+        },
+        {
+          "period": "2012",
+          "value": 8.90323832894878
+        },
+        {
+          "period": "2013",
+          "value": 8.73969234659334
+        },
+        {
+          "period": "2014",
+          "value": 8.4224609837082
+        },
+        {
+          "period": "2015",
+          "value": 7.29915524862748
+        },
+        {
+          "period": "2016",
+          "value": 7.53580481338504
+        },
+        {
+          "period": "2017",
+          "value": 8.16083195755549
+        },
+        {
+          "period": "2018",
+          "value": 7.55563696309186
+        },
+        {
+          "period": "2019",
+          "value": 6.75334994473974
+        },
+        {
+          "period": "2020",
+          "value": 6.12765909510151
+        },
+        {
+          "period": "2021",
+          "value": 7.90342486310386
+        },
+        {
+          "period": "2022",
+          "value": 11.8284417545897
+        },
+        {
+          "period": "2023",
+          "value": 9.07351918240676
+        },
+        {
+          "period": "2024",
+          "value": 8.31995334939262
+        }
+      ]
+    },
+    {
+      "country": "USA",
+      "indicator": "governmentInterestBurden",
+      "frequency": "A",
+      "unit": "percentRevenue",
+      "currency": null,
+      "seasonalAdjustment": "notApplicable",
+      "valuation": "notApplicable",
+      "source": {
+        "name": "IMF GFS · World Bank WDI",
+        "url": "https://data.worldbank.org/indicator/GC.XPN.INTP.RV.ZS",
+        "seriesCode": "GC.XPN.INTP.RV.ZS",
+        "licenseUrl": "https://datacatalog.worldbank.org/public-licenses#cc-by"
+      },
+      "fetchedAt": "2026-10-25T09:55:03.526Z",
+      "sourceUpdatedAt": "2026-10-08",
+      "note": "GFS 利息支出占财政收入，不是扣除利息收入后的净利息负担；包含对境内外居民的政府债务利息。收入定义及预算覆盖范围因国而异。 来源为 IMF Government Finance Statistics，经世界银行 WDI 提供。通常覆盖中央政府：多数国家为合并中央政府，部分仅预算中央政府，可能不含社保基金；各国覆盖、收入分母和会计基础并不完全统一，不等同 BIS 一般政府，也不代表全国各级政府。年度报告值可能滞后多年；各观测原始 obs_status 如有则保留，未自行认定审定状态。未使用 WEO/财政监测的 staff estimate 或预测补齐。 口径资料：https://databank.worldbank.org/metadataglossary/world-development-indicators/series/GC.XPN.INTP.RV.ZS",
+      "observations": [
+        {
+          "period": "2000",
+          "value": 11.2058257398329
+        },
+        {
+          "period": "2001",
+          "value": 12.5223490925348
+        },
+        {
+          "period": "2002",
+          "value": 11.9802191352573
+        },
+        {
+          "period": "2003",
+          "value": 11.0562767239624
+        },
+        {
+          "period": "2004",
+          "value": 10.7276661064748
+        },
+        {
+          "period": "2005",
+          "value": 11.0087292168097
+        },
+        {
+          "period": "2006",
+          "value": 10.8973104924611
+        },
+        {
+          "period": "2007",
+          "value": 11.6129615211619
+        },
+        {
+          "period": "2008",
+          "value": 11.205082978016
+        },
+        {
+          "period": "2009",
+          "value": 11.1584433317198
+        },
+        {
+          "period": "2010",
+          "value": 11.3656014422158
+        },
+        {
+          "period": "2011",
+          "value": 12.5110757536464
+        },
+        {
+          "period": "2012",
+          "value": 11.6649393846484
+        },
+        {
+          "period": "2013",
+          "value": 9.32082071507531
+        },
+        {
+          "period": "2014",
+          "value": 9.41136570314412
+        },
+        {
+          "period": "2015",
+          "value": 8.8126892699848
+        },
+        {
+          "period": "2016",
+          "value": 9.9118867002559
+        },
+        {
+          "period": "2017",
+          "value": 9.79359831299426
+        },
+        {
+          "period": "2018",
+          "value": 12.2634075318711
+        },
+        {
+          "period": "2019",
+          "value": 12.7927868542352
+        },
+        {
+          "period": "2020",
+          "value": 10.9043423182866
+        },
+        {
+          "period": "2021",
+          "value": 11.3815152236966
+        },
+        {
+          "period": "2022",
+          "value": 13.418892172087
+        },
+        {
+          "period": "2023",
+          "value": 18.0185799932784
+        },
+        {
+          "period": "2024",
+          "value": 20.2909241993276
+        }
+      ]
+    },
+    {
+      "country": "DEU",
+      "indicator": "fiscalBalance",
+      "frequency": "A",
+      "unit": "percentGdp",
+      "currency": null,
+      "seasonalAdjustment": "notApplicable",
+      "valuation": "notApplicable",
+      "source": {
+        "name": "IMF GFS · World Bank WDI",
+        "url": "https://data.worldbank.org/indicator/GC.NLD.TOTL.GD.ZS",
+        "seriesCode": "GC.NLD.TOTL.GD.ZS",
+        "licenseUrl": "https://datacatalog.worldbank.org/public-licenses#cc-by"
+      },
+      "fetchedAt": "2026-10-25T09:55:03.526Z",
+      "sourceUpdatedAt": "2026-10-08",
+      "note": "GFS 财政净借贷（正）/净借入（负）占 GDP：收入减费用，再减非金融资产净投资；不是现金收支差，也不是初级财政余额。 来源为 IMF Government Finance Statistics，经世界银行 WDI 提供。通常覆盖中央政府：多数国家为合并中央政府，部分仅预算中央政府，可能不含社保基金；各国覆盖、收入分母和会计基础并不完全统一，不等同 BIS 一般政府，也不代表全国各级政府。年度报告值可能滞后多年；各观测原始 obs_status 如有则保留，未自行认定审定状态。未使用 WEO/财政监测的 staff estimate 或预测补齐。 口径资料：https://databank.worldbank.org/metadataglossary/world-development-indicators/series/GC.NLD.TOTL.GD.ZS",
+      "observations": [
+        {
+          "period": "2000",
+          "value": -1.16769813021797
+        },
+        {
+          "period": "2001",
+          "value": -1.36440859382473
+        },
+        {
+          "period": "2002",
+          "value": -2.0335888025331
+        },
+        {
+          "period": "2003",
+          "value": -1.66578157005726
+        },
+        {
+          "period": "2004",
+          "value": -1.82343090395283
+        },
+        {
+          "period": "2005",
+          "value": -2.17873251609186
+        },
+        {
+          "period": "2006",
+          "value": -1.17382057390631
+        },
+        {
+          "period": "2007",
+          "value": -0.16886815460503
+        },
+        {
+          "period": "2008",
+          "value": -0.295564790211951
+        },
+        {
+          "period": "2009",
+          "value": -2.0714764010794
+        },
+        {
+          "period": "2010",
+          "value": -3.20048484663093
+        },
+        {
+          "period": "2011",
+          "value": -0.370780258545056
+        },
+        {
+          "period": "2012",
+          "value": 0.0930239204366837
+        },
+        {
+          "period": "2013",
+          "value": 0.204327258519159
+        },
+        {
+          "period": "2014",
+          "value": 0.684275600022785
+        },
+        {
+          "period": "2015",
+          "value": 0.679066934885634
+        },
+        {
+          "period": "2016",
+          "value": 0.736915570494584
+        },
+        {
+          "period": "2017",
+          "value": 0.636282630936273
+        },
+        {
+          "period": "2018",
+          "value": 1.11091050456752
+        },
+        {
+          "period": "2019",
+          "value": 0.766521168807671
+        },
+        {
+          "period": "2020",
+          "value": -3.65593267492002
+        },
+        {
+          "period": "2021",
+          "value": -3.52007147628953
+        },
+        {
+          "period": "2022",
+          "value": -2.5662569966837
+        },
+        {
+          "period": "2023",
+          "value": -1.98906930280069
+        },
+        {
+          "period": "2024",
+          "value": -1.68030732483709
+        }
+      ]
+    },
+    {
+      "country": "GBR",
+      "indicator": "fiscalBalance",
+      "frequency": "A",
+      "unit": "percentGdp",
+      "currency": null,
+      "seasonalAdjustment": "notApplicable",
+      "valuation": "notApplicable",
+      "source": {
+        "name": "IMF GFS · World Bank WDI",
+        "url": "https://data.worldbank.org/indicator/GC.NLD.TOTL.GD.ZS",
+        "seriesCode": "GC.NLD.TOTL.GD.ZS",
+        "licenseUrl": "https://datacatalog.worldbank.org/public-licenses#cc-by"
+      },
+      "fetchedAt": "2026-10-25T09:55:03.526Z",
+      "sourceUpdatedAt": "2026-10-08",
+      "note": "GFS 财政净借贷（正）/净借入（负）占 GDP：收入减费用，再减非金融资产净投资；不是现金收支差，也不是初级财政余额。 来源为 IMF Government Finance Statistics，经世界银行 WDI 提供。通常覆盖中央政府：多数国家为合并中央政府，部分仅预算中央政府，可能不含社保基金；各国覆盖、收入分母和会计基础并不完全统一，不等同 BIS 一般政府，也不代表全国各级政府。年度报告值可能滞后多年；各观测原始 obs_status 如有则保留，未自行认定审定状态。未使用 WEO/财政监测的 staff estimate 或预测补齐。 口径资料：https://databank.worldbank.org/metadataglossary/world-development-indicators/series/GC.NLD.TOTL.GD.ZS",
+      "observations": [
+        {
+          "period": "2000",
+          "value": -1.29114132584573
+        },
+        {
+          "period": "2001",
+          "value": -1.95229726511505
+        },
+        {
+          "period": "2002",
+          "value": -4.45872668556208
+        },
+        {
+          "period": "2003",
+          "value": -5.8883867114666
+        },
+        {
+          "period": "2004",
+          "value": -5.59849240059285
+        },
+        {
+          "period": "2005",
+          "value": -5.43959055021596
+        },
+        {
+          "period": "2006",
+          "value": -5.3182507036155
+        },
+        {
+          "period": "2007",
+          "value": -5.20993034221826
+        },
+        {
+          "period": "2008",
+          "value": -7.64334668774579
+        },
+        {
+          "period": "2009",
+          "value": -12.4658443444775
+        },
+        {
+          "period": "2010",
+          "value": -6.59539718994281
+        },
+        {
+          "period": "2011",
+          "value": -9.58534562515532
+        },
+        {
+          "period": "2012",
+          "value": -9.85893078268789
+        },
+        {
+          "period": "2013",
+          "value": -6.57284894067986
+        },
+        {
+          "period": "2014",
+          "value": -6.84194583017344
+        },
+        {
+          "period": "2015",
+          "value": -5.58574202703712
+        },
+        {
+          "period": "2016",
+          "value": -3.78405341301057
+        },
+        {
+          "period": "2017",
+          "value": -3.41895135565048
+        },
+        {
+          "period": "2018",
+          "value": -3.85207125387797
+        },
+        {
+          "period": "2019",
+          "value": -3.54138398312266
+        },
+        {
+          "period": "2020",
+          "value": -14.8089159983433
+        },
+        {
+          "period": "2021",
+          "value": -9.17408204070175
+        },
+        {
+          "period": "2022",
+          "value": -5.6017379653763
+        },
+        {
+          "period": "2023",
+          "value": -6.97705514642296
+        },
+        {
+          "period": "2024",
+          "value": -6.86231516155942
+        }
+      ]
+    },
+    {
+      "country": "USA",
+      "indicator": "fiscalBalance",
+      "frequency": "A",
+      "unit": "percentGdp",
+      "currency": null,
+      "seasonalAdjustment": "notApplicable",
+      "valuation": "notApplicable",
+      "source": {
+        "name": "IMF GFS · World Bank WDI",
+        "url": "https://data.worldbank.org/indicator/GC.NLD.TOTL.GD.ZS",
+        "seriesCode": "GC.NLD.TOTL.GD.ZS",
+        "licenseUrl": "https://datacatalog.worldbank.org/public-licenses#cc-by"
+      },
+      "fetchedAt": "2026-10-25T09:55:03.526Z",
+      "sourceUpdatedAt": "2026-10-08",
+      "note": "GFS 财政净借贷（正）/净借入（负）占 GDP：收入减费用，再减非金融资产净投资；不是现金收支差，也不是初级财政余额。 来源为 IMF Government Finance Statistics，经世界银行 WDI 提供。通常覆盖中央政府：多数国家为合并中央政府，部分仅预算中央政府，可能不含社保基金；各国覆盖、收入分母和会计基础并不完全统一，不等同 BIS 一般政府，也不代表全国各级政府。年度报告值可能滞后多年；各观测原始 obs_status 如有则保留，未自行认定审定状态。未使用 WEO/财政监测的 staff estimate 或预测补齐。 口径资料：https://databank.worldbank.org/metadataglossary/world-development-indicators/series/GC.NLD.TOTL.GD.ZS",
+      "observations": [
+        {
+          "period": "2000",
+          "value": 2.23364620183569
+        },
+        {
+          "period": "2001",
+          "value": 0.0139813827894706
+        },
+        {
+          "period": "2002",
+          "value": -2.84500802810257
+        },
+        {
+          "period": "2003",
+          "value": -4.07842394459017
+        },
+        {
+          "period": "2004",
+          "value": -3.82684864841327
+        },
+        {
+          "period": "2005",
+          "value": -3.03664635176537
+        },
+        {
+          "period": "2006",
+          "value": -2.10572293619459
+        },
+        {
+          "period": "2007",
+          "value": -2.43871452073299
+        },
+        {
+          "period": "2008",
+          "value": -5.24151545897991
+        },
+        {
+          "period": "2009",
+          "value": -10.1899701113415
+        },
+        {
+          "period": "2010",
+          "value": -9.99381153701472
+        },
+        {
+          "period": "2011",
+          "value": -8.94621330674142
+        },
+        {
+          "period": "2012",
+          "value": -7.3043865590991
+        },
+        {
+          "period": "2013",
+          "value": -4.15034273198543
+        },
+        {
+          "period": "2014",
+          "value": -3.70170258774664
+        },
+        {
+          "period": "2015",
+          "value": -3.19804149971093
+        },
+        {
+          "period": "2016",
+          "value": -3.83020224555147
+        },
+        {
+          "period": "2017",
+          "value": -2.94418313753416
+        },
+        {
+          "period": "2018",
+          "value": -4.77899854941656
+        },
+        {
+          "period": "2019",
+          "value": -5.35878674364723
+        },
+        {
+          "period": "2020",
+          "value": -14.3855994220614
+        },
+        {
+          "period": "2021",
+          "value": -12.7072284020097
+        },
+        {
+          "period": "2022",
+          "value": -4.45683440176853
+        },
+        {
+          "period": "2023",
+          "value": -7.25485596488678
+        },
+        {
+          "period": "2024",
+          "value": -7.18895885533261
+        }
+      ]
+    }
+  ]
+}

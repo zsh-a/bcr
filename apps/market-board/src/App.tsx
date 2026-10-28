@@ -34,8 +34,10 @@ import { useMarketWatchlists } from "./watchlists/useMarketWatchlists";
 import "./styles.css";
 
 const BreadthView = lazy(() => import("./breadth/BreadthView"));
+const MacroView = lazy(() => import("./macro/MacroWorkspace"));
 const VIEWS = [
   { id: "overview", label: "概览" },
+  { id: "macro", label: "宏观" },
   { id: "sectors", label: "行业" },
   { id: "breadth", label: "宽度" },
   { id: "watchlist", label: "自选" },
@@ -68,7 +70,7 @@ export function App() {
       : view === "watchlist"
         ? refreshAtlas()
         : Promise.all([refreshAtlas(), refreshLandscape()]);
-  const discovery = useMarketDiscovery(snapshot.quotes, snapshot.futures);
+  const discovery = useMarketDiscovery(snapshot.quotes, snapshot.futures, view !== "macro");
   const {
     allQuotes,
     selected,
@@ -102,7 +104,7 @@ export function App() {
       setSourceOpen(false);
     }
   }, [active]);
-  const stockId = params.get("instrument") ?? detailId,
+  const stockId = view === "macro" ? null : (params.get("instrument") ?? detailId),
     stockOpen = stockId !== null;
   const stockQuote =
     selected?.instrument.id === stockId
@@ -174,8 +176,12 @@ export function App() {
             </Button>
           ))}
         </nav>
-        <MarketSearch discovery={discovery} onOpen={openInstrument} />
-        <div className="ma-header-actions">
+        {view === "macro" ? (
+          <span className="ma-macro-header-note">GLOBAL ECONOMY, IN CONTEXT</span>
+        ) : (
+          <MarketSearch discovery={discovery} onOpen={openInstrument} />
+        )}
+        <div className="ma-header-actions" hidden={view === "macro"}>
           <Button
             variant="ghost"
             className="ui-icon-btn"
@@ -197,7 +203,19 @@ export function App() {
           )}
         </div>
       </header>
-      <main className="ma-content">
+      <main className={`ma-content${view === "macro" ? " ma-content-macro" : ""}`}>
+        {view === "macro" && (
+          <Suspense
+            fallback={
+              <p className="ma-operation" role="status">
+                <Spinner size="sm" />
+                正在加载全球宏观数据…
+              </p>
+            }
+          >
+            <MacroView />
+          </Suspense>
+        )}
         {view === "overview" && (
           <>
             <div className="ma-view-heading">

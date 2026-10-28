@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "fetchedAt": "2026-10-25T08:23:54.455Z",
+  "series": [
+    {
+      "country": "CHN",
+      "indicator": "pmiManufacturing",
+      "frequency": "M",
+      "unit": "index",
+      "seasonalAdjustment": "SA",
+      "source": {
+        "name": "国家统计局：中国制造业采购经理指数",
+        "url": "https://www.stats.gov.cn/zwfwck/sjfb/202609/t20260930_1965449.html",
+        "seriesCode": "NBS.MANUFACTURING_PMI",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T08:23:54.455Z",
+      "sourceUpdatedAt": "2026-09-30",
+      "note": "国家统计局 2026 年 9 月原始发布表，保留 2025-09 至 2026-09 共 13 个月，指数 50 为扩张/收缩分界；来源页面以 % 表示。非制造业包含建筑业，不是纯服务业 PMI。来源日期为整表发布日，不是每个历史值的首次公布日；后续续期需更新固定来源 URL。",
+      "observations": [
+        { "period": "2025-09", "value": 49.8 },
+        { "period": "2025-10", "value": 49 },
+        { "period": "2025-11", "value": 49.2 },
+        { "period": "2025-12", "value": 50.1 },
+        { "period": "2026-01", "value": 49.3 },
+        { "period": "2026-02", "value": 49 },
+        { "period": "2026-03", "value": 50.4 },
+        { "period": "2026-04", "value": 50.3 },
+        { "period": "2026-05", "value": 50 },
+        { "period": "2026-06", "value": 50.3 },
+        { "period": "2026-07", "value": 49.2 },
+        { "period": "2026-08", "value": 49.8 },
+        { "period": "2026-09", "value": 50.1 }
+      ]
+    },
+    {
+      "country": "CHN",
+      "indicator": "pmiNewOrders",
+      "frequency": "M",
+      "unit": "index",
+      "seasonalAdjustment": "SA",
+      "source": {
+        "name": "国家统计局：制造业新订单指数",
+        "url": "https://www.stats.gov.cn/zwfwck/sjfb/202609/t20260930_1965449.html",
+        "seriesCode": "NBS.MANUFACTURING_NEW_ORDERS",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T08:23:54.455Z",
+      "sourceUpdatedAt": "2026-09-30",
+      "note": "国家统计局 2026 年 9 月原始发布表，保留 2025-09 至 2026-09 共 13 个月，指数 50 为扩张/收缩分界；来源页面以 % 表示。非制造业包含建筑业，不是纯服务业 PMI。来源日期为整表发布日，不是每个历史值的首次公布日；后续续期需更新固定来源 URL。",
+      "observations": [
+        { "period": "2025-09", "value": 49.7 },
+        { "period": "2025-10", "value": 48.8 },
+        { "period": "2025-11", "value": 49.2 },
+        { "period": "2025-12", "value": 50.8 },
+        { "period": "2026-01", "value": 49.2 },
+        { "period": "2026-02", "value": 48.6 },
+        { "period": "2026-03", "value": 51.6 },
+        { "period": "2026-04", "value": 50.6 },
+        { "period": "2026-05", "value": 49.9 },
+        { "period": "2026-06", "value": 51.2 },
+        { "period": "2026-07", "value": 48.5 },
+        { "period": "2026-08", "value": 50.6 },
+        { "period": "2026-09", "value": 50.5 }
+      ]
+    },
+    {
+      "country": "CHN",
+      "indicator": "pmiNonManufacturing",
+      "frequency": "M",
+      "unit": "index",
+      "seasonalAdjustment": "SA",
+      "source": {
+        "name": "国家统计局：非制造业商务活动（含建筑业）",
+        "url": "https://www.stats.gov.cn/zwfwck/sjfb/202609/t20260930_1965449.html",
+        "seriesCode": "NBS.NONMANUFACTURING_BUSINESS_ACTIVITY",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T08:23:54.455Z",
+      "sourceUpdatedAt": "2026-09-30",
+      "note": "国家统计局 2026 年 9 月原始发布表，保留 2025-09 至 2026-09 共 13 个月，指数 50 为扩张/收缩分界；来源页面以 % 表示。非制造业包含建筑业，不是纯服务业 PMI。来源日期为整表发布日，不是每个历史值的首次公布日；后续续期需更新固定来源 URL。",
+      "observations": [
+        { "period": "2025-09", "value": 50 },
+        { "period": "2025-10", "value": 50.1 },
+        { "period": "2025-11", "value": 49.5 },
+        { "period": "2025-12", "value": 50.2 },
+        { "period": "2026-01", "value": 49.4 },
+        { "period": "2026-02", "value": 49.5 },
+        { "period": "2026-03", "value": 50.1 },
+        { "period": "2026-04", "value": 49.4 },
+        { "period": "2026-05", "value": 50.1 },
+        { "period": "2026-06", "value": 50.2 },
+        { "period": "2026-07", "value": 49 },
+        { "period": "2026-08", "value": 49 },
+        { "period": "2026-09", "value": 50.2 }
+      ]
+    }
+  ]
+}

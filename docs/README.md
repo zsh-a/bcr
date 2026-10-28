@@ -6,15 +6,16 @@
 
 ## 使用应用
 
-| 主题             | 文档                                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| 阅读与书库       | [Reader](READER-ARCHITECTURE.md)                                                                                   |
-| 写作与知识关联   | [知识工作台](KNOWLEDGE-WORKBENCH.md) · [路径与文件夹](KNOWLEDGE-PATHS.md) · [图片与附件](KNOWLEDGE-ATTACHMENTS.md) |
-| 多设备笔记       | [GitHub 同步与恢复](KNOWLEDGE-SYNC.md) · [知识库存储](KNOWLEDGE-STORAGE.md)                                        |
-| 画布与图表       | [绘图工作区](DRAWING.md)                                                                                           |
-| 页面与视频创作   | [独立视频制作](VIDEO-AUTHORING.md)                                                                                 |
-| 摘录与资料迁移   | [引用与集合备份](RESEARCH-CITATIONS.md) · [Reader 资料包](RESEARCH-PACKAGE.md)                                     |
-| 安装、离线与更新 | [独立 PWA](INDEPENDENT-PWAS.md) · [Notes 入口](KNOWLEDGE-PWA.md) · [更新和恢复](APP-UPDATES.md)                    |
+| 主题             | 文档                                                                                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 阅读与书库       | [Reader](READER-ARCHITECTURE.md)                                                                                                                      |
+| 写作与知识关联   | [知识工作台](KNOWLEDGE-WORKBENCH.md) · [路径与文件夹](KNOWLEDGE-PATHS.md) · [图片与附件](KNOWLEDGE-ATTACHMENTS.md)                                    |
+| 多设备笔记       | [GitHub 同步与恢复](KNOWLEDGE-SYNC.md) · [知识库存储](KNOWLEDGE-STORAGE.md)                                                                           |
+| 画布与图表       | [绘图工作区](DRAWING.md)                                                                                                                              |
+| 全球宏观与事件   | [统一宏观工作台](MACRO-WORKBENCH.md) · [年度比较与资源](MACRO-ATLAS.md) · [周期监测与三维可视化](CYCLE-MONITOR.md) · [债务与信用周期](DEBT-CREDIT.md) |
+| 页面与视频创作   | [独立视频制作](VIDEO-AUTHORING.md)                                                                                                                    |
+| 摘录与资料迁移   | [引用与集合备份](RESEARCH-CITATIONS.md) · [Reader 资料包](RESEARCH-PACKAGE.md)                                                                        |
+| 安装、离线与更新 | [独立 PWA](INDEPENDENT-PWAS.md) · [Notes 入口](KNOWLEDGE-PWA.md) · [更新和恢复](APP-UPDATES.md)                                                       |
 
 ## 开发与维护
 

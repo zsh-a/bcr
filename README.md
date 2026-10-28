@@ -8,19 +8,19 @@ Browser Compute Runtime（BCR）把面向日常使用的 Studio 工作区，与�
 
 ## 工作区
 
-| 应用       | 可以做什么                                            | 路由         |
-| ---------- | ----------------------------------------------------- | ------------ |
-| Reader     | 阅读 EPUB、PDF、TXT 等格式，搜索原文、管理书签与笔记  | `/reader`    |
-| 个人知识库 | Markdown 写作、双向链接、附件、版本历史与 GitHub 同步 | `/knowledge` |
-| 绘图       | 自由画布、Mermaid、AI 局部编辑与 SVG/PNG 导出         | `/diagram`   |
-| Media      | 音视频转字幕、校对、翻译与导出                        | `/media`     |
-| Documents  | 文档提取、图片 OCR 与跨应用交接                       | `/documents` |
-| Manga      | 漫画 OCR、翻译、清理与排版审校                        | `/manga`     |
-| Data       | CSV、JSON、NDJSON 导入、搜索、排序与导出              | `/data`      |
-| Market     | 行情、自选、行业表现与历史宽度                        | `/markets`   |
-| Quant      | 策略回测、参数实验与冻结数据研究                      | `/quant`     |
-| DocGen     | 生成用于识别与阅读验证的虚构账单                      | `/docgen`    |
-| 计算工作台 | 查看文件、任务、缓存与本地存储                        | `/studio`    |
+| 应用       | 可以做什么                                             | 路由         |
+| ---------- | ------------------------------------------------------ | ------------ |
+| Reader     | 阅读 EPUB、PDF、TXT 等格式，搜索原文、管理书签与笔记   | `/reader`    |
+| 个人知识库 | Markdown 写作、双向链接、附件、版本历史与 GitHub 同步  | `/knowledge` |
+| 绘图       | 自由画布、Mermaid、AI 局部编辑与 SVG/PNG 导出          | `/diagram`   |
+| Media      | 音视频转字幕、校对、翻译与导出                         | `/media`     |
+| Documents  | 文档提取、图片 OCR 与跨应用交接                        | `/documents` |
+| Manga      | 漫画 OCR、翻译、清理与排版审校                         | `/manga`     |
+| Data       | CSV、JSON、NDJSON 导入、搜索、排序与导出               | `/data`      |
+| Market     | 统一宏观工作台、多指标联动、历史事件、周期与债务及行情 | `/markets`   |
+| Quant      | 策略回测、参数实验与冻结数据研究                       | `/quant`     |
+| DocGen     | 生成用于识别与阅读验证的虚构账单                       | `/docgen`    |
+| 计算工作台 | 查看文件、任务、缓存与本地存储                         | `/studio`    |
 
 应用共享导航、搜索、主题与 AI 助手，也可[分别安装为 PWA](docs/INDEPENDENT-PWAS.md)。阅读摘录可进入资料集合，再关联到知识库；文档与漫画处理结果可交给 Reader 继续阅读。
 

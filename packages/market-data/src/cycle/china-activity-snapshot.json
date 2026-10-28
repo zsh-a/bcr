@@ -1,0 +1,466 @@
+{
+  "version": 1,
+  "fetchedAt": "2026-10-25T12:29:07.721Z",
+  "series": [
+    {
+      "country": "CHN",
+      "indicator": "industrialProduction",
+      "frequency": "M",
+      "unit": "percent",
+      "seasonalAdjustment": "NSA",
+      "source": {
+        "name": "国家统计局 · 国民经济运行综合发布附表",
+        "url": "https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html",
+        "seriesCode": "NBS.RELEASE.INDUSTRIAL_VALUE_ADDED_MONTHLY_YOY",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T12:29:07.721Z",
+      "sourceUpdatedAt": "2026-10-19",
+      "note": "规模以上工业增加值当月实际同比，按可比价计算；不是月环比、累计同比或整个工业的产出规模。1—2月合并数据不拆成单月，1、2月留缺口。仅收录固定综合发布页集合的2025-06至2026-09有限历史。各期按对应发布附表提取，保留原有可比口径，不从绝对量重算、不填补缺失月份；不是统一最新修订版或可用于实时回测的历史版本。来源更新日期为本序列末期对应整页发布日，不是所有历史值的首次发布日期。逐期原始发布：2025-06（2025-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202507/t20250715_1960414.html；2025-07（2025-08-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202508/t20250815_1960789.html；2025-08（2025-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202509/t20250915_1961181.html；2025-09（2025-10-20）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202510/t20251020_1961612.html；2025-10（2025-11-14）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202511/t20251114_1961858.html；2025-11（2025-12-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202512/t20251215_1962075.html；2025-12（2026-01-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202601/t20260119_1962330.html；2026-03（2026-04-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202604/t20260416_1963330.html；2026-04（2026-05-18）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202605/t20260518_1963732.html；2026-05（2026-06-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202606/t20260616_1963954.html；2026-06（2026-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202607/t20260715_1964121.html；2026-07（2026-08-17）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202608/t20260817_1965056.html；2026-08（2026-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202609/t20260915_1965307.html；2026-09（2026-10-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html。",
+      "observations": [
+        {
+          "period": "2025-06",
+          "value": 6.8
+        },
+        {
+          "period": "2025-07",
+          "value": 5.7
+        },
+        {
+          "period": "2025-08",
+          "value": 5.2
+        },
+        {
+          "period": "2025-09",
+          "value": 6.5
+        },
+        {
+          "period": "2025-10",
+          "value": 4.9
+        },
+        {
+          "period": "2025-11",
+          "value": 4.8
+        },
+        {
+          "period": "2025-12",
+          "value": 5.2
+        },
+        {
+          "period": "2026-03",
+          "value": 5.7
+        },
+        {
+          "period": "2026-04",
+          "value": 4.1
+        },
+        {
+          "period": "2026-05",
+          "value": 4.5
+        },
+        {
+          "period": "2026-06",
+          "value": 5.3
+        },
+        {
+          "period": "2026-07",
+          "value": 4.5
+        },
+        {
+          "period": "2026-08",
+          "value": 5.2
+        },
+        {
+          "period": "2026-09",
+          "value": 5.5
+        }
+      ]
+    },
+    {
+      "country": "CHN",
+      "indicator": "retailNominal",
+      "frequency": "M",
+      "unit": "percent",
+      "seasonalAdjustment": "NSA",
+      "source": {
+        "name": "国家统计局 · 国民经济运行综合发布附表",
+        "url": "https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html",
+        "seriesCode": "NBS.RELEASE.RETAIL_SALES_MONTHLY_NOMINAL_YOY",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T12:29:07.721Z",
+      "sourceUpdatedAt": "2026-10-19",
+      "note": "社会消费品零售总额当月名义同比，未扣除价格因素；包含商品零售与餐饮，不是全部服务消费或实际零售量。1—2月合并数据不拆成单月，1、2月留缺口。仅收录固定综合发布页集合的2025-06至2026-09有限历史。各期按对应发布附表提取，保留原有可比口径，不从绝对量重算、不填补缺失月份；不是统一最新修订版或可用于实时回测的历史版本。来源更新日期为本序列末期对应整页发布日，不是所有历史值的首次发布日期。逐期原始发布：2025-06（2025-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202507/t20250715_1960414.html；2025-07（2025-08-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202508/t20250815_1960789.html；2025-08（2025-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202509/t20250915_1961181.html；2025-09（2025-10-20）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202510/t20251020_1961612.html；2025-10（2025-11-14）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202511/t20251114_1961858.html；2025-11（2025-12-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202512/t20251215_1962075.html；2025-12（2026-01-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202601/t20260119_1962330.html；2026-03（2026-04-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202604/t20260416_1963330.html；2026-04（2026-05-18）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202605/t20260518_1963732.html；2026-05（2026-06-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202606/t20260616_1963954.html；2026-06（2026-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202607/t20260715_1964121.html；2026-07（2026-08-17）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202608/t20260817_1965056.html；2026-08（2026-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202609/t20260915_1965307.html；2026-09（2026-10-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html。",
+      "observations": [
+        {
+          "period": "2025-06",
+          "value": 4.8
+        },
+        {
+          "period": "2025-07",
+          "value": 3.7
+        },
+        {
+          "period": "2025-08",
+          "value": 3.4
+        },
+        {
+          "period": "2025-09",
+          "value": 3
+        },
+        {
+          "period": "2025-10",
+          "value": 2.9
+        },
+        {
+          "period": "2025-11",
+          "value": 1.3
+        },
+        {
+          "period": "2025-12",
+          "value": 0.9
+        },
+        {
+          "period": "2026-03",
+          "value": 1.7
+        },
+        {
+          "period": "2026-04",
+          "value": 0.2
+        },
+        {
+          "period": "2026-05",
+          "value": -0.6
+        },
+        {
+          "period": "2026-06",
+          "value": 1
+        },
+        {
+          "period": "2026-07",
+          "value": 0.6
+        },
+        {
+          "period": "2026-08",
+          "value": 0.4
+        },
+        {
+          "period": "2026-09",
+          "value": 1.1
+        }
+      ]
+    },
+    {
+      "country": "CHN",
+      "indicator": "unemployment",
+      "frequency": "M",
+      "unit": "percent",
+      "seasonalAdjustment": "NSA",
+      "source": {
+        "name": "国家统计局 · 国民经济运行综合发布附表",
+        "url": "https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html",
+        "seriesCode": "NBS.RELEASE.NATIONAL_URBAN_SURVEY_UNEMPLOYMENT_RATE",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T12:29:07.721Z",
+      "sourceUpdatedAt": "2026-10-19",
+      "note": "全国城镇调查失业率当月水平，非季调；不是31个大城市、登记失业率、青年失业率或年内平均失业率。不同国家劳动力调查范围不可视为完全可比。仅收录固定综合发布页集合的2025-06至2026-09有限历史。各期按对应发布附表提取，保留原有可比口径，不从绝对量重算、不填补缺失月份；不是统一最新修订版或可用于实时回测的历史版本。来源更新日期为本序列末期对应整页发布日，不是所有历史值的首次发布日期。逐期原始发布：2025-06（2025-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202507/t20250715_1960414.html；2025-07（2025-08-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202508/t20250815_1960789.html；2025-08（2025-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202509/t20250915_1961181.html；2025-09（2025-10-20）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202510/t20251020_1961612.html；2025-10（2025-11-14）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202511/t20251114_1961858.html；2025-11（2025-12-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202512/t20251215_1962075.html；2025-12（2026-01-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202601/t20260119_1962330.html；2026-02（2026-03-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202603/t20260316_1962780.html；2026-03（2026-04-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202604/t20260416_1963330.html；2026-04（2026-05-18）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202605/t20260518_1963732.html；2026-05（2026-06-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202606/t20260616_1963954.html；2026-06（2026-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202607/t20260715_1964121.html；2026-07（2026-08-17）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202608/t20260817_1965056.html；2026-08（2026-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202609/t20260915_1965307.html；2026-09（2026-10-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html。",
+      "observations": [
+        {
+          "period": "2025-06",
+          "value": 5
+        },
+        {
+          "period": "2025-07",
+          "value": 5.2
+        },
+        {
+          "period": "2025-08",
+          "value": 5.3
+        },
+        {
+          "period": "2025-09",
+          "value": 5.2
+        },
+        {
+          "period": "2025-10",
+          "value": 5.1
+        },
+        {
+          "period": "2025-11",
+          "value": 5.1
+        },
+        {
+          "period": "2025-12",
+          "value": 5.1
+        },
+        {
+          "period": "2026-02",
+          "value": 5.3
+        },
+        {
+          "period": "2026-03",
+          "value": 5.4
+        },
+        {
+          "period": "2026-04",
+          "value": 5.2
+        },
+        {
+          "period": "2026-05",
+          "value": 5.1
+        },
+        {
+          "period": "2026-06",
+          "value": 5
+        },
+        {
+          "period": "2026-07",
+          "value": 5.2
+        },
+        {
+          "period": "2026-08",
+          "value": 5.3
+        },
+        {
+          "period": "2026-09",
+          "value": 5.2
+        }
+      ]
+    },
+    {
+      "country": "CHN",
+      "indicator": "housingSalesYtd",
+      "frequency": "M",
+      "unit": "percent",
+      "seasonalAdjustment": "NSA",
+      "source": {
+        "name": "国家统计局 · 国民经济运行综合发布附表",
+        "url": "https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html",
+        "seriesCode": "NBS.RELEASE.NEW_COMMERCIAL_FLOORSPACE_SALES_YTD_YOY",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T12:29:07.721Z",
+      "sourceUpdatedAt": "2026-10-19",
+      "note": "新建商品房销售面积年初至本月累计同比（YTD），面积口径、包含住宅及非住宅；不是单月销量、二手房或房价。仅收录固定综合发布页集合的2025-06至2026-09有限历史。各期按对应发布附表提取，保留原有可比口径，不从绝对量重算、不填补缺失月份；不是统一最新修订版或可用于实时回测的历史版本。来源更新日期为本序列末期对应整页发布日，不是所有历史值的首次发布日期。逐期原始发布：2025-06（2025-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202507/t20250715_1960414.html；2025-07（2025-08-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202508/t20250815_1960789.html；2025-08（2025-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202509/t20250915_1961181.html；2025-09（2025-10-20）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202510/t20251020_1961612.html；2025-10（2025-11-14）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202511/t20251114_1961858.html；2025-11（2025-12-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202512/t20251215_1962075.html；2025-12（2026-01-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202601/t20260119_1962330.html；2026-02（2026-03-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202603/t20260316_1962780.html；2026-03（2026-04-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202604/t20260416_1963330.html；2026-04（2026-05-18）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202605/t20260518_1963732.html；2026-05（2026-06-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202606/t20260616_1963954.html；2026-06（2026-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202607/t20260715_1964121.html；2026-07（2026-08-17）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202608/t20260817_1965056.html；2026-08（2026-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202609/t20260915_1965307.html；2026-09（2026-10-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html。",
+      "observations": [
+        {
+          "period": "2025-06",
+          "value": -3.5
+        },
+        {
+          "period": "2025-07",
+          "value": -4
+        },
+        {
+          "period": "2025-08",
+          "value": -4.7
+        },
+        {
+          "period": "2025-09",
+          "value": -5.5
+        },
+        {
+          "period": "2025-10",
+          "value": -6.8
+        },
+        {
+          "period": "2025-11",
+          "value": -7.8
+        },
+        {
+          "period": "2025-12",
+          "value": -8.7
+        },
+        {
+          "period": "2026-02",
+          "value": -13.5
+        },
+        {
+          "period": "2026-03",
+          "value": -10.4
+        },
+        {
+          "period": "2026-04",
+          "value": -10.2
+        },
+        {
+          "period": "2026-05",
+          "value": -10.8
+        },
+        {
+          "period": "2026-06",
+          "value": -11.6
+        },
+        {
+          "period": "2026-07",
+          "value": -11.8
+        },
+        {
+          "period": "2026-08",
+          "value": -12.1
+        },
+        {
+          "period": "2026-09",
+          "value": -13.2
+        }
+      ]
+    },
+    {
+      "country": "CHN",
+      "indicator": "housingStartsYtd",
+      "frequency": "M",
+      "unit": "percent",
+      "seasonalAdjustment": "NSA",
+      "source": {
+        "name": "国家统计局 · 国民经济运行综合发布附表",
+        "url": "https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html",
+        "seriesCode": "NBS.RELEASE.PROPERTY_FLOORSPACE_STARTS_YTD_YOY",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T12:29:07.721Z",
+      "sourceUpdatedAt": "2026-10-19",
+      "note": "房地产开发企业房屋新开工面积年初至本月累计同比（YTD），包含住宅及非住宅；不是单月住宅开工套数，不与美国季调折年套数混用。仅收录固定综合发布页集合的2025-06至2026-09有限历史。各期按对应发布附表提取，保留原有可比口径，不从绝对量重算、不填补缺失月份；不是统一最新修订版或可用于实时回测的历史版本。来源更新日期为本序列末期对应整页发布日，不是所有历史值的首次发布日期。逐期原始发布：2025-06（2025-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202507/t20250715_1960414.html；2025-07（2025-08-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202508/t20250815_1960789.html；2025-08（2025-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202509/t20250915_1961181.html；2025-09（2025-10-20）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202510/t20251020_1961612.html；2025-10（2025-11-14）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202511/t20251114_1961858.html；2025-11（2025-12-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202512/t20251215_1962075.html；2025-12（2026-01-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202601/t20260119_1962330.html；2026-02（2026-03-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202603/t20260316_1962780.html；2026-03（2026-04-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202604/t20260416_1963330.html；2026-04（2026-05-18）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202605/t20260518_1963732.html；2026-05（2026-06-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202606/t20260616_1963954.html；2026-06（2026-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202607/t20260715_1964121.html；2026-07（2026-08-17）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202608/t20260817_1965056.html；2026-08（2026-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202609/t20260915_1965307.html；2026-09（2026-10-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html。",
+      "observations": [
+        {
+          "period": "2025-06",
+          "value": -20
+        },
+        {
+          "period": "2025-07",
+          "value": -19.4
+        },
+        {
+          "period": "2025-08",
+          "value": -19.5
+        },
+        {
+          "period": "2025-09",
+          "value": -18.9
+        },
+        {
+          "period": "2025-10",
+          "value": -19.8
+        },
+        {
+          "period": "2025-11",
+          "value": -20.5
+        },
+        {
+          "period": "2025-12",
+          "value": -20.4
+        },
+        {
+          "period": "2026-02",
+          "value": -23.1
+        },
+        {
+          "period": "2026-03",
+          "value": -20.3
+        },
+        {
+          "period": "2026-04",
+          "value": -22
+        },
+        {
+          "period": "2026-05",
+          "value": -22.6
+        },
+        {
+          "period": "2026-06",
+          "value": -23.4
+        },
+        {
+          "period": "2026-07",
+          "value": -24
+        },
+        {
+          "period": "2026-08",
+          "value": -24.8
+        },
+        {
+          "period": "2026-09",
+          "value": -24.9
+        }
+      ]
+    },
+    {
+      "country": "CHN",
+      "indicator": "realEstateInvestmentYtd",
+      "frequency": "M",
+      "unit": "percent",
+      "seasonalAdjustment": "NSA",
+      "source": {
+        "name": "国家统计局 · 国民经济运行综合发布附表",
+        "url": "https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html",
+        "seriesCode": "NBS.RELEASE.PROPERTY_DEVELOPMENT_INVESTMENT_YTD_NOMINAL_YOY",
+        "licenseUrl": "https://www.stats.gov.cn/wzgl/202302/t20230217_1912857.html"
+      },
+      "fetchedAt": "2026-10-25T12:29:07.721Z",
+      "sourceUpdatedAt": "2026-10-19",
+      "note": "房地产开发投资年初至本月累计名义同比（YTD），未扣除价格因素；不是单月投资或实际投资增长。仅收录固定综合发布页集合的2025-06至2026-09有限历史。各期按对应发布附表提取，保留原有可比口径，不从绝对量重算、不填补缺失月份；不是统一最新修订版或可用于实时回测的历史版本。来源更新日期为本序列末期对应整页发布日，不是所有历史值的首次发布日期。逐期原始发布：2025-06（2025-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202507/t20250715_1960414.html；2025-07（2025-08-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202508/t20250815_1960789.html；2025-08（2025-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202509/t20250915_1961181.html；2025-09（2025-10-20）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202510/t20251020_1961612.html；2025-10（2025-11-14）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202511/t20251114_1961858.html；2025-11（2025-12-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202512/t20251215_1962075.html；2025-12（2026-01-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202601/t20260119_1962330.html；2026-02（2026-03-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202603/t20260316_1962780.html；2026-03（2026-04-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202604/t20260416_1963330.html；2026-04（2026-05-18）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202605/t20260518_1963732.html；2026-05（2026-06-16）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202606/t20260616_1963954.html；2026-06（2026-07-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202607/t20260715_1964121.html；2026-07（2026-08-17）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202608/t20260817_1965056.html；2026-08（2026-09-15）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202609/t20260915_1965307.html；2026-09（2026-10-19）：https://www.stats.gov.cn/sj/xwfbh/fbhwd/202610/t20261019_1965618.html。",
+      "observations": [
+        {
+          "period": "2025-06",
+          "value": -11.2
+        },
+        {
+          "period": "2025-07",
+          "value": -12
+        },
+        {
+          "period": "2025-08",
+          "value": -12.9
+        },
+        {
+          "period": "2025-09",
+          "value": -13.9
+        },
+        {
+          "period": "2025-10",
+          "value": -14.7
+        },
+        {
+          "period": "2025-11",
+          "value": -15.9
+        },
+        {
+          "period": "2025-12",
+          "value": -17.2
+        },
+        {
+          "period": "2026-02",
+          "value": -11.1
+        },
+        {
+          "period": "2026-03",
+          "value": -11.2
+        },
+        {
+          "period": "2026-04",
+          "value": -13.7
+        },
+        {
+          "period": "2026-05",
+          "value": -16.2
+        },
+        {
+          "period": "2026-06",
+          "value": -18
+        },
+        {
+          "period": "2026-07",
+          "value": -19.2
+        },
+        {
+          "period": "2026-08",
+          "value": -19.9
+        },
+        {
+          "period": "2026-09",
+          "value": -20.6
+        }
+      ]
+    }
+  ]
+}

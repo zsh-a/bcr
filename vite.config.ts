@@ -197,6 +197,10 @@ export default defineConfig({
   },
   fmt: {
     ignorePatterns: [
+      // Generated, losslessly packed data resource; the sync script owns its serialization.
+      "packages/market-data/src/macro/worldbank-snapshot.json",
+      "packages/market-data/src/cycle/*-snapshot.json",
+      "packages/market-data/src/debt/*-snapshot.json",
       "**/dist/**",
       // Work execution and animation packages own Biome and Bun tests.
       "packages/work-engine/**",

@@ -5,8 +5,13 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./macro": "./src/macro/index.ts",
+    "./macro/events": "./src/macro/events.ts",
+    "./cycle": "./src/cycle/index.ts",
+    "./debt": "./src/debt/index.ts",
     "./research/*": "./src/research/*.ts",
-    "./binance/*": "./src/binance/*.ts"
+    "./binance/*": "./src/binance/*.ts",
+    "./economy": "./src/economy/index.ts"
   },
   "dependencies": {
     "@bcr/core": "workspace:*",

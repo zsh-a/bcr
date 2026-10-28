@@ -1,0 +1,212 @@
+.research-chart-figure {
+  margin: 0;
+  min-width: 0;
+}
+.research-chart-stage {
+  position: relative;
+  min-width: 0;
+  isolation: isolate;
+}
+.research-chart-canvas {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  outline: none;
+  touch-action: pan-y;
+}
+.research-chart-canvas:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.research-chart-cursor {
+  position: absolute;
+  left: 0;
+  width: 1px;
+  background: var(--color-text);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 3;
+}
+.research-chart-cursor::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: inherit;
+}
+.research-native-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 8;
+  max-width: calc(100% - 6px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-floating);
+  pointer-events: none;
+}
+.research-native-tooltip .macro-chart-tooltip {
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(330px, calc(100vw - 52px));
+  min-width: min(220px, calc(100vw - 52px));
+  padding: 10px 13px;
+  color: var(--color-text);
+  font-family: var(--font-sans, "IBM Plex Sans", sans-serif);
+  white-space: normal;
+}
+.research-native-tooltip .macro-chart-tooltip > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+.research-native-tooltip header strong {
+  font: 500 13px var(--font-mono, "IBM Plex Mono", monospace);
+}
+.research-native-tooltip header span,
+.research-native-tooltip footer {
+  font-size: 10px;
+  color: var(--color-faint);
+  line-height: 1.6;
+}
+.research-native-tooltip .macro-tooltip-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 18px;
+  padding-block: 2px;
+  font-size: 11px;
+}
+.research-native-tooltip .macro-tooltip-row > span {
+  color: var(--color-muted);
+}
+.research-native-tooltip .macro-tooltip-row i {
+  display: inline-block;
+  width: 8px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.research-native-tooltip .macro-tooltip-row b {
+  font: 500 11px var(--font-mono, "IBM Plex Mono", monospace);
+}
+.research-native-tooltip footer {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+.research-chart-empty {
+  position: absolute;
+  inset: 20px 12px 28px 48px;
+  display: grid;
+  place-content: center;
+  margin: 0;
+  padding: 14px;
+  color: var(--color-faint);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+.research-chart-caption {
+  display: grid;
+  gap: 6px;
+  padding: 5px 0 0;
+}
+.research-chart-readings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px 16px;
+}
+.research-chart-reading {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.research-chart-reading > i {
+  align-self: center;
+  width: 10px;
+  height: 2px;
+  flex: 0 0 10px;
+}
+.research-chart-reading > b {
+  color: var(--color-text);
+  font: 500 10px var(--font-mono, "IBM Plex Mono", monospace);
+}
+.research-chart-reading > small {
+  color: var(--color-faint);
+  font: 9px var(--font-mono, "IBM Plex Mono", monospace);
+}
+.research-chart-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.research-chart-help,
+.research-chart-event-note {
+  color: var(--color-faint);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.research-chart-controls > button {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-faint);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.research-chart-controls > button:hover,
+.research-chart-controls > button[aria-pressed="true"] {
+  color: var(--color-text);
+  background: var(--color-overlay);
+}
+.research-chart-controls > button:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.research-chart-event-note {
+  margin: 1px 0 0;
+  overflow-wrap: anywhere;
+}
+.research-chart-figure[data-large="true"] .research-chart-caption {
+  gap: 9px;
+  padding-top: 8px;
+}
+.research-chart-figure[data-large="true"] .research-chart-reading,
+.research-chart-figure[data-large="true"] .research-chart-reading > b {
+  font-size: 11px;
+}
+@media (max-width: 480px) {
+  .research-chart-readings {
+    gap: 4px 12px;
+  }
+  .research-chart-reading {
+    flex-wrap: wrap;
+  }
+  .research-native-tooltip .macro-chart-tooltip {
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .research-chart-figure *,
+  .research-chart-figure *::before {
+    transition: none !important;
+    animation: none !important;
+  }
+}

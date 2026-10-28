@@ -1,0 +1,120 @@
+@container macro-atlas (width < 1050px) {
+  .macro-main {
+    padding: var(--space-5);
+  }
+  .macro-country-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .macro-page-heading h1 > span {
+    display: none;
+  }
+  .macro-history-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .macro-event-inspector {
+    min-height: 0;
+  }
+  .macro-inspector-empty {
+    min-height: 160px;
+  }
+}
+@container macro-main (width < 580px) {
+  .macro-chart-panel {
+    padding: var(--space-4) var(--space-3) 0;
+  }
+  .macro-chart-toolbar {
+    gap: var(--space-4);
+  }
+  .macro-legend {
+    gap: var(--space-3);
+  }
+  .macro-chart {
+    height: 340px;
+  }
+  .macro-chart-foot > span:last-child {
+    display: none;
+  }
+  .macro-chart-source {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .macro-chart-source > span {
+    flex-basis: 100%;
+  }
+  .macro-chart-source .ui-btn {
+    margin-left: auto;
+  }
+  .macro-card-bottom svg {
+    display: none;
+  }
+  .macro-card-value {
+    font-size: var(--text-xl);
+  }
+  .macro-data-status {
+    gap: var(--space-2);
+  }
+  .macro-data-status .ui-btn {
+    margin-left: 0;
+  }
+  .macro-playback > span {
+    flex-basis: 100%;
+  }
+}
+@media (width <= theme(--bp-md)) {
+  .macro-atlas {
+    display: block;
+  }
+  .macro-sidebar {
+    display: none;
+  }
+  .macro-country-trigger.ui-btn {
+    display: inline-flex;
+  }
+  .ma-macro-header-note {
+    display: none;
+  }
+  .market-atlas[data-view="macro"] .ma-header {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .market-atlas[data-view="macro"] .ma-view-nav {
+    flex: 1;
+    justify-content: flex-end;
+  }
+  .market-atlas[data-view="macro"] .ma-view-nav .ui-btn {
+    flex: 0;
+    font-size: var(--text-xs);
+    padding-inline: var(--space-2);
+  }
+  .market-atlas[data-view="macro"] .ma-wordmark b {
+    display: block;
+  }
+}
+@container macro-main (width < 300px) {
+  .macro-country-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .macro-page-actions {
+    gap: var(--space-1);
+  }
+  .macro-page-actions .ui-btn {
+    padding-inline: var(--space-2);
+  }
+  .macro-main .macro-chart {
+    height: 320px;
+  }
+  .macro-event-card {
+    gap: var(--space-2);
+    padding-inline: var(--space-1);
+  }
+  .macro-event-year {
+    font-size: var(--text-sm);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .macro-atlas *,
+  .macro-atlas *::before,
+  .macro-atlas *::after {
+    scroll-behavior: auto;
+  }
+}

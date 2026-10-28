@@ -6,7 +6,7 @@ export const definition = {
   title: "Market",
   displayTitle: "市场行情",
   path: "/markets",
-  description: "行情、行业表现、历史宽度与自选研究",
+  description: "全球宏观、周期与债务、历史事件及行情研究",
   section: "research",
   installation: {
     name: "BCR Market Atlas",

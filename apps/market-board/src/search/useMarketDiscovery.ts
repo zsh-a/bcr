@@ -26,6 +26,7 @@ function initialInstruments(): ReadonlyArray<MarketInstrument> {
 export function useMarketDiscovery(
   quotes: ReadonlyArray<QuoteSnapshot>,
   futures: ReadonlyArray<QuoteSnapshot>,
+  enabled = true,
 ) {
   const [selectedId, setSelectedId] = useState(DEFAULT_SELECTED_ID);
   const [region, setRegion] = useState<MarketRegion | "ALL">("ALL");
@@ -40,8 +41,9 @@ export function useMarketDiscovery(
   const routeInstrumentId = new URLSearchParams(useLocationSearch()).get("instrument");
   const appliedRouteRef = useRef("");
   const searchRef = useRef<HTMLInputElement>(null);
-  const search = useInstrumentSearch(query);
+  const search = useInstrumentSearch(enabled ? query : "");
   const quoteRequest = useRef(0);
+  const restoredShelf = useRef(false);
   const allQuotes = useMemo(() => {
     const seen = new Set<string>();
     return [...customQuotes, ...quotes, ...futures].filter((quote) => {
@@ -53,7 +55,8 @@ export function useMarketDiscovery(
   const selected = allQuotes.find((quote) => quote.instrument.id === selectedId) ?? quotes[0];
 
   useEffect(() => {
-    if (routeInstrumentId === null || appliedRouteRef.current === routeInstrumentId) return;
+    if (!enabled || routeInstrumentId === null || appliedRouteRef.current === routeInstrumentId)
+      return;
     const existing = allQuotes.find((quote) => quote.instrument.id === routeInstrumentId);
     if (existing !== undefined) {
       appliedRouteRef.current = routeInstrumentId;
@@ -78,7 +81,7 @@ export function useMarketDiscovery(
         setRegion("ALL");
       })
       .catch((error) => setQuoteError(error instanceof Error ? error.message : String(error)));
-  }, [allQuotes, routeInstrumentId]);
+  }, [allQuotes, routeInstrumentId, enabled]);
 
   useEffect(() => {
     try {
@@ -89,6 +92,8 @@ export function useMarketDiscovery(
   }, [savedInstruments]);
 
   useEffect(() => {
+    if (!enabled || restoredShelf.current) return;
+    restoredShelf.current = true;
     let cancelled = false;
     void Promise.allSettled(
       savedInstruments.map((instrument) => marketProvider.loadQuote(instrument)),
@@ -100,11 +105,13 @@ export function useMarketDiscovery(
     });
     return () => {
       cancelled = true;
+      restoredShelf.current = false;
     };
     // Restore the persisted discovery shelf once; quote refresh is explicit after that.
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (event.key === "/" && target?.tagName !== "INPUT" && target?.tagName !== "TEXTAREA") {
@@ -114,7 +121,7 @@ export function useMarketDiscovery(
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [enabled]);
 
   const selectSearchResult = async (
     result: MarketSearchResult,
