@@ -103,6 +103,24 @@ async function drewAfter(page, count) {
     count,
   );
 }
+async function changeTheme(page, theme) {
+  const previous = await page
+    .locator(".cycle-space")
+    .evaluate((element) => getComputedStyle(element).backgroundColor);
+  const picker = page.getByRole("combobox", { name: "外观主题", exact: true });
+  if (await picker.count()) await picker.selectOption(theme);
+  else
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+  // A pending keyboard/resize frame can complete before the theme is applied.
+  await page.waitForFunction(
+    ([theme, previous]) =>
+      document.documentElement.dataset.theme === theme &&
+      getComputedStyle(document.querySelector(".cycle-space")).backgroundColor !== previous,
+    [theme, previous],
+  );
+}
 async function noOverflow(page) {
   await page.waitForFunction(
     () =>
@@ -376,9 +394,7 @@ try {
   const darkSurface = await page
     .locator(".cycle-space")
     .evaluate((element) => getComputedStyle(element).backgroundColor);
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = "light";
-  });
+  await changeTheme(page, "light");
   await drewAfter(page, count);
   assert.notEqual(
     await page
@@ -389,9 +405,7 @@ try {
   );
   await page.screenshot({ path: `${shots}/cycle-3d-light.png` });
   count = await frameCount(page);
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = "dark";
-  });
+  await changeTheme(page, "dark");
   await drewAfter(page, count);
   assert(
     await canvas(page).evaluate((element, previous) => element === previous, originalCanvas),
